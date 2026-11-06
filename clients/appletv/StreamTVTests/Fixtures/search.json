@@ -1,0 +1,52 @@
+{
+    "movies": [
+        {
+            "kind": "movie",
+            "id": "ad5538de-328b-4d5e-9b65-56ce1bb630c2",
+            "title": "Heat",
+            "year": 1995,
+            "content_rating": null,
+            "runtime_minutes": null,
+            "images": {
+                "thumb": {
+                    "src": "/artwork/d0d154e1-d12d-4f46-b90a-3e8cbd79e046/1/780.webp?s=14ea2526f17c5613bbff8ffc",
+                    "srcset": "/artwork/d0d154e1-d12d-4f46-b90a-3e8cbd79e046/1/300.webp?s=14ea2526f17c5613bbff8ffc 300w, /artwork/d0d154e1-d12d-4f46-b90a-3e8cbd79e046/1/780.webp?s=14ea2526f17c5613bbff8ffc 780w",
+                    "width": 160,
+                    "height": 90,
+                    "placeholder": "data:image/webp;base64,UklGRs4AAABXRUJQVlA4IMIAAAAQBQCdASoYAA4APxFwsFAsJiSisAgBgCIJbACdMoR3Ff/2Sz5IAF6KPd6sLmOeSvTkAP7bgyGen04vNJ9UxlPPOBrp3Bx9s3MIAeKwQDxjqfW/9f+SyLtOVVH//2MCdDbu/T4is4Pnvb8PIb8oYIsrNY+G8QHnLXSwMm4tQPZ9sVD/J816xlo2Espf/KPl7ssKX5aADX+KLy9kKf/y3HX3/xvOpZf/dAhbn/XtQv/aPv6rvk9Lz3t2v/4mP8pL/sBAAA==",
+                    "color": "#6a6379"
+                }
+            },
+            "progress": null,
+            "watched": true
+        },
+        {
+            "kind": "movie",
+            "id": "612ad2d6-4df6-408b-8ea6-f9f952eae055",
+            "title": "Case HEVC HDR10",
+            "year": 2000,
+            "content_rating": null,
+            "runtime_minutes": null,
+            "images": {
+                "thumb": {
+                    "src": "/artwork/d69cb1f7-d127-491a-8594-549b1823a027/1/780.webp?s=c2e71270bf173f2513f04904",
+                    "srcset": "/artwork/d69cb1f7-d127-491a-8594-549b1823a027/1/300.webp?s=c2e71270bf173f2513f04904 300w, /artwork/d69cb1f7-d127-491a-8594-549b1823a027/1/780.webp?s=c2e71270bf173f2513f04904 780w",
+                    "width": 160,
+                    "height": 90,
+                    "placeholder": "data:image/webp;base64,UklGRtoAAABXRUJQVlA4IM4AAABQBgCdASoYAA4APxFysFAsJqSisAgBgCIJbACdMoR8r6Tbhys8RBz/93aeyH5MwGFvgnIppdvg2T9sAAD+2aUDJ6JKxi6nBo2seeUXlOCLqQpY+u2HZWx9AA3A2+0Z4MTIb9yd/9jAnQcGNevdK7RR4ZCJz/lVOMPWET85p548+FGyDSKF8kdiXsMB5X5S4ecOaDn45PEJhcKWzCJXHL03NOcXmzyNv+W1x9z//G98RLr/waHK369qF/7R9/VdYMhCvesH/8TH+Ul9gIAAAA==",
+                    "color": "#696379"
+                }
+            },
+            "progress": null,
+            "watched": false
+        }
+    ],
+    "shows": [],
+    "episodes": [],
+    "people": [],
+    "collections": [],
+    "channels": [],
+    "videos": [],
+    "said": [],
+    "clips": []
+}

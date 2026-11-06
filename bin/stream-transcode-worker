@@ -1,0 +1,405 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# A remote transcoder for Stream (PROPOSAL §11 Phase 6): run this on another
+# machine — a Mac mini with VideoToolbox, say — and it converts video for
+# Stream alongside the transcoder on the server.
+#
+#   ruby stream-transcode-worker --server https://stream.example --token streamnode_…
+#
+# It needs only ffmpeg on PATH (Homebrew's has VideoToolbox) and Ruby's
+# standard library — no gems, no checkout of Stream. The server decides
+# everything: this polls for the ffmpeg runs it was given, reads each
+# original through a signed URL, uploads what ffmpeg writes, and reports
+# when a run ends. Nothing is kept here once it's uploaded.
+#
+# Written for any Ruby from 2.6 (what a Mac ships) up, so no newer syntax.
+
+require "fileutils"
+require "json"
+require "net/http"
+require "open3"
+require "optparse"
+require "socket"
+require "tmpdir"
+require "uri"
+
+module StreamWorker
+  VERSION = "1"
+  FRAGMENT = /\A(?:gop-\d+\.m4s)\z/.freeze
+
+  # One HTTP connection per thread, kept open between requests.
+  class Client
+    attr_reader :server
+
+    def initialize(server, token)
+      @server = server.sub(%r{/+\z}, "")
+      @token = token
+      @uri = URI.parse(@server)
+      @http = nil
+    end
+
+    def post_json(path, body)
+      request = Net::HTTP::Post.new(path)
+      request["Content-Type"] = "application/json"
+      request.body = JSON.generate(body)
+      response = perform(request)
+      raise "#{path}: HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+      JSON.parse(response.body)
+    end
+
+    def put_file(path, file)
+      File.open(file, "rb") do |io|
+        request = Net::HTTP::Put.new(path)
+        request["Content-Type"] = "application/octet-stream"
+        request["Content-Length"] = File.size(file).to_s
+        request.body_stream = io
+        response = perform(request, read_timeout: 600)
+        raise "#{path}: HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+      end
+    end
+
+    def close
+      @http.finish if @http && @http.started?
+    rescue StandardError
+      nil
+    end
+
+    private
+
+    def perform(request, read_timeout: 30)
+      request["Authorization"] = "Bearer #{@token}"
+      connection.read_timeout = read_timeout
+      connection.request(request)
+    rescue IOError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError, EOFError
+      close
+      @http = nil
+      raise
+    end
+
+    def connection
+      return @http if @http && @http.started?
+
+      @http = Net::HTTP.new(@uri.host, @uri.port)
+      @http.use_ssl = @uri.scheme == "https"
+      @http.open_timeout = 5
+      @http.keep_alive_timeout = 30
+      @http.start
+      @http
+    end
+  end
+
+  # What this machine can do, told to the server on the first poll.
+  module Probe
+    module_function
+
+    def hello(ffmpeg)
+      {
+        "worker" => VERSION, "hostname" => Socket.gethostname, "platform" => RUBY_PLATFORM,
+        "ffmpeg" => first_line(ffmpeg, "-version"), "encoder" => encoder(ffmpeg), "filters" => filters(ffmpeg)
+      }
+    end
+
+    # The hardware encoder that really encodes a frame here, else software.
+    def encoder(ffmpeg)
+      encoders = capture(ffmpeg, "-hide_banner", "-encoders")
+      if encoders.include?("h264_videotoolbox") && encodes?(ffmpeg, %w[-c:v h264_videotoolbox])
+        "videotoolbox"
+      elsif encoders.include?("h264_vaapi") && File.exist?("/dev/dri/renderD128") &&
+            encodes?(ffmpeg, %w[-vf format=nv12,hwupload -c:v h264_vaapi], %w[-init_hw_device vaapi=va:/dev/dri/renderD128 -filter_hw_device va])
+        "vaapi"
+      else
+        "software"
+      end
+    end
+
+    def filters(ffmpeg)
+      capture(ffmpeg, "-hide_banner", "-filters").scan(/^[ \t]*\S+[ \t]+(\w+)[ \t]/).flatten
+    end
+
+    def encodes?(ffmpeg, codec, before = [])
+      argv = [ ffmpeg, "-hide_banner", "-v", "error" ] + before +
+             %w[-f lavfi -i testsrc2=size=320x240:duration=0.1] + codec + %w[-frames:v 1 -f null -]
+      _out, status = Open3.capture2e(*argv)
+      status.success?
+    rescue SystemCallError
+      false
+    end
+
+    def capture(*argv)
+      out, _status = Open3.capture2e(*argv)
+      out
+    rescue SystemCallError
+      ""
+    end
+
+    def first_line(ffmpeg, flag)
+      capture(ffmpeg, flag).lines.first.to_s.strip
+    end
+  end
+
+  # One ffmpeg run the server handed over.
+  class Run
+    attr_reader :id, :kind, :directory, :pid
+    attr_accessor :uploader
+
+    def initialize(id, kind, argv, work_dir, ffmpeg, server)
+      @id = id
+      @kind = kind
+      @directory = File.join(work_dir, id)
+      FileUtils.rm_rf(@directory)
+      FileUtils.mkdir_p(@directory)
+      @argv = argv.map { |arg| arg.to_s.gsub("{server}", server).gsub("{out}", @directory) }
+      raise ArgumentError, "not an ffmpeg command" unless @argv.first == "ffmpeg"
+
+      @argv[0] = ffmpeg
+      @status = :unset
+    end
+
+    def start
+      @pid = Process.spawn(*@argv, out: File::NULL, err: log_path, pgroup: true)
+    end
+
+    # nil while running; the exit status (nil if killed) once it's done.
+    def finished?
+      return true unless @status == :unset
+
+      reaped = Process.wait2(@pid, Process::WNOHANG)
+      return false if reaped.nil?
+
+      @status = reaped.last.exitstatus
+      true
+    rescue Errno::ECHILD
+      @status = nil
+      true
+    end
+
+    def status
+      @status == :unset ? nil : @status
+    end
+
+    def kill
+      Process.kill("-KILL", @pid)
+      Process.waitpid(@pid)
+    rescue Errno::ESRCH, Errno::ECHILD, Errno::EPERM
+      nil
+    ensure
+      @status = nil if @status == :unset
+    end
+
+    def log_tail
+      File.exist?(log_path) ? File.readlines(log_path).last(3).join.strip : ""
+    end
+
+    # Seconds of output so far, from ffmpeg's -progress file.
+    def progress_seconds
+      path = File.join(@directory, "progress")
+      return nil unless File.exist?(path)
+
+      micros = File.read(path).scan(/^out_time_us=(\d+)/).last
+      micros && micros.first.to_i / 1_000_000.0
+    end
+
+    def cleanup
+      FileUtils.rm_rf(@directory)
+    end
+
+    private
+
+    def log_path
+      File.join(@directory, "ffmpeg.log")
+    end
+  end
+
+  # Uploads a session run's fragments as ffmpeg finishes them: each GOP
+  # appears under its final name only once complete (-hls_flags
+  # temp_file), and the init segment is complete once the first GOP exists.
+  class Uploader
+    def initialize(run, client)
+      @run = run
+      @client = client
+      @init_sent = false
+      @stop = false
+      @error = nil
+      @thread = Thread.new { loop_until_done }
+    end
+
+    # A run that ended: what's left uploaded first. One that was stopped:
+    # let go at once, so the next poll isn't held up behind it.
+    def finish(wait: true)
+      @stop = true
+      @thread.join(wait ? nil : 2) || @thread.kill
+      @client.close
+      @error
+    end
+
+    private
+
+    # A failed upload (a deploy's swap, a blip) is tried again, with a
+    # pause, for a while; only then is the run's upload given up on.
+    # It used to stop at the first.
+    GIVE_UP_AFTER = 30
+
+    def loop_until_done
+      failing_since = nil
+      loop do
+        done = @stop
+        begin
+          send_ready
+          failing_since = nil
+        rescue StandardError => e
+          failing_since ||= Time.now
+          if Time.now - failing_since > GIVE_UP_AFTER
+            @error = "upload failed: #{e.class}: #{e.message}"
+            break
+          end
+          sleep 1
+          next
+        end
+        break if done
+
+        sleep 0.05
+      end
+    end
+
+    def send_ready
+      gops = Dir.children(@run.directory).grep(FRAGMENT).sort_by { |name| name[/\d+/].to_i }
+      init = File.join(@run.directory, "init.mp4")
+      if !@init_sent && File.exist?(init) && File.size(init).positive? && (gops.any? || @stop)
+        upload("init.mp4")
+        @init_sent = true
+      end
+      return unless @init_sent
+
+      gops.each { |name| upload(name) }
+    end
+
+    def upload(name)
+      path = File.join(@run.directory, name)
+      @client.put_file("/api/v1/transcoder/runs/#{@run.id}/files/#{name}", path)
+      File.delete(path) if name != "init.mp4"
+    end
+  end
+
+  class Worker
+    def initialize(server:, token:, work_dir:, ffmpeg:, log: $stdout)
+      @server = server.sub(%r{/+\z}, "")
+      @token = token
+      @work_dir = work_dir
+      @ffmpeg = ffmpeg
+      @log = log
+      @client = Client.new(@server, token)
+      @runs = {}
+      @exited = []
+      @stop = false
+      @hello = nil
+    end
+
+    def stop!
+      @stop = true
+    end
+
+    def run
+      FileUtils.mkdir_p(@work_dir)
+      @hello = Probe.hello(@ffmpeg)
+      say("encoder: #{@hello['encoder']}; #{@hello['ffmpeg']}")
+      interval = 0.25
+      until @stop
+        begin
+          interval = tick
+        rescue StandardError => e
+          say("poll failed: #{e.class}: #{e.message}")
+          interval = 2.0
+        end
+        sleep interval
+      end
+    ensure
+      @runs.each_value { |run| finish_run(run, killed: true) }
+      @client.close
+    end
+
+    # One round trip; returns how long to wait before the next.
+    def tick
+      reap
+      progress = {}
+      @runs.each_value do |run|
+        seconds = run.kind == "optimize" ? run.progress_seconds : nil
+        progress[run.id] = seconds if seconds
+      end
+      report = { "running" => @runs.keys, "exited" => @exited, "progress" => progress }
+      report["hello"] = @hello if @hello
+      answer = @client.post_json("/api/v1/transcoder/poll", report)
+      @hello = nil
+      @exited = []
+      Array(answer["stop"]).each do |id|
+        run = @runs[id.to_s]
+        finish_run(run, killed: true) if run
+      end
+      Array(answer["start"]).each { |spec| start(spec) }
+      (answer["poll_ms"] || 250).to_i / 1000.0
+    end
+
+    private
+
+    def start(spec)
+      run = Run.new(spec["id"].to_s, spec["kind"].to_s, Array(spec["argv"]), @work_dir, @ffmpeg, @server)
+      run.start
+      run.uploader = Uploader.new(run, Client.new(@server, @token)) if run.kind == "session"
+      @runs[run.id] = run
+      say("run #{run.id} (#{run.kind}) started as ffmpeg #{run.pid}")
+    rescue StandardError => e
+      @exited << { "id" => spec["id"].to_s, "status" => nil, "log" => "couldn't start: #{e.message}" }
+    end
+
+    def reap
+      @runs.values.each do |run|
+        finish_run(run) if run.finished?
+      end
+    end
+
+    def finish_run(run, killed: false)
+      run.kill if killed
+      error = run.uploader ? run.uploader.finish(wait: !killed) : nil
+      status = run.status
+      if status == 0 && run.kind == "optimize"
+        begin
+          @client.put_file("/api/v1/transcoder/runs/#{run.id}/files/output.mp4", File.join(run.directory, "output.mp4"))
+        rescue StandardError => e
+          error = "upload failed: #{e.class}: #{e.message}"
+        end
+      end
+      status = 1 if error && status == 0
+      @exited << { "id" => run.id, "status" => status, "log" => [ error, run.log_tail ].compact.join("\n") }
+      say("run #{run.id} #{killed ? 'stopped' : "exited #{status.inspect}"}#{error ? " (#{error})" : ''}")
+      run.cleanup
+      @runs.delete(run.id)
+    end
+
+    def say(message)
+      @log.puts("[stream-transcode-worker #{Time.now.strftime('%H:%M:%S')}] #{message}")
+      @log.flush
+    end
+  end
+
+  def self.main(argv)
+    options = {
+      server: ENV["STREAM_SERVER"], token: ENV["STREAM_NODE_TOKEN"],
+      work_dir: File.join(Dir.tmpdir, "stream-transcode-worker"), ffmpeg: "ffmpeg"
+    }
+    OptionParser.new do |parser|
+      parser.banner = "Usage: stream-transcode-worker --server URL --token TOKEN"
+      parser.on("--server URL", "Stream's address, e.g. https://stream.example") { |value| options[:server] = value }
+      parser.on("--token TOKEN", "This transcoder's token, from Settings › Transcoders") { |value| options[:token] = value }
+      parser.on("--work-dir DIR", "Scratch space for what ffmpeg writes before it's uploaded") { |value| options[:work_dir] = value }
+      parser.on("--ffmpeg PATH", "The ffmpeg to use (default: the one on PATH)") { |value| options[:ffmpeg] = value }
+    end.parse!(argv)
+    abort("stream-transcode-worker: --server and --token are required") if options[:server].to_s.empty? || options[:token].to_s.empty?
+
+    worker = Worker.new(server: options[:server], token: options[:token], work_dir: options[:work_dir], ffmpeg: options[:ffmpeg])
+    %w[TERM INT].each { |signal| Signal.trap(signal) { worker.stop! } }
+    worker.run
+  end
+end
+
+StreamWorker.main(ARGV) if $PROGRAM_NAME == __FILE__

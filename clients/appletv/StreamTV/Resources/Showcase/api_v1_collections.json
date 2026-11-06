@@ -1,0 +1,28 @@
+[
+ {
+  "id": "col-coast",
+  "title": "Stories from the Coast",
+  "collection_kind": "manual",
+  "item_count": 3,
+  "images": {
+   "poster": {
+    "src": "showcase/northbound-poster.jpg",
+    "color": null,
+    "placeholder": null
+   }
+  }
+ },
+ {
+  "id": "col-night",
+  "title": "After Dark",
+  "collection_kind": "smart",
+  "item_count": 4,
+  "images": {
+   "poster": {
+    "src": "showcase/midnight-transit-poster.jpg",
+    "color": null,
+    "placeholder": null
+   }
+  }
+ }
+]

@@ -1,0 +1,77 @@
+[
+ {
+  "kind": "channel",
+  "id": "ch-technology-connections",
+  "title": "Technology Connections",
+  "handle": "@TechConnectify",
+  "avatar": {
+   "src": "showcase/ch-technology-connections-profile.jpg",
+   "color": "#c8643c",
+   "placeholder": null
+  },
+  "banner": null,
+  "video_count": 212,
+  "unwatched_count": 3,
+  "latest_upload": "2026-09-21"
+ },
+ {
+  "kind": "channel",
+  "id": "ch-veritasium",
+  "title": "Veritasium",
+  "handle": "@veritasium",
+  "avatar": {
+   "src": "showcase/ch-veritasium-profile.jpg",
+   "color": "#3c7dc8",
+   "placeholder": null
+  },
+  "banner": null,
+  "video_count": 388,
+  "unwatched_count": 0,
+  "latest_upload": "2026-09-22"
+ },
+ {
+  "kind": "channel",
+  "id": "ch-filmmaker-iq",
+  "title": "Filmmaker IQ",
+  "handle": "@FilmmakerIQ",
+  "avatar": {
+   "src": "showcase/ch-filmmaker-iq-profile.jpg",
+   "color": "#8a4fd0",
+   "placeholder": null
+  },
+  "banner": null,
+  "video_count": 146,
+  "unwatched_count": 1,
+  "latest_upload": "2026-09-23"
+ },
+ {
+  "kind": "channel",
+  "id": "ch-practical-engineering",
+  "title": "Practical Engineering",
+  "handle": "@PracticalEngineeringChannel",
+  "avatar": {
+   "src": "showcase/ch-practical-engineering-profile.jpg",
+   "color": "#3ca06e",
+   "placeholder": null
+  },
+  "banner": null,
+  "video_count": 194,
+  "unwatched_count": 5,
+  "latest_upload": "2026-09-24"
+ },
+ {
+  "kind": "channel",
+  "id": "ch-map-men",
+  "title": "Map Men",
+  "handle": "@MapMen",
+  "avatar": {
+   "src": "showcase/ch-map-men-profile.jpg",
+   "color": "#d0b04f",
+   "placeholder": null
+  },
+  "banner": null,
+  "video_count": 61,
+  "unwatched_count": 0,
+  "latest_upload": "2026-09-25"
+ }
+]

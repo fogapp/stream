@@ -1,0 +1,107 @@
+{
+ "id": "ch-technology-connections",
+ "kind": "channel",
+ "title": "Technology Connections",
+ "handle": "@TechConnectify",
+ "description": "Videos about the everyday technology we take for granted, and the history behind it.",
+ "subscribed": true,
+ "url": null,
+ "youtube_id": null,
+ "library": {
+  "id": "lib-youtube",
+  "name": "YouTube"
+ },
+ "images": {
+  "backdrop": {
+   "src": "showcase/kingfisher-backdrop.jpg",
+   "color": null,
+   "placeholder": null
+  }
+ },
+ "videos": [
+  {
+   "kind": "video",
+   "id": "vid-dishwasher",
+   "title": "The dishwasher, revisited",
+   "upload_date": "2026-09-21",
+   "duration_seconds": 754,
+   "channel": {
+    "id": "ch-technology-connections",
+    "title": "Technology Connections",
+    "avatar": null
+   },
+   "images": {
+    "thumb": {
+     "src": "showcase/kingfisher-backdrop.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "video",
+   "id": "vid-tides",
+   "title": "Why the tide comes in twice a day",
+   "upload_date": "2026-09-22",
+   "duration_seconds": 1322,
+   "channel": {
+    "id": "ch-veritasium",
+    "title": "Veritasium",
+    "avatar": null
+   },
+   "images": {
+    "thumb": {
+     "src": "showcase/low-tide-backdrop.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": 0.3,
+   "watched": false
+  },
+  {
+   "kind": "video",
+   "id": "vid-lenses",
+   "title": "Every lens explained",
+   "upload_date": "2026-09-23",
+   "duration_seconds": 998,
+   "channel": {
+    "id": "ch-filmmaker-iq",
+    "title": "Filmmaker IQ",
+    "avatar": null
+   },
+   "images": {
+    "thumb": {
+     "src": "showcase/glass-harbor-backdrop.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "video",
+   "id": "vid-copper",
+   "title": "How copper is mined",
+   "upload_date": "2026-09-24",
+   "duration_seconds": 641,
+   "channel": {
+    "id": "ch-practical-engineering",
+    "title": "Practical Engineering",
+    "avatar": null
+   },
+   "images": {
+    "thumb": {
+     "src": "showcase/copperline-backdrop.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  }
+ ]
+}

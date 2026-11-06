@@ -1,0 +1,21 @@
+{
+    "profile": {
+        "id": "540dde77-d939-464e-9b00-76707b3171a4",
+        "name": "E2E Harness",
+        "color": "#e5a50a",
+        "avatar": null,
+        "has_pin": false,
+        "kind": "standard",
+        "max_rating_age": null,
+        "allow_unrated": false,
+        "library_ids": [],
+        "curated": false,
+        "up_next_seconds": null,
+        "always_skip_intro": false,
+        "always_skip_credits": false,
+        "still_watching_after": null
+    },
+    "chosen": false,
+    "device_default_id": null,
+    "needs_picker": false
+}

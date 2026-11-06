@@ -1,0 +1,69 @@
+{
+    "season_number": 1,
+    "title": "Season 1",
+    "overview": null,
+    "episodes": [
+        {
+            "kind": "episode",
+            "id": "8b81cac6-3de9-4953-8d9e-90aceea20ce4",
+            "code": "S01E01",
+            "title": null,
+            "season_number": 1,
+            "episode_number": 1,
+            "show": {
+                "id": "9e97d0b9-d446-4e01-aed0-476d64bbafa5",
+                "title": "Severance",
+                "images": {}
+            },
+            "images": {
+                "thumb": {
+                    "src": "/artwork/920d85fb-b17f-4b3c-bd4d-10dea6685af8/1/780.webp?s=8389a39bc2beed4c012d5b04",
+                    "srcset": "/artwork/920d85fb-b17f-4b3c-bd4d-10dea6685af8/1/300.webp?s=8389a39bc2beed4c012d5b04 300w, /artwork/920d85fb-b17f-4b3c-bd4d-10dea6685af8/1/780.webp?s=8389a39bc2beed4c012d5b04 780w",
+                    "width": 160,
+                    "height": 90,
+                    "placeholder": "data:image/webp;base64,UklGRs4AAABXRUJQVlA4IMIAAAAQBQCdASoYAA4APxFwsFAsJiSisAgBgCIJbACdMoR3Ff/2Sz5IAF6KPd6sLmOeSvTkAP7bgyGen04vNJ9UxlPPOBrp3Bx9s3MIAeKwQDxjqfW/9f+SyLtOVVH//2MCdDbu/T4is4Pnvb8PIb8oYIsrNY+G8QHnLXSwMm4tQPZ9sVD/J816xlo2Espf/KPl7ssKX5aADX+KLy9kKf/y3HX3/xvOpZf/dAhbn/XtQv/aPv6rvk9Lz3t2v/4mP8pL/sBAAA==",
+                    "color": "#6a6379"
+                }
+            },
+            "progress": 0.0,
+            "watched": false,
+            "overview": null,
+            "air_date": null,
+            "runtime_minutes": null,
+            "available": true,
+            "locked_fields": [],
+            "resume_at": 0.0
+        },
+        {
+            "kind": "episode",
+            "id": "cb9dcfcb-7b4e-4aec-ae71-11f02d076641",
+            "code": "S01E02",
+            "title": null,
+            "season_number": 1,
+            "episode_number": 2,
+            "show": {
+                "id": "9e97d0b9-d446-4e01-aed0-476d64bbafa5",
+                "title": "Severance",
+                "images": {}
+            },
+            "images": {
+                "thumb": {
+                    "src": "/artwork/8e832e2f-252d-4a29-b991-cb0350a8118a/1/780.webp?s=6aa3e6e863ec3ee4bf779b56",
+                    "srcset": "/artwork/8e832e2f-252d-4a29-b991-cb0350a8118a/1/300.webp?s=6aa3e6e863ec3ee4bf779b56 300w, /artwork/8e832e2f-252d-4a29-b991-cb0350a8118a/1/780.webp?s=6aa3e6e863ec3ee4bf779b56 780w",
+                    "width": 160,
+                    "height": 90,
+                    "placeholder": "data:image/webp;base64,UklGRtIAAABXRUJQVlA4IMYAAAAwBQCdASoYAA4APxFysFAsJqSisAgBgCIJbACdMoR3Ff/2S75MwGL0qSLbzLOJTphI+AD+zvPCLj2ioutNKMasrE/unb+YQN/yNUZSlWOIv+w+q/9NbsoZxyG//0YE6G3d/eRfF1nFkrPnh5DflEnPW0Q8EZy1P1qJ8a+69oEXtDi1w+llN1XHyeSz5uGmiDPpJrDRxhWov2Cm0t0+v/LcL+H8cQRYhP/7oELc/69qF/7R9/Vd9P8+zOS4//Ex/lJf9gIAAAA=",
+                    "color": "#6a6379"
+                }
+            },
+            "progress": null,
+            "watched": false,
+            "overview": null,
+            "air_date": null,
+            "runtime_minutes": null,
+            "available": true,
+            "locked_fields": [],
+            "resume_at": null
+        }
+    ]
+}

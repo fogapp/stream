@@ -1,0 +1,108 @@
+[
+ {
+  "kind": "show",
+  "id": "deep-field",
+  "title": "Deep Field",
+  "year": 2020,
+  "content_rating": "TV-14",
+  "images": {
+   "poster": {
+    "src": "showcase/deep-field-poster.jpg",
+    "color": "#10002b",
+    "placeholder": null
+   },
+   "backdrop": {
+    "src": "showcase/deep-field-backdrop.jpg",
+    "color": "#10002b",
+    "placeholder": null
+   },
+   "logo": {
+    "src": "showcase/deep-field-logo.png",
+    "color": null,
+    "placeholder": null
+   }
+  },
+  "unwatched_count": 0,
+  "arrival": null
+ },
+ {
+  "kind": "show",
+  "id": "office-hours",
+  "title": "Office Hours",
+  "year": 2005,
+  "content_rating": "TV-PG",
+  "images": {
+   "poster": {
+    "src": "showcase/office-hours-poster.jpg",
+    "color": "#1b263b",
+    "placeholder": null
+   },
+   "backdrop": {
+    "src": "showcase/office-hours-backdrop.jpg",
+    "color": "#1b263b",
+    "placeholder": null
+   },
+   "logo": {
+    "src": "showcase/office-hours-logo.png",
+    "color": null,
+    "placeholder": null
+   }
+  },
+  "unwatched_count": 0,
+  "arrival": null
+ },
+ {
+  "kind": "show",
+  "id": "crossing",
+  "title": "The Crossing",
+  "year": 2014,
+  "content_rating": "TV-14",
+  "images": {
+   "poster": {
+    "src": "showcase/crossing-poster.jpg",
+    "color": "#335c67",
+    "placeholder": null
+   },
+   "backdrop": {
+    "src": "showcase/crossing-backdrop.jpg",
+    "color": "#335c67",
+    "placeholder": null
+   },
+   "logo": {
+    "src": "showcase/crossing-logo.png",
+    "color": null,
+    "placeholder": null
+   }
+  },
+  "unwatched_count": 0,
+  "arrival": null
+ },
+ {
+  "kind": "movie",
+  "id": "copperline",
+  "title": "Copperline",
+  "year": 2022,
+  "content_rating": "PG-13",
+  "runtime_minutes": 140,
+  "images": {
+   "poster": {
+    "src": "showcase/copperline-poster.jpg",
+    "color": "#582f0e",
+    "placeholder": null
+   },
+   "backdrop": {
+    "src": "showcase/copperline-backdrop.jpg",
+    "color": "#582f0e",
+    "placeholder": null
+   },
+   "logo": {
+    "src": "showcase/copperline-logo.png",
+    "color": null,
+    "placeholder": null
+   }
+  },
+  "progress": null,
+  "watched": false,
+  "credit": null
+ }
+]

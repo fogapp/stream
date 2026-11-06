@@ -1,0 +1,671 @@
+{
+ "hero": {
+  "kind": "movie",
+  "id": "northbound",
+  "title": "Northbound",
+  "subtitle": "2019",
+  "label": "Continue watching",
+  "overview": "A retired ferry captain takes one last run up a frozen coast to bring her estranged son home.",
+  "images": {
+   "poster": {
+    "src": "showcase/northbound-poster.jpg",
+    "color": "#1d3557",
+    "placeholder": null
+   },
+   "backdrop": {
+    "src": "showcase/northbound-backdrop.jpg",
+    "color": "#1d3557",
+    "placeholder": null
+   },
+   "logo": {
+    "src": "showcase/northbound-logo.png",
+    "color": null,
+    "placeholder": null
+   }
+  },
+  "play": {
+   "kind": "movie",
+   "id": "northbound"
+  },
+  "progress": 0.42,
+  "resume_at": 2974.0,
+  "trailer": {
+   "url": "showcase/showcase.mp4",
+   "name": "Official Trailer"
+  }
+ },
+ "hubs": [
+  {
+   "key": "continue_watching",
+   "title": "Continue watching",
+   "kind": "continue",
+   "items": [
+    {
+     "kind": "movie",
+     "id": "northbound",
+     "title": "Northbound",
+     "year": 2019,
+     "content_rating": "PG-13",
+     "runtime_minutes": 118,
+     "images": {
+      "poster": {
+       "src": "showcase/northbound-poster.jpg",
+       "color": "#1d3557",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/northbound-backdrop.jpg",
+       "color": "#1d3557",
+       "placeholder": null
+      },
+      "logo": {
+       "src": "showcase/northbound-logo.png",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": 0.42,
+     "watched": false,
+     "credit": null
+    },
+    {
+     "kind": "episode",
+     "id": "deep-field-s1e3",
+     "code": "S01E03",
+     "title": "The Long Exposure",
+     "season_number": 1,
+     "episode_number": 3,
+     "show": {
+      "id": "deep-field",
+      "title": "Deep Field",
+      "images": {
+       "poster": {
+        "src": "showcase/deep-field-poster.jpg",
+        "color": "#10002b",
+        "placeholder": null
+       },
+       "backdrop": {
+        "src": "showcase/deep-field-backdrop.jpg",
+        "color": "#10002b",
+        "placeholder": null
+       },
+       "logo": {
+        "src": "showcase/deep-field-logo.png",
+        "color": null,
+        "placeholder": null
+       }
+      }
+     },
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e3-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     },
+     "progress": 0.18,
+     "watched": false
+    },
+    {
+     "kind": "movie",
+     "id": "low-tide",
+     "title": "Low Tide",
+     "year": 2023,
+     "content_rating": "R",
+     "runtime_minutes": 109,
+     "images": {
+      "poster": {
+       "src": "showcase/low-tide-poster.jpg",
+       "color": "#283618",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/low-tide-backdrop.jpg",
+       "color": "#283618",
+       "placeholder": null
+      }
+     },
+     "progress": 0.77,
+     "watched": false,
+     "credit": null
+    }
+   ]
+  },
+  {
+   "key": "next_up",
+   "title": "Next up",
+   "kind": "wide",
+   "items": [
+    {
+     "kind": "episode",
+     "id": "deep-field-s1e4",
+     "code": "S01E04",
+     "title": "Parallax",
+     "season_number": 1,
+     "episode_number": 4,
+     "show": {
+      "id": "deep-field",
+      "title": "Deep Field",
+      "images": {
+       "poster": {
+        "src": "showcase/deep-field-poster.jpg",
+        "color": "#10002b",
+        "placeholder": null
+       },
+       "backdrop": {
+        "src": "showcase/deep-field-backdrop.jpg",
+        "color": "#10002b",
+        "placeholder": null
+       },
+       "logo": {
+        "src": "showcase/deep-field-logo.png",
+        "color": null,
+        "placeholder": null
+       }
+      }
+     },
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e4-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false
+    },
+    {
+     "kind": "episode",
+     "id": "deep-field-s1e5",
+     "code": "S01E05",
+     "title": "Dark Matter",
+     "season_number": 1,
+     "episode_number": 5,
+     "show": {
+      "id": "deep-field",
+      "title": "Deep Field",
+      "images": {
+       "poster": {
+        "src": "showcase/deep-field-poster.jpg",
+        "color": "#10002b",
+        "placeholder": null
+       },
+       "backdrop": {
+        "src": "showcase/deep-field-backdrop.jpg",
+        "color": "#10002b",
+        "placeholder": null
+       },
+       "logo": {
+        "src": "showcase/deep-field-logo.png",
+        "color": null,
+        "placeholder": null
+       }
+      }
+     },
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e5-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false
+    }
+   ]
+  },
+  {
+   "key": "subscriptions",
+   "title": "New from your subscriptions",
+   "kind": "videos",
+   "items": [
+    {
+     "kind": "video",
+     "id": "vid-dishwasher",
+     "title": "The dishwasher, revisited",
+     "upload_date": "2026-09-21",
+     "duration_seconds": 754,
+     "channel": {
+      "id": "ch-technology-connections",
+      "title": "Technology Connections",
+      "avatar": null
+     },
+     "images": {
+      "thumb": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false
+    },
+    {
+     "kind": "video",
+     "id": "vid-tides",
+     "title": "Why the tide comes in twice a day",
+     "upload_date": "2026-09-22",
+     "duration_seconds": 1322,
+     "channel": {
+      "id": "ch-veritasium",
+      "title": "Veritasium",
+      "avatar": null
+     },
+     "images": {
+      "thumb": {
+       "src": "showcase/low-tide-backdrop.jpg",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": 0.3,
+     "watched": false
+    },
+    {
+     "kind": "video",
+     "id": "vid-lenses",
+     "title": "Every lens explained",
+     "upload_date": "2026-09-23",
+     "duration_seconds": 998,
+     "channel": {
+      "id": "ch-filmmaker-iq",
+      "title": "Filmmaker IQ",
+      "avatar": null
+     },
+     "images": {
+      "thumb": {
+       "src": "showcase/glass-harbor-backdrop.jpg",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false
+    },
+    {
+     "kind": "video",
+     "id": "vid-copper",
+     "title": "How copper is mined",
+     "upload_date": "2026-09-24",
+     "duration_seconds": 641,
+     "channel": {
+      "id": "ch-practical-engineering",
+      "title": "Practical Engineering",
+      "avatar": null
+     },
+     "images": {
+      "thumb": {
+       "src": "showcase/copperline-backdrop.jpg",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false
+    }
+   ]
+  },
+  {
+   "key": "recently_added:lib-movies",
+   "title": "Recently added in Movies",
+   "kind": "poster",
+   "items": [
+    {
+     "kind": "movie",
+     "id": "copperline",
+     "title": "Copperline",
+     "year": 2022,
+     "content_rating": "PG-13",
+     "runtime_minutes": 140,
+     "images": {
+      "poster": {
+       "src": "showcase/copperline-poster.jpg",
+       "color": "#582f0e",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/copperline-backdrop.jpg",
+       "color": "#582f0e",
+       "placeholder": null
+      },
+      "logo": {
+       "src": "showcase/copperline-logo.png",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false,
+     "credit": null
+    },
+    {
+     "kind": "movie",
+     "id": "glass-harbor",
+     "title": "The Glass Harbor",
+     "year": 2021,
+     "content_rating": "R",
+     "runtime_minutes": 131,
+     "images": {
+      "poster": {
+       "src": "showcase/glass-harbor-poster.jpg",
+       "color": "#0b3d3a",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/glass-harbor-backdrop.jpg",
+       "color": "#0b3d3a",
+       "placeholder": null
+      },
+      "logo": {
+       "src": "showcase/glass-harbor-logo.png",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false,
+     "credit": null
+    },
+    {
+     "kind": "movie",
+     "id": "low-tide",
+     "title": "Low Tide",
+     "year": 2023,
+     "content_rating": "R",
+     "runtime_minutes": 109,
+     "images": {
+      "poster": {
+       "src": "showcase/low-tide-poster.jpg",
+       "color": "#283618",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/low-tide-backdrop.jpg",
+       "color": "#283618",
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false,
+     "credit": null
+    },
+    {
+     "kind": "movie",
+     "id": "signal-fires",
+     "title": "Signal Fires",
+     "year": 1998,
+     "content_rating": "PG-13",
+     "runtime_minutes": 124,
+     "images": {
+      "poster": {
+       "src": "showcase/signal-fires-poster.jpg",
+       "color": "#6a040f",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/signal-fires-backdrop.jpg",
+       "color": "#6a040f",
+       "placeholder": null
+      },
+      "logo": {
+       "src": "showcase/signal-fires-logo.png",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false,
+     "credit": null
+    },
+    {
+     "kind": "movie",
+     "id": "midnight-transit",
+     "title": "Midnight Transit",
+     "year": 2012,
+     "content_rating": "R",
+     "runtime_minutes": 97,
+     "images": {
+      "poster": {
+       "src": "showcase/midnight-transit-poster.jpg",
+       "color": "#03071e",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/midnight-transit-backdrop.jpg",
+       "color": "#03071e",
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false,
+     "credit": null
+    },
+    {
+     "kind": "movie",
+     "id": "orchardist",
+     "title": "The Orchardist",
+     "year": 2008,
+     "content_rating": "PG",
+     "runtime_minutes": 112,
+     "images": {
+      "poster": {
+       "src": "showcase/orchardist-poster.jpg",
+       "color": "#386641",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/orchardist-backdrop.jpg",
+       "color": "#386641",
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": true,
+     "credit": null
+    },
+    {
+     "kind": "movie",
+     "id": "paper-satellites",
+     "title": "Paper Satellites",
+     "year": 2016,
+     "content_rating": "PG",
+     "runtime_minutes": 102,
+     "images": {
+      "poster": {
+       "src": "showcase/paper-satellites-poster.jpg",
+       "color": "#3a0ca3",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/paper-satellites-backdrop.jpg",
+       "color": "#3a0ca3",
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false,
+     "credit": null
+    }
+   ]
+  },
+  {
+   "key": "recently_added:lib-tv",
+   "title": "Recently added in TV Shows",
+   "kind": "poster",
+   "items": [
+    {
+     "kind": "show",
+     "id": "deep-field",
+     "title": "Deep Field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "images": {
+      "poster": {
+       "src": "showcase/deep-field-poster.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "logo": {
+       "src": "showcase/deep-field-logo.png",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "unwatched_count": 3,
+     "arrival": "New episodes"
+    },
+    {
+     "kind": "show",
+     "id": "kingfisher",
+     "title": "Kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "images": {
+      "poster": {
+       "src": "showcase/kingfisher-poster.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "logo": {
+       "src": "showcase/kingfisher-logo.png",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "unwatched_count": 8,
+     "arrival": null
+    },
+    {
+     "kind": "show",
+     "id": "office-hours",
+     "title": "Office Hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "images": {
+      "poster": {
+       "src": "showcase/office-hours-poster.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "logo": {
+       "src": "showcase/office-hours-logo.png",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "unwatched_count": 0,
+     "arrival": null
+    },
+    {
+     "kind": "show",
+     "id": "crossing",
+     "title": "The Crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "images": {
+      "poster": {
+       "src": "showcase/crossing-poster.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "logo": {
+       "src": "showcase/crossing-logo.png",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "unwatched_count": 2,
+     "arrival": null
+    }
+   ]
+  },
+  {
+   "key": "on_this_day",
+   "title": "On this day",
+   "kind": "clips",
+   "items": [
+    {
+     "kind": "clip",
+     "id": "clip-0",
+     "title": "IMG_4020",
+     "captured_at": "2020-09-27T15:00:00",
+     "captured_floating": true,
+     "city": "Brighton",
+     "country": "United Kingdom",
+     "favorite": true,
+     "duration_seconds": 34,
+     "images": {
+      "thumb": {
+       "src": "showcase/deep-field-s1e1-still.jpg",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false
+    },
+    {
+     "kind": "clip",
+     "id": "clip-1",
+     "title": "IMG_4021",
+     "captured_at": "2021-09-27T15:01:00",
+     "captured_floating": true,
+     "city": "Whitby",
+     "country": "United Kingdom",
+     "favorite": false,
+     "duration_seconds": 54,
+     "images": {
+      "thumb": {
+       "src": "showcase/deep-field-s1e2-still.jpg",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false
+    },
+    {
+     "kind": "clip",
+     "id": "clip-2",
+     "title": "IMG_4022",
+     "captured_at": "2022-09-27T15:02:00",
+     "captured_floating": true,
+     "city": "St Ives",
+     "country": "United Kingdom",
+     "favorite": false,
+     "duration_seconds": 74,
+     "images": {
+      "thumb": {
+       "src": "showcase/deep-field-s1e3-still.jpg",
+       "color": null,
+       "placeholder": null
+      }
+     },
+     "progress": null,
+     "watched": false
+    }
+   ]
+  }
+ ],
+ "layout": []
+}

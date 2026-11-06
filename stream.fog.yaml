@@ -1,0 +1,127 @@
+# Fog app manifest — import with: POST /api/apps/import
+# Secrets are names only; values are generated/entered in the fog UI.
+#
+# Paths are NOT assumed: the mounts below give Stream a read view of fog's
+# Content folders, but which folder is which
+# library is configured in Settings › Libraries, never here.
+name: stream
+spec:
+  source:
+    type: git
+    repo: https://github.com/fogapp/stream.git
+    branch: main
+    dockerfile: Dockerfile
+    buildArgs:
+      GIT_REV: "{{commit}}"
+  env:
+    RAILS_ENV: production
+    GIT_SHA: "{{commit}}"
+    STREAM_HOST: "{{fqdn}}"
+    NTFY_URL: http://ntfy
+    NTFY_TOPIC: stream
+    # Two Puma workers of twelve threads (config/puma.rb): a segment request
+    # waits on the transcoder, and API calls mustn't queue behind them.
+    WEB_CONCURRENCY: "2"
+    RAILS_MAX_THREADS: "12"
+    JOB_CONCURRENCY: "1"
+    STREAM_CACHE_DIR: /cache
+    # Thruster cuts responses at 30 s by default; a direct-play stream is
+    # hours long (docs/spikes.md › Spike A). The image sets this too.
+    HTTP_WRITE_TIMEOUT: "0"
+    # Lucid, the fleet's observability service (the vendored lucid gem).
+    # Inert until LUCID_API_KEY is set too, which connecting Lucid on
+    # Stream's Integrations tab in fog does (fog:docs/integrations-contract.md).
+    LUCID_URL: http://lucid
+  secrets:
+    - SECRET_KEY_BASE
+    - AR_ENCRYPTION_PRIMARY_KEY
+    - AR_ENCRYPTION_DETERMINISTIC_KEY
+    - AR_ENCRYPTION_KEY_DERIVATION_SALT
+    # Signs media URLs (PROPOSAL §3.3). Its own secret so rotating it ends
+    # every playback session without signing anyone out.
+    - STREAM_TOKEN_KEY
+    # LUCID_API_KEY is not listed: fog refuses to deploy a declared secret
+    # with no value, and the key arrives by connecting Lucid on the
+    # Integrations tab, which adds it to the vault itself.
+  needs:
+    postgres:
+      databases:
+        - stream_production
+        - stream_production_cache
+        - stream_production_queue
+      extensions:
+        - pg_trgm
+        - citext
+        # Every table's UUID default is gen_random_uuid() — without pgcrypto
+        # a fresh instance provisioned from this manifest can't load the
+        # schema (or restore an artifact).
+        - pgcrypto
+        - unaccent
+        # pgvector: "More like this" and "Because you watched" (PROPOSAL §7.1).
+        - vector
+      inject:
+        DATABASE_HOST: host
+        DATABASE_PORT: port
+        DATABASE_USER: user
+        DATABASE_PASSWORD: password
+        DATABASE_NAME: dbname
+  # Migrations run here and nowhere else: fog overlaps two web replicas during
+  # a swap. fog:release = restore a staged fog-backup artifact (/1 or /2) if one is
+  # armed, then db:prepare.
+  release:
+    - ./bin/rails
+    - fog:release
+  processes:
+    - name: worker
+      command: ["./bin/jobs"]
+    # Owns live ffmpeg sessions (PROPOSAL §3.2, §6.3). Arrives in Phase 2;
+    # until then it idles and answers nothing.
+    - name: transcoder
+      command: ["./bin/transcoder"]
+  volumes:
+    # Artwork, trickplay sprites, extracted subtitles — in fog's backups.
+    - name: storage
+      mount: /rails/storage
+      owner: "1000:1000"
+    # Live HLS segments and scratch. Regenerable; excluded from backups.
+    - name: cache
+      mount: /cache
+      owner: "1000:1000"
+    # fog's Content tree. Stream never writes here —
+    # except the youtube folder below.
+    - name: movies
+      mount: /media/movies
+      files: Content/Movies
+    - name: tv
+      mount: /media/tv
+      files: Content/TV
+    - name: videos
+      mount: /media/videos
+      files: Content/Videos
+    # Where Stream downloads the YouTube channels it follows (chosen in
+    # Settings › YouTube, as a root of a Channels library): the one media
+    # folder it writes, a folder per channel.
+    - name: youtube
+      mount: /media/youtube
+      files: Content/YouTube
+  # Hook delivers into the libraries and tells Stream about each file: fog
+  # mounts these into an app that uses Stream and translates paths between
+  # them (fog:docs/files-contract.md, "Wiring").
+  connection:
+    port: 80
+    shares: [movies, tv, videos, youtube]
+  routes:
+    - port: 80
+  health:
+    path: /up
+  deployStrategy: swap
+  updatePolicy: auto
+  backup:
+    enabled: true
+    beforeUpdate: true
+    # fog-backup/2: Stream produces one verified artifact via /fog/backup;
+    # fog injects FOG_API_TOKEN to authenticate. Media is covered by Drive's
+    # own snapshots, not this artifact.
+    mode: delegated
+    timeout: 30m
+  memoryLimit: 3g

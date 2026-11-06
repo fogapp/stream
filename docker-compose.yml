@@ -1,0 +1,81 @@
+# Development only. Production is fog-managed (see stream.fog.yaml).
+#
+# Port 5437, so it doesn't collide with a Postgres already on 5432.
+services:
+  db:
+    # Matches what Fog runs (internal/pg/pg.go): Postgres 18 is the fleet
+    # standard (fog docs/postgres-18-proposal.md). The -trixie tag keeps the
+    # Debian base identical to postgres:18.
+    image: pgvector/pgvector:pg18-trixie
+    container_name: stream-db-1
+    environment:
+      POSTGRES_USER: stream
+      POSTGRES_PASSWORD: stream
+    ports:
+      - "5437:5432"
+    # The postgres:18 image keeps its data at /var/lib/postgresql/<major>/docker
+    # and declares /var/lib/postgresql as the volume, so the mount is the
+    # parent directory, not .../data.
+    volumes:
+      - stream-pgdata-18:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stream"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: ./bin/rails server -b 0.0.0.0 -p 3000
+    environment:
+      RAILS_ENV: development
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_USER: stream
+      DATABASE_PASSWORD: stream
+    ports:
+      - "3003:3000"
+    volumes:
+      - .:/rails
+      - stream-data:/data
+      - stream-cache:/cache
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: ./bin/jobs
+    environment:
+      RAILS_ENV: development
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_USER: stream
+      DATABASE_PASSWORD: stream
+    volumes:
+      - .:/rails
+      - stream-data:/data
+      - stream-cache:/cache
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:24-slim
+    working_dir: /frontend
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      API_TARGET: http://web:3000
+    ports:
+      - "5177:5177"
+    volumes:
+      - ./frontend:/frontend
+
+volumes:
+  stream-pgdata-18:
+  stream-data:
+  stream-cache:

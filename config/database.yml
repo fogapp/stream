@@ -1,0 +1,60 @@
+# Dev/test run against the stream-db-1 container (pgvector/pgvector:pg18-trixie on 5437;
+# see docker-compose.yml).
+#
+# Production reads the DATABASE_* env vars injected by fog's managed Postgres
+# (needs.postgres.inject in the fog manifest). Three databases, hub-style:
+# primary, cache (Solid Cache), queue (Solid Queue), each with its own
+# migrations path.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 8 }.to_i + 3 %>
+
+development:
+  primary: &primary_development
+    <<: *default
+    host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
+    port: <%= ENV.fetch("DATABASE_PORT", 5437) %>
+    username: <%= ENV.fetch("DATABASE_USER", "stream") %>
+    password: <%= ENV.fetch("DATABASE_PASSWORD", "stream") %>
+    database: stream_development
+  cache:
+    <<: *primary_development
+    database: stream_development_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_development
+    database: stream_development_queue
+    migrations_paths: db/queue_migrate
+
+test:
+  <<: *default
+  host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
+  port: <%= ENV.fetch("DATABASE_PORT", 5437) %>
+  username: <%= ENV.fetch("DATABASE_USER", "stream") %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD", "stream") %>
+  database: stream_test
+
+production:
+  primary: &primary_production
+    <<: *default
+    host: <%= ENV["DATABASE_HOST"] %>
+    port: <%= ENV.fetch("DATABASE_PORT", 5432) %>
+    username: <%= ENV["DATABASE_USER"] %>
+    password: <%= ENV["DATABASE_PASSWORD"] %>
+    database: <%= ENV.fetch("DATABASE_NAME", "stream_production") %>
+    # Keep connections once opened. Between page loads only an open tab's
+    # poll is about, so the 5-minute default closed all but one, and every
+    # page load opened (and re-prepared) a connection per request it sent
+    # at once: thirteen requests at 200-350 ms instead of single digits
+    # (Lucid, 2026-10-22 08:28:58). Each process still opens only as many
+    # as it has ever needed at once, at most its pool.
+    idle_timeout: 0
+  cache:
+    <<: *primary_production
+    database: stream_production_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_production
+    database: stream_production_queue
+    migrations_paths: db/queue_migrate

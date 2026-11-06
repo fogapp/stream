@@ -1,0 +1,56 @@
+[
+    {
+        "id": "41f81be3-b8a3-4971-8f3b-c793a5f9a26d",
+        "type": "live_stream",
+        "name": "Front door",
+        "kind": "camera",
+        "library_id": "a3aa387a-3d24-4d85-a4ca-7140bd4d11c3",
+        "description": "By the porch",
+        "content_rating": null,
+        "source": "rtsps://192.168.1.1:7441",
+        "status": "online",
+        "last_seen_at": "2026-10-09T17:00:00.000Z",
+        "still_url": "/artwork/live/41f81be3-b8a3-4971-8f3b-c793a5f9a26d/1791565200.webp?s=2eb639b5615455047306644d",
+        "tracks": [
+            {
+                "kind": "audio",
+                "codec": "aac",
+                "width": null,
+                "height": null,
+                "frame_rate": null,
+                "channels": 1
+            },
+            {
+                "kind": "video",
+                "codec": "h264",
+                "width": 3840,
+                "height": 2160,
+                "frame_rate": 24.0,
+                "channels": null
+            }
+        ]
+    },
+    {
+        "id": "7d40897a-0a77-49d2-b8f5-ea75231691ec",
+        "type": "live_stream",
+        "name": "Harbour cam",
+        "kind": "web",
+        "library_id": "a3aa387a-3d24-4d85-a4ca-7140bd4d11c3",
+        "description": null,
+        "content_rating": null,
+        "source": "https://example.com",
+        "status": "offline",
+        "last_seen_at": "2026-10-09T09:00:00.000Z",
+        "still_url": null,
+        "tracks": [
+            {
+                "kind": "video",
+                "codec": "h264",
+                "width": 1280,
+                "height": 720,
+                "frame_rate": null,
+                "channels": null
+            }
+        ]
+    }
+]

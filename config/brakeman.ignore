@@ -1,0 +1,379 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "1f60f4ad8a6d5080fac107a3f4512c5f609034279463df3694699ffe74d1806f",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/api/v1/setup_controller.rb",
+      "line": 34,
+      "code": "FileUtils.mv(T.unsafe(params[:artifact]).tempfile.path, FogBackup::Staging.pending_artifact.to_s)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Api::V1::SetupController",
+        "method": "restore"
+      },
+      "user_input": "params[:artifact]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: the source path is Rack's own upload tempfile (ActionDispatch::Http::UploadedFile#tempfile), not a user-supplied name; the destination is a fixed staging path."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "e2fe7e588c3dfcbf111f59e038b288250d16b4ec38695159b254bb6fdb945fec",
+      "check_name": "FileAccess",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/fog_controller.rb",
+      "line": 83,
+      "code": "FileUtils.mv(T.unsafe(params[:artifact]).tempfile.path, FogBackup::Staging.pending_artifact.to_s)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "FogController",
+        "method": "restore"
+      },
+      "user_input": "params[:artifact]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: the source path is Rack's own upload tempfile (ActionDispatch::Http::UploadedFile#tempfile), not a user-supplied name; the destination is a fixed staging path."
+    },
+    {
+      "warning_type": "File Access",
+      "fingerprint": "82c22e76db9ebc3fc377349b49cf43c0f7cfc69a7c338a82474ae30ef9536f09",
+      "check_name": "SendFile",
+      "file": "app/controllers/artwork_controller.rb",
+      "note": "The path is Artwork#file_for: the storage root, the artwork's own UUID from the database, an integer version, and an integer width already checked against rendered_widths. No request string reaches the filesystem, and the URL's HMAC signature is verified first."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "ac4ec39940bdfbc04c4c1c61aad7a7a820881bdb87b0e729386cac9ef55bd855",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/jobs/fetch_subtitles_job.rb",
+      "line": 33,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.mkdir_p(Subtitles::Extractor.downloads_dir(MediaFile.unscoped.includes(:media_streams).find_by(:id => media_file_id)))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "FetchSubtitlesJob",
+        "method": "perform"
+      },
+      "user_input": "MediaFile.unscoped.includes(:media_streams)",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: the directory is storage/subtitles/<media file UUID primary key>/downloaded under Stream's own storage root; no user-controlled path segment."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "166e7a795bb3856752dc9d1a922bf8d6b82b1ef7a17ec27c5d54a067a0aedae9",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/playback/optimizer.rb",
+      "line": 87,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.mkdir_p(OptimizedVersion.root)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Playback::Optimizer",
+        "method": "start_next"
+      },
+      "user_input": "OptimizedVersion.root",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: optimized versions live under OptimizedVersion.root (STREAM_CACHE_DIR, set by fog) and are named by the row's UUID primary key, never by anything a person typed."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "2450e46bbcc003375c44cba640f873dbae7906a68b87819c6bf5c9ee67259fc1",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/playback/optimizer.rb",
+      "line": 151,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.rm_f(OptimizedVersion.partial_path_for(job.version_id))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Playback::Optimizer",
+        "method": "interrupt"
+      },
+      "user_input": "OptimizedVersion.partial_path_for(job.version_id)",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: optimized versions live under OptimizedVersion.root (STREAM_CACHE_DIR, set by fog) and are named by the row's UUID primary key, never by anything a person typed."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "62e8f4f23449a6609b1b734ddd014871d092c7fe5e805e14d8a72a1a994b5e29",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/playback/optimizer.rb",
+      "line": 165,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.rename(OptimizedVersion.unscoped.find_by(:id => job.version_id).partial_path, OptimizedVersion.unscoped.find_by(:id => job.version_id).path)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Playback::Optimizer",
+        "method": "finish"
+      },
+      "user_input": "OptimizedVersion.unscoped.find_by(:id => job.version_id).partial_path",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: optimized versions live under OptimizedVersion.root (STREAM_CACHE_DIR, set by fog) and are named by the row's UUID primary key, never by anything a person typed."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "b5d578a54384d1df9b987a54f4e71b5f8459652e9cd1a09c6627849a5c8be62c",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/playback/optimizer.rb",
+      "line": 163,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.rm_f(OptimizedVersion.partial_path_for(job.version_id))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Playback::Optimizer",
+        "method": "finish"
+      },
+      "user_input": "OptimizedVersion.partial_path_for(job.version_id)",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: optimized versions live under OptimizedVersion.root (STREAM_CACHE_DIR, set by fog) and are named by the row's UUID primary key, never by anything a person typed."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "ff9cde24edf072a3bf5a0b2f919801bd3a4fdc04f66da8c25dc65381f6b51660",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/playback/optimizer.rb",
+      "line": 176,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.rm_f(OptimizedVersion.unscoped.find_by(:id => job.version_id).partial_path)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Playback::Optimizer",
+        "method": "finish"
+      },
+      "user_input": "OptimizedVersion.unscoped.find_by(:id => job.version_id).partial_path",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: optimized versions live under OptimizedVersion.root (STREAM_CACHE_DIR, set by fog) and are named by the row's UUID primary key, never by anything a person typed."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "19d5e7a7f9ee835735461928150fd5337addfefece178c836746aa1f846741f6",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/youtube/trailer_fetch.rb",
+      "line": 19,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.mkdir_p(Trailer.root)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Youtube::TrailerFetch",
+        "method": "call"
+      },
+      "user_input": "Trailer.root",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: trailers live under Trailer.root (storage) named by the row's UUID; yt-dlp writes into a fresh temp directory and the file it names is checked to be inside it (Media::SafePath.within?) before it moves."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "77bc8d7a6ec1ee15c3ce3c0fc34f7ef240e304cf90b98d9e625b1f2552d07646",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/trailers.rb",
+      "line": 30,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.rm_f(Trailer.unscoped.find_or_initialize_by(:owner => owner).path)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Trailers",
+        "method": "self.remember"
+      },
+      "user_input": "Trailer.unscoped.find_or_initialize_by(:owner => owner).path",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: trailers live under Trailer.root (storage) named by the row's UUID; yt-dlp writes into a fresh temp directory and the file it names is checked to be inside it (Media::SafePath.within?) before it moves."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "17197d75bc7858d211eee5b768190d3616469e0a749dcb7925e53638961e1d32",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/media/derived_files.rb",
+      "line": 22,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.rm_rf([Trickplay.root.join(media_file_id), Subtitles::Extractor.root.join(media_file_id)])",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Media::DerivedFiles",
+        "method": "self.remove"
+      },
+      "user_input": "Trickplay.root.join(media_file_id)",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: the storage roots joined with an id that has just matched DerivedFiles::ID, a UUID, so it can't leave its folder."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "639880ad49dc7425a2ed54315713af6a96ab60a88fae39ddc13dd9f7361b08b5",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/media/trickplay_builder.rb",
+      "line": 88,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.rm_rf(T.let(T.let(Trickplay.find_or_initialize_by(:media_file => file), Trickplay).directory.join(T.let((T.let(Trickplay.find_or_initialize_by(:media_file => file), Trickplay).version + 1), Integer).to_s), Pathname))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Media::TrickplayBuilder::Part",
+        "method": "discard"
+      },
+      "user_input": "Trickplay.find_or_initialize_by(:media_file => file)",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "Trickplay#directory is the storage root joined with the media file's own UUID from the database and an integer version it holds itself: nothing from a request or from the file's contents reaches the path."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "916ba43e26298893c119c4ff509fe5dc0dbbf79fb1970d045b8c8bf4125c33b3",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/media/trickplay_builder.rb",
+      "line": 83,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.rm_rf(T.let(Trickplay.find_or_initialize_by(:media_file => file), Trickplay).directory.join(T.let(Trickplay.find_or_initialize_by(:media_file => file), Trickplay).version.to_s))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Media::TrickplayBuilder::Part",
+        "method": "finish"
+      },
+      "user_input": "Trickplay.find_or_initialize_by(:media_file => file)",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "Trickplay#directory is the storage root joined with the media file's own UUID from the database and an integer version it holds itself: nothing from a request or from the file's contents reaches the path."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "9749a6defa4535a280ba7f1d069e65386f52e0f3e03373f3a59f1939e7a05585",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/media/trickplay_builder.rb",
+      "line": 50,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.mkdir_p(T.let(T.let(Trickplay.find_or_initialize_by(:media_file => file), Trickplay).directory.join(T.let((T.let(Trickplay.find_or_initialize_by(:media_file => file), Trickplay).version + 1), Integer).to_s), Pathname))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Media::TrickplayBuilder::Part",
+        "method": "prepare"
+      },
+      "user_input": "Trickplay.find_or_initialize_by(:media_file => file)",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "Trickplay#directory is the storage root joined with the media file's own UUID from the database and an integer version it holds itself: nothing from a request or from the file's contents reaches the path."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "ce4d7b29777fb92b9b0165daba928780b8f4a9d8f82d7da58f0dce55d6b630f9",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/application_record.rb",
+      "line": 36,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "Arel.sql(\"position = #{(item_ids.grep(/\\A\\h{8}-\\h{4}-\\h{4}-\\h{4}-\\h{12}\\z/).size.to_s or \"CASE item_id::text #{item_ids.grep(/\\A\\h{8}-\\h{4}-\\h{4}-\\h{4}-\\h{12}\\z/).each_with_index.map do\n sanitize_sql_array([\"WHEN ? THEN ?\", id, index])\n end.join(\" \")} ELSE #{item_ids.grep(/\\A\\h{8}-\\h{4}-\\h{4}-\\h{4}-\\h{12}\\z/).size} END\")}, updated_at = #{connection.quote(Time.current)}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "ApplicationRecord",
+        "method": "self.reposition!"
+      },
+      "user_input": "item_ids.grep(/\\A\\h{8}-\\h{4}-\\h{4}-\\h{4}-\\h{12}\\z/).size",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "False positive: every id has matched a UUID regex and gone through sanitize_sql_array, the ELSE and the fallback are integers from Array#size, and the time goes through connection.quote. No request text reaches the SQL unescaped."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "fefee3be762382b99677bbee3f4771539a01d1a5603f73ed236e1563cf414ca0",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/services/media/file_prober.rb",
+      "line": 124,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.rm_f([OptimizedVersion.unscoped.find_by(:media_file_id => file.id).path, OptimizedVersion.unscoped.find_by(:media_file_id => file.id).partial_path])",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Media::FileProber",
+        "method": "forget_old_content"
+      },
+      "user_input": "OptimizedVersion.unscoped.find_by(:media_file_id => file.id)",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "False positive: OptimizedVersion#path and #partial_path are OptimizedVersion.root (STREAM_CACHE_DIR, set by fog) and the row's own UUID primary key, never anything from a request or the file."
+    }
+  ],
+  "updated": "2026-08-26 00:00:00 +0000",
+  "brakeman_version": "8.0.6"
+}

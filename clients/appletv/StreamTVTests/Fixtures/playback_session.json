@@ -1,0 +1,80 @@
+{
+    "id": "5e3253d8-40c6-4291-aa20-a74de0e397c8",
+    "method": "video_transcode",
+    "profile_id": "540dde77-d939-464e-9b00-76707b3171a4",
+    "title": "Heat",
+    "subtitle": "1995",
+    "back_path": "/movie/ad5538de-328b-4d5e-9b65-56ce1bb630c2",
+    "source": {
+        "kind": "hls",
+        "url": "/media/s/TOKEN/hls/index.m3u8",
+        "mime_type": "application/vnd.apple.mpegurl"
+    },
+    "progress_url": "/media/s/TOKEN/progress",
+    "events_url": "/media/s/TOKEN/events",
+    "audio_stream_index": 1,
+    "subtitles": [],
+    "fonts": [],
+    "chapters": [],
+    "markers": [],
+    "skip": {
+        "intro": false,
+        "recap": false,
+        "credits": false
+    },
+    "live_stream": null,
+    "next_up": null,
+    "segments": [],
+    "playlist_id": null,
+    "up_next_seconds": 10,
+    "still_watching_after": 3,
+    "loudness": {
+        "integrated": -21.8,
+        "true_peak": -17.9
+    },
+    "trickplay": {
+        "sheet_url": "/media/s/TOKEN/trickplay/1/sheet-{index}.webp",
+        "interval": 1,
+        "tile_width": 320,
+        "tile_height": 180,
+        "columns": 10,
+        "rows": 10,
+        "count": 3
+    },
+    "decision": {
+        "summary": "VP9 video isn't supported here \u2014 converted to H.264 90p",
+        "video": {
+            "index": 0,
+            "copy": false,
+            "codec": "h264",
+            "height": 90,
+            "tonemap": false,
+            "retag_hvc1": false
+        },
+        "audio": {
+            "index": 1,
+            "copy": false,
+            "codec": "aac",
+            "channels": 2
+        }
+    },
+    "fallback": null,
+    "resume_at": 0.0,
+    "duration_seconds": 2.008,
+    "media_file": {
+        "id": "bb1be307-2ec2-48e4-b6cb-756b33a67232",
+        "filename": "Heat (1995) {edition-Director's Cut}.webm",
+        "audio": [
+            {
+                "index": 1,
+                "codec": "opus",
+                "language": null,
+                "title": null,
+                "channels": 1,
+                "default": false,
+                "forced": false
+            }
+        ],
+        "subtitles": []
+    }
+}

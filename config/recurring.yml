@@ -1,0 +1,196 @@
+# Infrastructure schedules live HERE, never in user-editable automations —
+# manor archived a workflow once and silently froze all bank syncing for
+# weeks. Nothing a person can edit in the app may be what drives scanning,
+# analysis, or pulling.
+#
+# Every entry carries a description written for a human reading this at 2am.
+
+production: &production
+  scan_all_libraries:
+    class: ScanAllLibrariesJob
+    queue: default
+    # The NAS sends no change events (PROPOSAL §5.1); webhooks, the scan
+    # endpoint and detect_library_changes cover "just added", this covers
+    # everything else.
+    schedule: every hour at minute 7
+    description: "Rescan every library for new, changed and vanished files."
+
+  detect_library_changes:
+    class: DetectLibraryChangesJob
+    queue: default
+    # Lists the top of each root (and each show's folders) for mtimes that
+    # moved, and scans only those folders: "just added" in minutes for files
+    # dropped in by hand, with no webhook to say so.
+    schedule: every 5 minutes
+    description: "Look for folders that changed in each library since the last look, and scan just those."
+
+  plex_sync:
+    class: PlexSyncJob
+    queue: default
+    # Only households that turned sync on in Settings › Import from Plex.
+    schedule: every 6 hours at minute 23
+    description: "Bring over anything watched in Plex since the last sync, while both run side by side."
+
+  trakt_sync:
+    class: TraktSyncJob
+    queue: default
+    # Only profiles linked in Settings › Viewing; a quiet account costs one
+    # request (last_activities).
+    schedule: every 15 minutes
+    description: "Bring plays, resume points, stars and watchlist changes from each linked Trakt account."
+
+  trakt_scrobble_sweep:
+    class: TraktScrobbleSweepJob
+    queue: control
+    # Only plays by profiles linked to Trakt; the players never say "paused",
+    # they just stop reporting.
+    schedule: every minute
+    description: "Pause on Trakt the plays whose players stopped reporting (paused, or closed)."
+
+  poll_youtube_channels:
+    class: PollChannelsJob
+    queue: default
+    # Each tracked channel has its own interval (6 hours unless changed);
+    # this only asks which ones are due.
+    schedule: every hour at minute 17
+    description: "Check tracked YouTube channels for new videos and fetch what their rules allow."
+
+  identify_youtube_videos:
+    class: IdentifyVideosJob
+    queue: default
+    # Only channels YouTube knows (tracked, or claimed by a first identified
+    # video) with videos put in their folders by hand and not yet looked up.
+    schedule: every hour at minute 27
+    description: "Work out which YouTube video each hand-placed video is, and fetch its details when sure."
+
+  refresh_sponsor_segments:
+    class: RefreshSponsorSegmentsJob
+    queue: default
+    # Only libraries with SponsorBlock turned on in Settings › YouTube.
+    schedule: every day at 3:25am
+    description: "Ask SponsorBlock again about the last month's videos; segments arrive after uploads do."
+
+  immich_sync:
+    class: ImmichSyncsJob
+    queue: default
+    # Only households with Immich set up in Settings › Integrations.
+    schedule: every 6 hours at minute 41
+    description: "Bring home videos' albums, people, places and capture times across from Immich."
+
+  embed_titles:
+    class: EmbedTitlesJob
+    queue: analyze
+    # A title's vector only changes with its details; this catches the new
+    # and the changed, 500 of each kind at a time.
+    schedule: every 30 minutes
+    description: "Work out what each new or changed title is like, for More like this and Because you watched."
+
+  queue_optimizations:
+    class: QueueOptimizationsJob
+    queue: default
+    # Only when Settings › Playback lets it; the transcoder does the encoding,
+    # in quiet hours.
+    schedule: every hour at minute 50
+    description: "Queue optimized versions of files no recent device plays without converting its video."
+
+  fetch_trailers:
+    class: FetchTrailersJob
+    queue: default
+    # Only when Settings › General lets it; titles matched since get theirs
+    # as they're matched.
+    schedule: every day at 3:55am
+    description: "Find and fetch trailers for films and shows that don't have one, and retry ones that failed."
+
+  refresh_collections:
+    class: RefreshCollectionsJob
+    queue: default
+    # Collections from before Stream kept their whole series first, then
+    # each once a month; a no-op in between.
+    schedule: every day at 4:17am
+    description: "Ask TMDB again for its collections' films, so a collection shows the whole series, missing ones faded."
+
+  schedule_stations:
+    class: ScheduleStationsJob
+    queue: default
+    # Only extends: what's already on a channel's schedule never changes here.
+    schedule: every day at 2:45am
+    description: "Keep every Grid channel's schedule filled three days ahead."
+
+  follow_games:
+    class: FollowGamesJob
+    queue: control
+    # MLB's schedule is cached for 15 s while a game is on and 5 min otherwise.
+    schedule: every minute
+    description: "Keep the games on Grid channels true to MLB's schedule: end a game's slot when it's over, give one in extra innings more time, and reschedule around postponements."
+
+  prepare_airings:
+    class: PrepareAiringsJob
+    queue: default
+    # Looks three hours ahead, so a file is ready well before it airs.
+    schedule: every 30 minutes
+    description: "Build the keyframe index of files about to air on the Grid, so a program change onto one starts at once."
+
+  update_yt_dlp:
+    class: UpdateYtDlpJob
+    queue: default
+    # YouTube breaks old yt-dlps every few weeks; a stale copy stops finding formats.
+    schedule: every day at 4:40am
+    description: "Update yt-dlp, the tool that downloads from YouTube."
+
+  sweep_derived_files:
+    class: SweepDerivedFilesJob
+    queue: default
+    schedule: every sunday at 5:40am
+    description: "Remove thumbnails, subtitles and optimized versions made from files that are no longer in a library."
+
+  prune_operational_data:
+    class: PruneOperationalDataJob
+    queue: default
+    schedule: every day at 5:10am
+    description: "Age out the operational record — activity, job runs, read notifications."
+
+  clear_solid_queue_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    # A command runs as SolidQueue::RecurringJob, which without this goes to
+    # `solid_queue_recurring` — a queue no worker in config/queue.yml claims,
+    # so it never ran and the tables only grew.
+    queue: default
+    schedule: every hour at minute 12
+    description: "Keep the queue tables from growing without bound."
+
+  playability_sweep:
+    class: PlayabilitySweepJob
+    queue: heavy
+    # On the heavy queue, which waits
+    # while anyone watches: a few formats an hour, each tried every way the
+    # server plays them, until every format has been tried with this
+    # version of Stream and ffmpeg.
+    schedule: every hour at minute 37
+    description: "Try one file of each format every way the server can play it, so a format that won't play is found before anyone presses Play."
+
+  hold_heavy_while_watching:
+    class: HoldHeavyWhileWatchingJob
+    queue: control
+    # Whole-file NAS reads (trickplay, subtitles, loudness) starved the
+    # transcoder of a remux on 2026-10-08. A job already running finishes.
+    schedule: every minute
+    description: "Pause trickplay, subtitles and loudness work while anyone is watching; resume when nobody is."
+
+  capture_live_stills:
+    class: CaptureLiveStillsJob
+    queue: default
+    # From a running relay when there is one; otherwise a brief look at the
+    # source, which is also how an idle camera's online/offline stays true.
+    schedule: every 5 minutes
+    description: "Take a fresh picture of each camera and web stream for its card, and note any that stopped answering."
+
+  reclaim_orphaned_semaphores:
+    class: ReclaimOrphanedSemaphoresJob
+    queue: control
+    # Bounds the lockout after a worker dies mid-job: long-duration
+    # semaphores otherwise stay held until they expire on their own.
+    schedule: every 10 minutes
+    description: "Release concurrency semaphores left behind by jobs that died without finishing."
+
+development:
+  <<: *production

@@ -1,0 +1,44 @@
+{
+    "kind": "show",
+    "id": "9e97d0b9-d446-4e01-aed0-476d64bbafa5",
+    "title": "Severance",
+    "year": 2022,
+    "content_rating": null,
+    "images": {},
+    "unwatched_count": 2,
+    "overview": null,
+    "genres": [],
+    "status": null,
+    "network": null,
+    "first_air_date": null,
+    "vote_average": null,
+    "library": {
+        "id": "fdaee282-1c2d-4571-9fa5-d8bbf4aba487",
+        "name": "TV Shows"
+    },
+    "match_state": "unmatched",
+    "tmdb_id": null,
+    "seasons": [
+        {
+            "season_number": 1,
+            "title": "Season 1",
+            "episode_count": null,
+            "available_count": 2,
+            "watched_count": 0,
+            "images": {}
+        }
+    ],
+    "next_up": {
+        "episode_id": "8b81cac6-3de9-4953-8d9e-90aceea20ce4",
+        "code": "S01E01",
+        "title": null,
+        "resume_at": null,
+        "started_show": false
+    },
+    "cast": [],
+    "extras": [],
+    "collections": [],
+    "locked_fields": [],
+    "original_title": null,
+    "my_rating": null
+}

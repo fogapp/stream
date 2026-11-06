@@ -1,0 +1,191 @@
+{
+ "season_number": 2,
+ "title": "Season 2",
+ "overview": "Season 2 of Kingfisher.",
+ "episodes": [
+  {
+   "kind": "episode",
+   "id": "kingfisher-s2e1",
+   "code": "S02E01",
+   "title": "First Light",
+   "season_number": 2,
+   "episode_number": 1,
+   "show": {
+    "id": "kingfisher",
+    "title": "Kingfisher",
+    "images": {
+     "poster": {
+      "src": "showcase/kingfisher-poster.jpg",
+      "color": "#001219",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/kingfisher-backdrop.jpg",
+      "color": "#001219",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/kingfisher-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/kingfisher-s1e1-still.jpg",
+     "color": "#001219",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "overview": "The crew argue over what they saw, and a long exposure shows something that shouldn't be there.",
+   "air_date": "2018-01-11",
+   "runtime_minutes": 48,
+   "available": true,
+   "resume_at": null,
+   "my_rating": null,
+   "versions": [],
+   "locked_fields": []
+  },
+  {
+   "kind": "episode",
+   "id": "kingfisher-s2e2",
+   "code": "S02E02",
+   "title": "Redshift",
+   "season_number": 2,
+   "episode_number": 2,
+   "show": {
+    "id": "kingfisher",
+    "title": "Kingfisher",
+    "images": {
+     "poster": {
+      "src": "showcase/kingfisher-poster.jpg",
+      "color": "#001219",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/kingfisher-backdrop.jpg",
+      "color": "#001219",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/kingfisher-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/kingfisher-s1e2-still.jpg",
+     "color": "#001219",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "overview": "A night at the telescope becomes a week, and the town below starts to notice the light.",
+   "air_date": "2018-02-12",
+   "runtime_minutes": 48,
+   "available": true,
+   "resume_at": null,
+   "my_rating": null,
+   "versions": [],
+   "locked_fields": []
+  },
+  {
+   "kind": "episode",
+   "id": "kingfisher-s2e3",
+   "code": "S02E03",
+   "title": "The Long Exposure",
+   "season_number": 2,
+   "episode_number": 3,
+   "show": {
+    "id": "kingfisher",
+    "title": "Kingfisher",
+    "images": {
+     "poster": {
+      "src": "showcase/kingfisher-poster.jpg",
+      "color": "#001219",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/kingfisher-backdrop.jpg",
+      "color": "#001219",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/kingfisher-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/kingfisher-s1e3-still.jpg",
+     "color": "#001219",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "overview": "The crew argue over what they saw, and a long exposure shows something that shouldn't be there.",
+   "air_date": "2018-03-13",
+   "runtime_minutes": 48,
+   "available": true,
+   "resume_at": null,
+   "my_rating": null,
+   "versions": [],
+   "locked_fields": []
+  },
+  {
+   "kind": "episode",
+   "id": "kingfisher-s2e4",
+   "code": "S02E04",
+   "title": "Parallax",
+   "season_number": 2,
+   "episode_number": 4,
+   "show": {
+    "id": "kingfisher",
+    "title": "Kingfisher",
+    "images": {
+     "poster": {
+      "src": "showcase/kingfisher-poster.jpg",
+      "color": "#001219",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/kingfisher-backdrop.jpg",
+      "color": "#001219",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/kingfisher-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/kingfisher-s1e4-still.jpg",
+     "color": "#001219",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "overview": "A night at the telescope becomes a week, and the town below starts to notice the light.",
+   "air_date": "2018-04-14",
+   "runtime_minutes": 48,
+   "available": true,
+   "resume_at": null,
+   "my_rating": null,
+   "versions": [],
+   "locked_fields": []
+  }
+ ]
+}

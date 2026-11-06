@@ -1,0 +1,1278 @@
+---
+openapi: 3.0.1
+info:
+  title: Stream API
+  version: v1
+  description: The household's video player. Sign in for a bearer token, choose a
+    profile (X-Stream-Profile), then browse and start playback sessions; media bytes
+    come from the stream URLs a session returns.
+servers:
+- url: "/"
+  description: This server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: A session token (POST /api/v1/session, or TV pairing) or an API
+        token
+    profileToken:
+      type: apiKey
+      in: header
+      name: X-Stream-Profile
+      description: The token from POST /api/v1/profiles/{id}/select; without one,
+        the device's default or the first profile without a PIN
+  schemas:
+    Errors:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: string
+      required:
+      - errors
+    User:
+      type: object
+      required:
+      - id
+      - email
+      - name
+      - role
+      - household_id
+      - visitor
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        household_id:
+          type: string
+          format: uuid
+        visitor:
+          type: boolean
+    Session:
+      type: object
+      required:
+      - token
+      - user
+      properties:
+        token:
+          type: string
+        user:
+          "$ref": "#/components/schemas/User"
+    Pairing:
+      type: object
+      required:
+      - code
+      - poll_token
+      - expires_at
+      properties:
+        code:
+          type: string
+          example: ABCD-EFGH
+        poll_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+    Profile:
+      type: object
+      required:
+      - id
+      - name
+      - color
+      - has_pin
+      - kind
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+        has_pin:
+          type: boolean
+        kind:
+          type: string
+          enum:
+          - standard
+          - kid
+    CurrentProfile:
+      type: object
+      required:
+      - profile
+      - chosen
+      - needs_picker
+      properties:
+        profile:
+          "$ref": "#/components/schemas/Profile"
+        chosen:
+          type: boolean
+        device_default_id:
+          type: string
+          nullable: true
+          format: uuid
+        needs_picker:
+          type: boolean
+    MovieCard:
+      type: object
+      required:
+      - kind
+      - id
+      - title
+      - images
+      - watched
+      properties:
+        kind:
+          type: string
+          enum:
+          - movie
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        year:
+          type: integer
+          nullable: true
+        images:
+          type: object
+          description: 'Rendered artwork by kind (poster, backdrop, logo, still, thumb):
+            src, srcset, placeholder, colour'
+          additionalProperties:
+            type: object
+        progress:
+          type: number
+          nullable: true
+        watched:
+          type: boolean
+        tmdb_id:
+          type: integer
+          nullable: true
+        imdb_id:
+          type: string
+          nullable: true
+    LetterStart:
+      type: object
+      required:
+      - letter
+      - index
+      properties:
+        letter:
+          type: string
+          description: 'A–Z, or # for anything else'
+        index:
+          type: integer
+          description: Position of the letter's first title in the A–Z grid
+    ShowCard:
+      type: object
+      required:
+      - kind
+      - id
+      - title
+      - images
+      - unwatched_count
+      properties:
+        kind:
+          type: string
+          enum:
+          - show
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        year:
+          type: integer
+          nullable: true
+        images:
+          type: object
+          description: 'Rendered artwork by kind (poster, backdrop, logo, still, thumb):
+            src, srcset, placeholder, colour'
+          additionalProperties:
+            type: object
+        unwatched_count:
+          type: integer
+        tmdb_id:
+          type: integer
+          nullable: true
+        tvdb_id:
+          type: integer
+          nullable: true
+        imdb_id:
+          type: string
+          nullable: true
+        arrival:
+          type: string
+          description: 'In Home''s Recently added, standing for a batch of its episodes:
+            what arrived ("New show", "Season 2 added", "12 new episodes")'
+        season_number:
+          type: integer
+          nullable: true
+          description: 'With arrival: the one season the batch came in, to open on;
+            absent or null opens the show'
+    EpisodeCard:
+      type: object
+      required:
+      - kind
+      - id
+      - code
+      - season_number
+      properties:
+        kind:
+          type: string
+          enum:
+          - episode
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        title:
+          type: string
+          nullable: true
+        season_number:
+          type: integer
+        episode_number:
+          type: integer
+          nullable: true
+        images:
+          type: object
+          description: 'Rendered artwork by kind (poster, backdrop, logo, still, thumb):
+            src, srcset, placeholder, colour'
+          additionalProperties:
+            type: object
+        progress:
+          type: number
+          nullable: true
+        watched:
+          type: boolean
+    Home:
+      type: object
+      required:
+      - profile
+      - heroes
+      - hubs
+      - layout
+      properties:
+        hero:
+          type: object
+          nullable: true
+          description: One of heroes, chosen at random
+        heroes:
+          type: array
+          items:
+            type: object
+          description: What may take the top of the page
+        hubs:
+          type: array
+          items:
+            type: object
+            required:
+            - key
+            - title
+            - kind
+            - items
+            properties:
+              key:
+                type: string
+              title:
+                type: string
+              kind:
+                type: string
+                enum:
+                - continue
+                - wide
+                - poster
+                - videos
+                - clips
+              items:
+                type: array
+                items:
+                  type: object
+        layout:
+          type: array
+          items:
+            type: object
+    PlaybackSession:
+      type: object
+      required:
+      - id
+      - method
+      - source
+      - progress_url
+      - subtitles
+      - resume_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        method:
+          type: string
+          enum:
+          - direct
+          - remux
+          - audio_transcode
+          - optimized
+          - video_transcode
+        title:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        source:
+          type: object
+          required:
+          - kind
+          - url
+          properties:
+            kind:
+              type: string
+              enum:
+              - file
+              - hls
+            url:
+              type: string
+            mime_type:
+              type: string
+              nullable: true
+        progress_url:
+          type: string
+          description: POST { position, ended } here as it plays
+        subtitles:
+          type: array
+          items:
+            type: object
+        chapters:
+          type: array
+          items:
+            type: object
+        markers:
+          type: array
+          items:
+            type: object
+        next_up:
+          type: object
+          nullable: true
+        resume_at:
+          type: number
+        decision:
+          type: object
+          properties:
+            summary:
+              type: string
+        fallback:
+          type: object
+          nullable: true
+          description: 'Carried on a rung down from a session that failed (POST …/fallback):
+            what it fell from, and whether to try climbing back (POST …/upgrade) at
+            the next seek'
+          properties:
+            from_method:
+              type: string
+              enum:
+              - direct
+              - remux
+              - audio_transcode
+              - optimized
+              - video_transcode
+            failure_class:
+              type: string
+              enum:
+              - decode
+              - unsupported
+              - stalled
+              - network
+              - server
+            upgradable:
+              type: boolean
+        live_stream:
+          type: object
+          nullable: true
+          description: 'A camera or web stream (PROPOSAL §7.8): source is a live HLS
+            playlist that opens at its newest; POST progress to keep the session open
+            — its answer''s relay says how the stream is going'
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            kind:
+              type: string
+              enum:
+              - camera
+              - web
+              - youtube
+              - mlb
+            library_id:
+              type: string
+              format: uuid
+        live:
+          type: object
+          nullable: true
+          description: 'Tuned in on a Grid channel (PROPOSAL §7.7): where live is'
+          properties:
+            station_id:
+              type: string
+              format: uuid
+            number:
+              type: string
+            name:
+              type: string
+            airing_id:
+              type: string
+              format: uuid
+            starts_at:
+              type: string
+              format: date-time
+            ends_at:
+              type: string
+              format: date-time
+            server_now:
+              type: string
+              format: date-time
+    Station:
+      type: object
+      required:
+      - id
+      - number
+      - name
+      - hidden
+      - favorite
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+          example: '4.1'
+        name:
+          type: string
+        call_sign:
+          type: string
+          nullable: true
+        hidden:
+          type: boolean
+        favorite:
+          type: boolean
+        live_stream_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Shows this camera or web stream instead of programming: one
+            program in the guide, all day'
+    LiveStream:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - library_id
+      - source
+      - status
+      - tracks
+      description: 'A camera, web, YouTube or MLB.tv stream (PROPOSAL §7.8). Never
+        its address: source is scheme://host:port, or a YouTube stream''s or MLB.tv
+        game''s own link'
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - camera
+          - web
+          - youtube
+          - mlb
+        feed:
+          type: string
+          enum:
+          - home
+          - away
+          nullable: true
+          description: 'An MLB.tv game''s: which team''s TV broadcast it plays'
+        library_id:
+          type: string
+          format: uuid
+        description:
+          type: string
+          nullable: true
+        content_rating:
+          type: string
+          nullable: true
+        source:
+          type: string
+          example: rtsps://192.168.1.1:7441
+        status:
+          type: string
+          enum:
+          - online
+          - offline
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+        still_url:
+          type: string
+          nullable: true
+          description: Its picture a few minutes ago, signed for an image request
+        tracks:
+          type: array
+          items:
+            type: object
+    Airing:
+      type: object
+      required:
+      - id
+      - station_id
+      - starts_at
+      - ends_at
+      - kind
+      - playable_id
+      - title
+      - filler
+      - reminded
+      properties:
+        id:
+          type: string
+          format: uuid
+        station_id:
+          type: string
+          format: uuid
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        kind:
+          type: string
+          enum:
+          - movie
+          - episode
+          - extra
+          - video
+          - live_stream
+          description: 'live_stream: a channel showing a camera or web stream — playable_id
+            is the stream'
+        playable_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          description: The show's title for an episode
+        subtitle:
+          type: string
+          nullable: true
+        episode_title:
+          type: string
+          nullable: true
+        code:
+          type: string
+          nullable: true
+        show_id:
+          type: string
+          nullable: true
+        channel_id:
+          type: string
+          nullable: true
+        year:
+          type: integer
+          nullable: true
+        content_rating:
+          type: string
+          nullable: true
+        overview:
+          type: string
+          nullable: true
+        images:
+          type: object
+        reason:
+          type: string
+        filler:
+          type: boolean
+          description: Between programs
+        reminded:
+          type: boolean
+    Guide:
+      type: object
+      required:
+      - now
+      - from
+      - to
+      - time_zone
+      - stations
+      properties:
+        now:
+          type: string
+          format: date-time
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        time_zone:
+          type: string
+          example: America/New_York
+        stations:
+          type: array
+          items:
+            allOf:
+            - "$ref": "#/components/schemas/Station"
+            - type: object
+              properties:
+                airings:
+                  type: array
+                  items:
+                    "$ref": "#/components/schemas/Airing"
+paths:
+  "/api/v1/session":
+    post:
+      summary: Sign in
+      tags:
+      - Sign in
+      parameters: []
+      responses:
+        '201':
+          description: signed in
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Session"
+        '401':
+          description: wrong email or password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Errors"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                device:
+                  type: string
+              required:
+              - email
+              - password
+  "/api/v1/pairings":
+    post:
+      summary: 'Start pairing a TV: show the code, poll with the token'
+      tags:
+      - Sign in
+      responses:
+        '201':
+          description: a code to show
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Pairing"
+  "/api/v1/pairings/{poll_token}":
+    get:
+      summary: 'Poll a pairing: pending, or (once) the TV''s session'
+      tags:
+      - Sign in
+      parameters:
+      - name: poll_token
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: still waiting, or approved with token and user
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - state
+                properties:
+                  state:
+                    type: string
+                    enum:
+                    - pending
+                    - approved
+                  token:
+                    type: string
+                  user:
+                    "$ref": "#/components/schemas/User"
+  "/api/v1/profiles":
+    get:
+      summary: The household's profiles, for the picker
+      tags:
+      - Profiles
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Profile"
+  "/api/v1/profiles/current":
+    get:
+      summary: Who this device is watching as, and whether to show the picker
+      tags:
+      - Profiles
+      security:
+      - bearerAuth: []
+        profileToken: []
+      responses:
+        '200':
+          description: the current profile
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CurrentProfile"
+  "/api/v1/profiles/{id}/select":
+    post:
+      summary: 'Choose a profile (with its PIN): returns the X-Stream-Profile token'
+      tags:
+      - Profiles
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        format: uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: chosen
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - token
+                - profile
+                properties:
+                  token:
+                    type: string
+                  profile:
+                    "$ref": "#/components/schemas/Profile"
+        '401':
+          description: wrong PIN
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Errors"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pin:
+                  type: string
+                make_default:
+                  type: boolean
+  "/api/v1/home":
+    get:
+      summary: 'Home: the hero and the hubs, in the profile''s order'
+      tags:
+      - Browse
+      security:
+      - bearerAuth: []
+        profileToken: []
+      responses:
+        '200':
+          description: home
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Home"
+  "/api/v1/catalog_version":
+    get:
+      summary: 'Catalog version: changes when a file becomes playable, is replaced
+        or goes missing; poll it to know when to refresh'
+      tags:
+      - Browse
+      security:
+      - bearerAuth: []
+        profileToken: []
+      responses:
+        '200':
+          description: catalog version
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - version
+                properties:
+                  version:
+                    type: string
+                    description: Opaque; compare for change
+  "/api/v1/movies":
+    get:
+      summary: A library's movies
+      tags:
+      - Browse
+      security:
+      - bearerAuth: []
+        profileToken: []
+      parameters:
+      - name: library_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        enum:
+        - title
+        - year
+        - added
+        - rating
+        required: false
+        schema:
+          type: string
+        description: ":\n * `title` \n * `year` \n * `added` \n * `rating` \n "
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: tmdb_id
+        in: query
+        required: false
+        description: Only these TMDB ids (comma-separated); OR'd with imdb_id
+        schema:
+          type: string
+      - name: imdb_id
+        in: query
+        required: false
+        description: Only these IMDb ids (comma-separated); OR'd with tmdb_id
+        schema:
+          type: string
+      responses:
+        '200':
+          description: movies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/MovieCard"
+  "/api/v1/movies/letters":
+    get:
+      summary: Where each letter starts in a library's A–Z movies
+      tags:
+      - Browse
+      security:
+      - bearerAuth: []
+        profileToken: []
+      parameters:
+      - name: library_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: unwatched
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: letters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/LetterStart"
+  "/api/v1/movies/{id}":
+    get:
+      summary: 'A movie: details, versions, cast, extras, where to resume'
+      tags:
+      - Browse
+      security:
+      - bearerAuth: []
+        profileToken: []
+      parameters:
+      - name: id
+        in: path
+        format: uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: the movie
+          content:
+            application/json:
+              schema:
+                allOf:
+                - "$ref": "#/components/schemas/MovieCard"
+                - type: object
+                  properties:
+                    overview:
+                      type: string
+                      nullable: true
+                    versions:
+                      type: array
+                      items:
+                        type: object
+                    resume_at:
+                      type: number
+                      nullable: true
+        '404':
+          description: not there, or not for this profile
+  "/api/v1/search":
+    get:
+      summary: Search titles, episodes, people, channels, videos, home videos, and
+        what was said
+      tags:
+      - Browse
+      security:
+      - bearerAuth: []
+        profileToken: []
+      parameters:
+      - name: q
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: results by kind
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  movies:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/MovieCard"
+                  shows:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/ShowCard"
+                  episodes:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/EpisodeCard"
+                  said:
+                    type: array
+                    items:
+                      type: object
+  "/api/v1/playback_sessions":
+    post:
+      summary: 'Press Play: send what the device can decode, get where to play it
+        from'
+      tags:
+      - Playback
+      security:
+      - bearerAuth: []
+        profileToken: []
+      description: 'The capability profile decides direct play, remux or transcode
+        (PROPOSAL §6.1–6.2). `media_file_id` picks a version, `start` a position,
+        `audio_index` a track, `playlist_id` a playlist to play through. A `live_stream`
+        (PROPOSAL §7.8) is always relayed: its session''s `live_stream` is set and
+        its source is a live HLS playlist that opens at its newest; POST progress
+        to keep it open.'
+      parameters: []
+      responses:
+        '201':
+          description: a session
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PlaybackSession"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - playable_type
+              - playable_id
+              properties:
+                playable_type:
+                  type: string
+                  enum:
+                  - movie
+                  - episode
+                  - video
+                  - clip
+                  - extra
+                  - live_stream
+                playable_id:
+                  type: string
+                  format: uuid
+                capabilities:
+                  type: object
+                  description: hls (mse|native|none), video/audio codecs, containers,
+                    max_height
+                device_key:
+                  type: string
+                media_file_id:
+                  type: string
+                start:
+                  type: number
+                audio_index:
+                  type: integer
+                playlist_id:
+                  type: string
+                station_id:
+                  type: string
+                  format: uuid
+                  description: 'Grid: tune to what''s on this channel now, where live
+                    is'
+                airing_id:
+                  type: string
+                  format: uuid
+                  description: 'Grid: one airing — its start (Restart), or the next
+                    as it begins'
+                standby:
+                  type: boolean
+                  description: 'Grid: tuned ahead for an instant channel change; not
+                    a play until POST …/watch'
+  "/api/v1/playback_sessions/{id}/fallback":
+    post:
+      summary: 'A play that failed: carry it on a rung down the ladder, from where
+        it got to'
+      tags:
+      - Playback
+      security:
+      - bearerAuth: []
+        profileToken: []
+      description: The failed session ends with why; the answer is a new session a
+        rung down (direct → remux → audio converted → video converted → in software),
+        starting at `position`. Asked twice, it answers with the same session. 409
+        when there's no rung left, saying what was tried.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description: the play, carried on
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PlaybackSession"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - failure_class
+              properties:
+                failure_class:
+                  type: string
+                  enum:
+                  - decode
+                  - unsupported
+                  - stalled
+                  - network
+                  - server
+                  description: 'decode: couldn''t decode it; unsupported: wouldn''t
+                    open it; stalled; network; server: a 424'
+                cause:
+                  type: string
+                  description: The player's own words, for the Playback page
+                position:
+                  type: number
+  "/api/v1/playback_sessions/{id}/upgrade":
+    post:
+      summary: 'A play that fell back for a passing reason: climb back to the rung
+        it fell from, if there''s a better one'
+      tags:
+      - Playback
+      security:
+      - bearerAuth: []
+        profileToken: []
+      description: For a session whose `fallback.upgradable` is true, at a natural
+        break (a seek). 201 with the new session; 204 when there's nothing better.
+        If the climb fails too, POST …/fallback returns to the rung that worked.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: nothing better
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                position:
+                  type: number
+  "/api/v1/live_streams":
+    get:
+      summary: The profile's cameras and web streams, in a library or all
+      tags:
+      - Live streams
+      security:
+      - bearerAuth: []
+        profileToken: []
+      description: 'Play one with POST /api/v1/playback_sessions { playable_type:
+        live_stream, playable_id }.'
+      parameters:
+      - name: library_id
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: streams, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/LiveStream"
+  "/api/v1/guide":
+    get:
+      summary: 'The guide: the profile''s channels and their airings between two times'
+      tags:
+      - Grid
+      security:
+      - bearerAuth: []
+        profileToken: []
+      description: Defaults to half an hour ago until three hours ahead; at most 26
+        hours at once. Filler (between programs) is flagged.
+      parameters:
+      - name: from
+        in: query
+        format: date-time
+        required: false
+        schema:
+          type: string
+      - name: to
+        in: query
+        format: date-time
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: channels in number order, with what's on each
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Guide"
+  "/api/v1/stations":
+    get:
+      summary: The profile's channels (hidden=1 includes the ones it hid)
+      tags:
+      - Grid
+      security:
+      - bearerAuth: []
+        profileToken: []
+      parameters:
+      - name: hidden
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Station"
+  "/api/v1/playback_sessions/{id}/watch":
+    post:
+      summary: 'Switch to a channel tuned ahead on standby: from now it''s a play'
+      tags:
+      - Grid
+      security:
+      - bearerAuth: []
+        profileToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: watching
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                position:
+                  type: number
+  "/api/v1/stations/{id}/favorite":
+    put:
+      summary: Keep a channel among the profile's favourites (DELETE to stop)
+      tags:
+      - Grid
+      security:
+      - bearerAuth: []
+        profileToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: a favourite
+  "/api/v1/airings/{id}/reminder":
+    put:
+      summary: Be reminded two minutes before a program starts (DELETE to forget)
+      tags:
+      - Grid
+      security:
+      - bearerAuth: []
+        profileToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: reminded

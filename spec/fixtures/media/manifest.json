@@ -1,0 +1,59 @@
+{
+  "_comment": "Expected stream facts for the media fixture corpus (bin/media-fixtures). Checked by spec/media/fixture_corpus_spec.rb. `why` names the decision-engine case each file exists for (PROPOSAL §6.2).",
+  "files": {
+    "h264_aac.mp4": {
+      "why": "direct play everywhere",
+      "streams": [ { "type": "video", "codec": "h264", "profile": "High" }, { "type": "audio", "codec": "aac" } ]
+    },
+    "h264_aac_ac3_subs.mkv": {
+      "why": "remux (MKV in Safari), audio transcode (AC-3 in Chrome), text subtitles incl. a forced ASS track",
+      "streams": [
+        { "type": "video", "codec": "h264" },
+        { "type": "audio", "codec": "aac", "language": "eng" },
+        { "type": "audio", "codec": "ac3", "channels": 6, "language": "eng" },
+        { "type": "subtitle", "codec": "subrip", "language": "eng" },
+        { "type": "subtitle", "codec": "ass", "language": "jpn", "forced": true }
+      ]
+    },
+    "hevc_main10_hdr10.mkv": {
+      "why": "HDR10: direct on HDR displays, tone-map on SDR",
+      "streams": [ { "type": "video", "codec": "hevc", "profile": "Main 10", "pix_fmt": "yuv420p10le", "color_transfer": "smpte2084" }, { "type": "audio", "codec": "aac" } ]
+    },
+    "av1_opus.webm": {
+      "why": "AV1 where decodable, Opus audio",
+      "streams": [ { "type": "video", "codec": "av1" }, { "type": "audio", "codec": "opus" } ]
+    },
+    "vp9_opus.webm": {
+      "why": "VP9 profile 0",
+      "streams": [ { "type": "video", "codec": "vp9", "profile": "Profile 0" }, { "type": "audio", "codec": "opus" } ]
+    },
+    "mpeg2_mp2.ts": {
+      "why": "legacy video: the video-transcode rung",
+      "streams": [ { "type": "video", "codec": "mpeg2video" }, { "type": "audio", "codec": "mp2" } ]
+    },
+    "h264_hi10p.mkv": {
+      "why": "H.264 High 10: no browser decodes it",
+      "streams": [ { "type": "video", "codec": "h264", "profile": "High 10", "pix_fmt": "yuv420p10le" }, { "type": "audio", "codec": "aac" } ]
+    },
+    "h264_dts.mkv": {
+      "why": "DTS 5.1: audio transcode",
+      "streams": [ { "type": "video", "codec": "h264" }, { "type": "audio", "codec": "dts", "channels": 6 } ]
+    },
+    "h264_truehd.mkv": {
+      "why": "TrueHD 5.1: audio transcode",
+      "streams": [ { "type": "video", "codec": "h264" }, { "type": "audio", "codec": "truehd", "channels": 6 } ]
+    },
+    "h264_flac.mkv": {
+      "why": "FLAC: browser-dependent audio",
+      "streams": [ { "type": "video", "codec": "h264" }, { "type": "audio", "codec": "flac" } ]
+    },
+    "h264_aac_movtext.mp4": {
+      "why": "mov_text subtitles inside MP4",
+      "streams": [ { "type": "video", "codec": "h264" }, { "type": "audio", "codec": "aac" }, { "type": "subtitle", "codec": "mov_text", "language": "eng" } ]
+    },
+    "truncated.mkv": {
+      "why": "a broken file: the prober must mark it broken, not crash",
+      "broken": true
+    }
+  }
+}

@@ -1,0 +1,26 @@
+[
+ {
+  "id": "p-alex",
+  "name": "Alex",
+  "color": "#e5a00d",
+  "avatar": null,
+  "has_pin": false,
+  "kind": "standard"
+ },
+ {
+  "id": "p-sam",
+  "name": "Sam",
+  "color": "#2a9d8f",
+  "avatar": null,
+  "has_pin": true,
+  "kind": "standard"
+ },
+ {
+  "id": "p-kids",
+  "name": "Kids",
+  "color": "#e63946",
+  "avatar": null,
+  "has_pin": false,
+  "kind": "kid"
+ }
+]

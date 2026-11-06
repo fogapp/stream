@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Guard grep for the cardinal design rule: no raw palette colors in console
+# code — everything goes through the semantic tokens in src/index.css.
+#
+# Scans .ts AND .tsx: manor's audit found a .ts helper returning
+# "text-green-600" that a .tsx-only grep missed for months.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+PALETTE='(bg|text|border|ring|fill|stroke|from|via|to)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3}'
+
+hits=$(grep -rEn "$PALETTE" frontend/src --include='*.ts' --include='*.tsx' || true)
+
+if [ -n "$hits" ]; then
+  echo "Raw palette colors found — use semantic tokens from src/index.css:"
+  echo "$hits"
+  exit 1
+fi
+
+echo "design-guard: no raw palette colors."

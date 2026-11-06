@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-18",
+  "today": "2026-10-19",
+  "previous_date": "2026-10-17",
+  "next_date": "2026-10-19",
+  "games": [
+    {
+      "id": 849817,
+      "starts_at": "2026-10-18T21:08:00Z",
+      "start_time_tbd": false,
+      "state": "final",
+      "status": "Final",
+      "watchable": false,
+      "venue": "Progressive Field",
+      "series": {
+        "name": "ALCS Game 5",
+        "status": "TB leads 3-2"
+      },
+      "double_header": null,
+      "inning": null,
+      "innings": [
+        {
+          "number": 1,
+          "away": 1,
+          "home": 0
+        },
+        {
+          "number": 2,
+          "away": 1,
+          "home": 0
+        },
+        {
+          "number": 3,
+          "away": 1,
+          "home": 0
+        },
+        {
+          "number": 4,
+          "away": 0,
+          "home": 0
+        },
+        {
+          "number": 5,
+          "away": 0,
+          "home": 0
+        },
+        {
+          "number": 6,
+          "away": 0,
+          "home": 1
+        },
+        {
+          "number": 7,
+          "away": 0,
+          "home": 0
+        },
+        {
+          "number": 8,
+          "away": 0,
+          "home": 0
+        },
+        {
+          "number": 9,
+          "away": 0,
+          "home": 0
+        }
+      ],
+      "scheduled_innings": 9,
+      "away": {
+        "team": {
+          "id": 139,
+          "name": "Tampa Bay Rays",
+          "club": "Rays",
+          "location": "Tampa Bay",
+          "abbreviation": "TB",
+          "logo_url": "https://www.mlbstatic.com/team-logos/139.svg",
+          "logo_png_url": "https://img.mlbstatic.com/mlb-photos/image/upload/w_240,f_png,q_auto/v1/team/139/logo/spot/current"
+        },
+        "record": "3-2",
+        "score": 3,
+        "hits": 12,
+        "errors": 0,
+        "winner": true,
+        "probable_pitcher": "Drew Rasmussen"
+      },
+      "home": {
+        "team": {
+          "id": 114,
+          "name": "Cleveland Guardians",
+          "club": "Guardians",
+          "location": "Cleveland",
+          "abbreviation": "CLE",
+          "logo_url": "https://www.mlbstatic.com/team-logos/114.svg",
+          "logo_png_url": "https://img.mlbstatic.com/mlb-photos/image/upload/w_240,f_png,q_auto/v1/team/114/logo/spot/current"
+        },
+        "record": "2-3",
+        "score": 1,
+        "hits": 5,
+        "errors": 0,
+        "winner": false,
+        "probable_pitcher": "Parker Messick"
+      },
+      "broadcasts": [
+        {
+          "name": "TBS",
+          "side": "national"
+        },
+        {
+          "name": "TruTV",
+          "side": "national"
+        }
+      ],
+      "decisions": {
+        "winner": "Drew Rasmussen",
+        "loser": "Parker Messick",
+        "save": "Bryan Baker"
+      }
+    }
+  ]
+}

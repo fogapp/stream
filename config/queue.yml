@@ -1,0 +1,96 @@
+# Two hard-won rules from manor:config/queue.yml:
+#
+#   1. `queues:` must be a YAML LIST. Solid Queue does not split
+#      "default,scan" (that's a Sidekiq-ism) and will silently claim nothing.
+#   2. Solid Queue has NO queue exclusion, so every queue a job targets must
+#      be enumerated here — a job enqueued to a missing queue never runs.
+#
+# Queues by what they wait on (PROPOSAL §3.1): `scan` walks library roots and
+# probes files (IO-bound, NAS latency); `analyze` matches and fetches metadata
+# (waits on TMDB); `artwork` downloads and renders images; `heavy` runs ffmpeg
+# for trickplay, markers, loudness, transcripts and optimized versions — on
+# workers of their own so a long encode never starves the others, two at a
+# time (one left a library's first-scan backlog months long; two still
+# leaves the CPU to live playback). Live transcoding is not a job at all:
+# it belongs to the transcoder process. `control` is the handful of quick
+# jobs that hold things in place (the heavy queue's hold above all), on a
+# worker of their own so they never wait behind anything; `sync` is the
+# integrations that can run for hours, so they never fill `default`.
+default: &default
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 500
+  workers:
+    - queues:
+        - control
+      threads: 1
+      processes: 1
+      polling_interval: 1
+    - queues:
+        - sync
+      threads: 2
+      processes: 1
+      polling_interval: 2
+    - queues:
+        - default
+      threads: 3
+      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      polling_interval: 1
+    - queues:
+        - scan
+        - analyze
+      threads: 3
+      processes: 1
+      polling_interval: 1
+    - queues:
+        - artwork
+      threads: 2
+      processes: 1
+      polling_interval: 2
+    - queues:
+        - heavy
+      threads: 2
+      processes: 1
+      polling_interval: 5
+    # The keyframe scan a play asked for:
+    # one at a time, at the disk's idle priority, and never paused while
+    # someone watches, as heavy is.
+    - queues:
+        - index
+      threads: 1
+      processes: 1
+      polling_interval: 2
+    # A subtitle track a viewer picked before the read over its file got
+    # there (ExtractSubtitleTrackJob): one at a time, never paused while
+    # someone watches — someone is — and apart from `index`, so a PGS track
+    # read off the slow share never holds a play's keyframe scan.
+    - queues:
+        - subtitles
+      threads: 1
+      processes: 1
+      polling_interval: 1
+    # yt-dlp downloads: network-bound, two at a time (DownloadVideoJob's
+    # limit). Not `heavy`, where a scan's trickplay backlog would hold a
+    # new upload for hours.
+    - queues:
+        - youtube
+      threads: 2
+      processes: 1
+      polling_interval: 5
+    # fog-backup/1 artifact production: a full pg_dump + tar, one at a time.
+    # Its own queue so a backup can never sit behind a heavy backlog when fog
+    # is waiting on it (and rule 2 above: unlisted queues never run).
+    - queues:
+        - backup
+      threads: 1
+      processes: 1
+      polling_interval: 5
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

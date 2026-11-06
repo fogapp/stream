@@ -1,0 +1,50 @@
+[
+ {
+  "id": "st-2",
+  "number": "2",
+  "name": "Deep Field",
+  "call_sign": null,
+  "hidden": false,
+  "favorite": true
+ },
+ {
+  "id": "st-4",
+  "number": "4",
+  "name": "NBC",
+  "call_sign": null,
+  "hidden": false,
+  "favorite": false
+ },
+ {
+  "id": "st-5",
+  "number": "5",
+  "name": "Movies",
+  "call_sign": null,
+  "hidden": false,
+  "favorite": false
+ },
+ {
+  "id": "st-7",
+  "number": "7",
+  "name": "Kingfisher",
+  "call_sign": null,
+  "hidden": false,
+  "favorite": false
+ },
+ {
+  "id": "st-9",
+  "number": "9",
+  "name": "Coast",
+  "call_sign": null,
+  "hidden": false,
+  "favorite": false
+ },
+ {
+  "id": "st-12",
+  "number": "12",
+  "name": "Shopping Hour",
+  "call_sign": null,
+  "hidden": true,
+  "favorite": false
+ }
+]

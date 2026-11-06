@@ -1,0 +1,96 @@
+{
+    "kind": "movie",
+    "id": "ad5538de-328b-4d5e-9b65-56ce1bb630c2",
+    "title": "Heat",
+    "year": 1995,
+    "content_rating": null,
+    "runtime_minutes": null,
+    "images": {
+        "thumb": {
+            "src": "/artwork/d0d154e1-d12d-4f46-b90a-3e8cbd79e046/1/780.webp?s=14ea2526f17c5613bbff8ffc",
+            "srcset": "/artwork/d0d154e1-d12d-4f46-b90a-3e8cbd79e046/1/300.webp?s=14ea2526f17c5613bbff8ffc 300w, /artwork/d0d154e1-d12d-4f46-b90a-3e8cbd79e046/1/780.webp?s=14ea2526f17c5613bbff8ffc 780w",
+            "width": 160,
+            "height": 90,
+            "placeholder": "data:image/webp;base64,UklGRs4AAABXRUJQVlA4IMIAAAAQBQCdASoYAA4APxFwsFAsJiSisAgBgCIJbACdMoR3Ff/2Sz5IAF6KPd6sLmOeSvTkAP7bgyGen04vNJ9UxlPPOBrp3Bx9s3MIAeKwQDxjqfW/9f+SyLtOVVH//2MCdDbu/T4is4Pnvb8PIb8oYIsrNY+G8QHnLXSwMm4tQPZ9sVD/J816xlo2Espf/KPl7ssKX5aADX+KLy9kKf/y3HX3/xvOpZf/dAhbn/XtQv/aPv6rvk9Lz3t2v/4mP8pL/sBAAA==",
+            "color": "#6a6379"
+        }
+    },
+    "progress": null,
+    "watched": true,
+    "original_title": null,
+    "tagline": null,
+    "overview": null,
+    "genres": [],
+    "release_date": null,
+    "vote_average": null,
+    "collection": null,
+    "library": {
+        "id": "06ac2788-544f-4f5c-88d3-ed1d575a63d8",
+        "name": "Movies"
+    },
+    "match_state": "unmatched",
+    "tmdb_id": null,
+    "imdb_id": null,
+    "resume_at": null,
+    "play_count": 1,
+    "versions": [
+        {
+            "media_file_id": "b1c9e3d1-0768-46e5-8840-b250e628f1fc",
+            "edition": "SD",
+            "filename": "Heat (1995).webm",
+            "size": 74364,
+            "duration_seconds": 2.008,
+            "video": "90p VP9",
+            "audio": "OPUS Mono",
+            "subtitles": 0,
+            "playable": true,
+            "unplayable_reason": null
+        },
+        {
+            "media_file_id": "bb1be307-2ec2-48e4-b6cb-756b33a67232",
+            "edition": "Director's Cut",
+            "filename": "Heat (1995) {edition-Director's Cut}.webm",
+            "size": 74364,
+            "duration_seconds": 2.008,
+            "video": "90p VP9",
+            "audio": "OPUS Mono",
+            "subtitles": 0,
+            "playable": true,
+            "unplayable_reason": null
+        }
+    ],
+    "extras": [
+        {
+            "kind": "extra",
+            "id": "9d136d5f-011f-49db-be6d-33a5b386ee68",
+            "extra_kind": "trailer",
+            "kind_label": "Trailer",
+            "title": "Heat",
+            "duration_seconds": 2.008,
+            "images": {
+                "thumb": {
+                    "src": "/artwork/2b49aa1b-e987-40cc-8cb2-150c60ed5e67/1/780.webp?s=5128e29a30be4741435273da",
+                    "srcset": "/artwork/2b49aa1b-e987-40cc-8cb2-150c60ed5e67/1/300.webp?s=5128e29a30be4741435273da 300w, /artwork/2b49aa1b-e987-40cc-8cb2-150c60ed5e67/1/780.webp?s=5128e29a30be4741435273da 780w",
+                    "width": 160,
+                    "height": 90,
+                    "placeholder": "data:image/webp;base64,UklGRs4AAABXRUJQVlA4IMIAAAAQBQCdASoYAA4APxFwsFAsJiSisAgBgCIJbACdMoR3Ff/2Sz5IAF6KPd6sLmOeSvTkAP7bgyGen04vNJ9UxlPPOBrp3Bx9s3MIAeKwQDxjqfW/9f+SyLtOVVH//2MCdDbu/T4is4Pnvb8PIb8oYIsrNY+G8QHnLXSwMm4tQPZ9sVD/J816xlo2Espf/KPl7ssKX5aADX+KLy9kKf/y3HX3/xvOpZf/dAhbn/XtQv/aPv6rvk9Lz3t2v/4mP8pL/sBAAA==",
+                    "color": "#6a6379"
+                }
+            },
+            "season_number": null
+        }
+    ],
+    "collections": [],
+    "locked_fields": [],
+    "my_rating": null,
+    "cast": [
+        {
+            "person_id": "0bf2d126-7c79-489b-9214-0a7e573d3ee3",
+            "name": "Al Pacino",
+            "role": "cast",
+            "character": "Vincent Hanna",
+            "job": null,
+            "image": null
+        }
+    ]
+}

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# The committed OpenAPI document (swagger/v1/openapi.yaml) must match what
+# the specs in spec/requests/openapi generate — a client generated from a
+# stale one would be wrong in ways nothing else catches.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+before=$(shasum swagger/v1/openapi.yaml | cut -d' ' -f1)
+RAILS_ENV=test bin/rails rswag:specs:swaggerize PATTERN="spec/requests/openapi/**/*_spec.rb" > /dev/null
+after=$(shasum swagger/v1/openapi.yaml | cut -d' ' -f1)
+if [ "$before" != "$after" ]; then
+  echo "swagger/v1/openapi.yaml was out of date and has been regenerated — commit it."
+  exit 1
+fi
+echo "OpenAPI document is current."

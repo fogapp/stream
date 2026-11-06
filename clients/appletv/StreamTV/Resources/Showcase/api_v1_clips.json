@@ -1,0 +1,219 @@
+{
+ "years": [
+  {
+   "year": 2026,
+   "count": 5
+  },
+  {
+   "year": 2025,
+   "count": 3
+  },
+  {
+   "year": 2024,
+   "count": 2
+  }
+ ],
+ "clips": [
+  {
+   "kind": "clip",
+   "id": "clip-t0",
+   "title": "IMG_5100",
+   "captured_at": "2026-08-14T10:12:00",
+   "captured_floating": true,
+   "city": "Brighton",
+   "country": "United Kingdom",
+   "favorite": true,
+   "duration_seconds": 18,
+   "images": {
+    "thumb": {
+     "src": "showcase/deep-field-s1e1-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t1",
+   "title": "IMG_5101",
+   "captured_at": "2026-08-02T17:40:00",
+   "captured_floating": true,
+   "city": "Whitby",
+   "country": "United Kingdom",
+   "favorite": false,
+   "duration_seconds": 31,
+   "images": {
+    "thumb": {
+     "src": "showcase/kingfisher-s1e2-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": 0.5,
+   "watched": false
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t2",
+   "title": "IMG_5102",
+   "captured_at": "2026-07-21T09:05:00",
+   "captured_floating": true,
+   "city": "St Ives",
+   "country": "United Kingdom",
+   "favorite": false,
+   "duration_seconds": 44,
+   "images": {
+    "thumb": {
+     "src": "showcase/office-hours-s1e3-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t3",
+   "title": "IMG_5103",
+   "captured_at": "2026-07-19T19:22:00",
+   "captured_floating": true,
+   "city": "Lewes",
+   "country": "United Kingdom",
+   "favorite": false,
+   "duration_seconds": 57,
+   "images": {
+    "thumb": {
+     "src": "showcase/crossing-s1e4-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": true
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t4",
+   "title": "IMG_5104",
+   "captured_at": "2026-07-04T12:00:00",
+   "captured_floating": true,
+   "city": null,
+   "country": "United Kingdom",
+   "favorite": true,
+   "duration_seconds": 70,
+   "images": {
+    "thumb": {
+     "src": "showcase/deep-field-s1e5-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t5",
+   "title": "IMG_5105",
+   "captured_at": "2025-12-25T08:31:00",
+   "captured_floating": true,
+   "city": "Rye",
+   "country": "United Kingdom",
+   "favorite": false,
+   "duration_seconds": 83,
+   "images": {
+    "thumb": {
+     "src": "showcase/kingfisher-s1e6-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t6",
+   "title": "IMG_5106",
+   "captured_at": "2025-12-24T16:02:00",
+   "captured_floating": true,
+   "city": "Brighton",
+   "country": "United Kingdom",
+   "favorite": false,
+   "duration_seconds": 96,
+   "images": {
+    "thumb": {
+     "src": "showcase/office-hours-s1e1-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t7",
+   "title": "IMG_5107",
+   "captured_at": "2025-10-11T14:45:00",
+   "captured_floating": true,
+   "city": "Whitby",
+   "country": "United Kingdom",
+   "favorite": false,
+   "duration_seconds": 109,
+   "images": {
+    "thumb": {
+     "src": "showcase/crossing-s1e2-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t8",
+   "title": "IMG_5108",
+   "captured_at": "2024-06-30T11:11:00",
+   "captured_floating": true,
+   "city": "St Ives",
+   "country": "United Kingdom",
+   "favorite": true,
+   "duration_seconds": 122,
+   "images": {
+    "thumb": {
+     "src": "showcase/deep-field-s1e3-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "clip",
+   "id": "clip-t9",
+   "title": "IMG_5109",
+   "captured_at": "2024-06-29T20:47:00",
+   "captured_floating": true,
+   "city": "Lewes",
+   "country": "United Kingdom",
+   "favorite": false,
+   "duration_seconds": 135,
+   "images": {
+    "thumb": {
+     "src": "showcase/kingfisher-s1e4-still.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  }
+ ],
+ "more": false
+}

@@ -1,0 +1,330 @@
+{
+ "now": "2026-10-19T16:03:48Z",
+ "date": "2026-10-19",
+ "today": "2026-10-19",
+ "previous_date": "2026-10-18",
+ "next_date": "2026-10-20",
+ "games": [
+  {
+   "id": 1,
+   "starts_at": "2026-10-19T14:03:48Z",
+   "start_time_tbd": false,
+   "state": "live",
+   "status": "In Progress",
+   "watchable": true,
+   "venue": "Northfield Park",
+   "series": null,
+   "double_header": null,
+   "inning": {
+    "number": 7,
+    "ordinal": "7th",
+    "half": "top",
+    "outs": 1,
+    "balls": 2,
+    "strikes": 1,
+    "bases": {
+     "first": true,
+     "second": false,
+     "third": true
+    }
+   },
+   "innings": [
+    {
+     "number": 1,
+     "away": 0,
+     "home": 1
+    },
+    {
+     "number": 2,
+     "away": 2,
+     "home": 0
+    },
+    {
+     "number": 3,
+     "away": 0,
+     "home": 0
+    },
+    {
+     "number": 4,
+     "away": 1,
+     "home": 2
+    },
+    {
+     "number": 5,
+     "away": 0,
+     "home": 0
+    },
+    {
+     "number": 6,
+     "away": 1,
+     "home": 0
+    },
+    {
+     "number": 7,
+     "away": 0,
+     "home": null
+    }
+   ],
+   "scheduled_innings": 9,
+   "away": {
+    "team": {
+     "id": 9001,
+     "name": "Harbor City Gulls",
+     "club": "Gulls",
+     "location": "Harbor City",
+     "abbreviation": "HCG",
+     "logo_url": "showcase/club-hcg-logo.png",
+     "logo_png_url": "showcase/club-hcg-logo.png"
+    },
+    "record": "88-61",
+    "score": 4,
+    "hits": 8,
+    "errors": 0,
+    "winner": false,
+    "probable_pitcher": null
+   },
+   "home": {
+    "team": {
+     "id": 9002,
+     "name": "Northfield Foxes",
+     "club": "Foxes",
+     "location": "Northfield",
+     "abbreviation": "NFX",
+     "logo_url": "showcase/club-nfx-logo.png",
+     "logo_png_url": "showcase/club-nfx-logo.png"
+    },
+    "record": "79-70",
+    "score": 3,
+    "hits": 7,
+    "errors": 1,
+    "winner": false,
+    "probable_pitcher": null
+   },
+   "broadcasts": [
+    {
+     "name": "GULLS TV",
+     "side": "away"
+    },
+    {
+     "name": "FOX 9",
+     "side": "home"
+    }
+   ],
+   "decisions": null
+  },
+  {
+   "id": 2,
+   "starts_at": "2026-10-19T16:23:48Z",
+   "start_time_tbd": false,
+   "state": "upcoming",
+   "status": "Warmup",
+   "watchable": true,
+   "venue": "Lakeport Park",
+   "series": null,
+   "double_header": null,
+   "inning": null,
+   "innings": [],
+   "scheduled_innings": 9,
+   "away": {
+    "team": {
+     "id": 9003,
+     "name": "Copper Valley Miners",
+     "club": "Miners",
+     "location": "Copper Valley",
+     "abbreviation": "CVM",
+     "logo_url": "showcase/club-cvm-logo.png",
+     "logo_png_url": "showcase/club-cvm-logo.png"
+    },
+    "record": "70-79",
+    "score": null,
+    "hits": null,
+    "errors": null,
+    "winner": false,
+    "probable_pitcher": "June Park"
+   },
+   "home": {
+    "team": {
+     "id": 9004,
+     "name": "Lakeport Herons",
+     "club": "Herons",
+     "location": "Lakeport",
+     "abbreviation": "LKP",
+     "logo_url": "showcase/club-lkp-logo.png",
+     "logo_png_url": "showcase/club-lkp-logo.png"
+    },
+    "record": "91-58",
+    "score": null,
+    "hits": null,
+    "errors": null,
+    "winner": false,
+    "probable_pitcher": "Leo Marsh"
+   },
+   "broadcasts": [
+    {
+     "name": "KCVM",
+     "side": "away"
+    },
+    {
+     "name": "Heron Sports",
+     "side": "home"
+    }
+   ],
+   "decisions": null
+  },
+  {
+   "id": 3,
+   "starts_at": "2026-10-19T19:03:48Z",
+   "start_time_tbd": false,
+   "state": "upcoming",
+   "status": "Scheduled",
+   "watchable": false,
+   "venue": "Bayside Park",
+   "series": null,
+   "double_header": null,
+   "inning": null,
+   "innings": [],
+   "scheduled_innings": 9,
+   "away": {
+    "team": {
+     "id": 9005,
+     "name": "Ridgeline Owls",
+     "club": "Owls",
+     "location": "Ridgeline",
+     "abbreviation": "RDG",
+     "logo_url": "showcase/club-rdg-logo.png",
+     "logo_png_url": "showcase/club-rdg-logo.png"
+    },
+    "record": "64-85",
+    "score": null,
+    "hits": null,
+    "errors": null,
+    "winner": false,
+    "probable_pitcher": "Sam Quill"
+   },
+   "home": {
+    "team": {
+     "id": 9006,
+     "name": "Bayside Pilots",
+     "club": "Pilots",
+     "location": "Bayside",
+     "abbreviation": "BAY",
+     "logo_url": "showcase/club-bay-logo.png",
+     "logo_png_url": "showcase/club-bay-logo.png"
+    },
+    "record": "83-66",
+    "score": null,
+    "hits": null,
+    "errors": null,
+    "winner": false,
+    "probable_pitcher": "Mira Stone"
+   },
+   "broadcasts": [
+    {
+     "name": "Pilots Network",
+     "side": "home"
+    }
+   ],
+   "decisions": null
+  },
+  {
+   "id": 4,
+   "starts_at": "2026-10-19T11:03:48Z",
+   "start_time_tbd": false,
+   "state": "final",
+   "status": "Final",
+   "watchable": false,
+   "venue": "Harbor City Park",
+   "series": null,
+   "double_header": null,
+   "inning": null,
+   "innings": [
+    {
+     "number": 1,
+     "away": 0,
+     "home": 0
+    },
+    {
+     "number": 2,
+     "away": 1,
+     "home": 3
+    },
+    {
+     "number": 3,
+     "away": 0,
+     "home": 0
+    },
+    {
+     "number": 4,
+     "away": 0,
+     "home": 1
+    },
+    {
+     "number": 5,
+     "away": 1,
+     "home": 0
+    },
+    {
+     "number": 6,
+     "away": 0,
+     "home": 0
+    },
+    {
+     "number": 7,
+     "away": 0,
+     "home": 2
+    },
+    {
+     "number": 8,
+     "away": 0,
+     "home": 0
+    },
+    {
+     "number": 9,
+     "away": 0,
+     "home": null
+    }
+   ],
+   "scheduled_innings": 9,
+   "away": {
+    "team": {
+     "id": 9006,
+     "name": "Bayside Pilots",
+     "club": "Pilots",
+     "location": "Bayside",
+     "abbreviation": "BAY",
+     "logo_url": "showcase/club-bay-logo.png",
+     "logo_png_url": "showcase/club-bay-logo.png"
+    },
+    "record": "83-66",
+    "score": 2,
+    "hits": 5,
+    "errors": 1,
+    "winner": false,
+    "probable_pitcher": null
+   },
+   "home": {
+    "team": {
+     "id": 9001,
+     "name": "Harbor City Gulls",
+     "club": "Gulls",
+     "location": "Harbor City",
+     "abbreviation": "HCG",
+     "logo_url": "showcase/club-hcg-logo.png",
+     "logo_png_url": "showcase/club-hcg-logo.png"
+    },
+    "record": "88-61",
+    "score": 6,
+    "hits": 11,
+    "errors": 0,
+    "winner": true,
+    "probable_pitcher": null
+   },
+   "broadcasts": [],
+   "decisions": {
+    "winner": "Ada Reyes",
+    "loser": "Tom Okafor",
+    "save": null
+   }
+  }
+ ]
+}

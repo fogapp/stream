@@ -1,0 +1,22 @@
+[
+ {
+  "id": "lib-movies",
+  "name": "Movies",
+  "kind": "movies"
+ },
+ {
+  "id": "lib-tv",
+  "name": "TV Shows",
+  "kind": "shows"
+ },
+ {
+  "id": "lib-youtube",
+  "name": "YouTube",
+  "kind": "channels"
+ },
+ {
+  "id": "lib-home",
+  "name": "Home videos",
+  "kind": "home_videos"
+ }
+]

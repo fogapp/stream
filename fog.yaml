@@ -1,0 +1,102 @@
+# The only app-owned metadata fog reads (build.ReadRepoManifest). Replaces
+# spec.notes in the fog UI after the first successful deploy.
+
+# fog tells Stream when a folder it mounts changes (POST /fog/files/changed
+# → the libraries reading it scan), and Settings › Libraries offers the
+# folders fog mounts as libraries (GET /app/v1/files/mounts).
+# fog-compute/1 (fog:docs/compute-contract.md): fog offers each pool of
+# machines paired with it (System › Compute) as one transcoder of Stream's,
+# "fog · VideoToolbox", and runs its conversions on whichever machine has
+# room (FogComputeController). Live sessions are interactive; optimized
+# versions batch, which fog stops for a viewer when it has to.
+compute:
+  contract: fog-compute/1
+  video:
+    classes: [interactive, batch]
+    blurb: Live conversions and optimized versions run on fog's transcoders when a machine has room.
+
+files:
+  contract: fog-files/1
+
+# Household sign-in (fog:docs/signin-proposal.md): fog registers Stream as a
+# client of its OpenID provider and injects OIDC_ISSUER, OIDC_CLIENT_ID and
+# OIDC_CLIENT_SECRET. People sign in with their fog passkey; fog maps their
+# fog role onto Stream's (operators are admins, members are members), and
+# the app's Sign-in tab in fog decides who may. People from a paired
+# household may visit as guests (§10.4): read-only, never admin. Outside fog
+# the same three variables point Stream at any OIDC provider.
+signin:
+  contract: fog-signin/1
+  redirect: /auth/oidc/callback
+  logout: /auth/oidc/backchannel
+  roles: [admin, member, guest]
+  default:
+    operator: admin
+    member: member
+  visitors:
+    role: guest
+
+gettingStarted: |
+  ## First run
+
+  1. Open Stream at your app URL and sign in with fog — the first person to
+     do so is Stream's admin. (Off fog, or before fog has a domain, the setup
+     wizard creates the household and the first admin instead.)
+  2. Settings › Libraries: fog's folders are offered as libraries — add
+     Movies, TV and the rest with one click each (or point a library at a
+     folder under `/media` by hand), and let the first scan run.
+  3. Settings › Integrations: add a TMDB key for metadata; optionally connect
+     Sonarr/Radarr webhooks, Immich, and Plex for migration. Hook needs no
+     pasted token: it connects to Stream on its own Integrations tab in fog.
+  4. To ask Hook for films and shows from search, connect Hook's **Library**
+     offer on Stream's Integrations tab in fog: the telescope appears beside
+     the search field once Stream redeploys.
+
+  ## Notes
+
+  - Stream only ever reads your media folders. Artwork, trickplay and
+    extracted subtitles live in its own `storage` volume.
+  - The `cache` volume holds live transcode segments and is never backed up.
+  - Hardware transcoding turns on by itself when `/dev/dri` is visible to the
+    transcoder; until then Stream transcodes in software.
+  - Migrations run in the release phase only, never at boot — fog overlaps
+    two web replicas during a blue-green swap.
+  - Metrics, traces, profiles and logs go to Lucid: on Stream's
+    **Integrations** tab in fog, connect Lucid. Fog has Lucid mint Stream its
+    own ingest key, sets `LUCID_URL` and `LUCID_API_KEY`, and redeploys.
+
+# fog-integration/1 (fog:docs/integrations-contract.md): what other apps
+# connect to on their Integrations tab in fog, and the offers Stream is built
+# to use. Fog reads this at every deploy, so an offer added here reaches the
+# installed Stream with its next push. Each offer has POST /fog/integrations
+# mint one API token for that app alone, in the name of Stream's first admin,
+# and fog fills {{url}} with Stream's address on the fog network.
+integrations:
+  offers:
+    # Hook: tell Stream about delivered files, start scans, read the catalog.
+    - id: library
+      title: Library
+      blurb: This app can tell Stream about files it delivered, start scans, and read the catalog, as Stream's admin.
+      env:
+        STREAM_URL: "{{url}}"
+      secrets: [STREAM_API_TOKEN]
+      capabilities:
+        - Tell Stream about delivered files
+        - Start library scans
+        - Read the catalog
+    # A start page: a read-only token, refused anything but a GET.
+    - id: viewing
+      title: Viewing
+      blurb: This app can read what is playing, what is next and what is new in Stream, without changing anything.
+      env:
+        STREAM_URL: "{{url}}"
+      secrets: [STREAM_READ_TOKEN]
+      capabilities:
+        - See what's playing, next and new in Stream
+  # Lucid's `monitoring` sets LUCID_URL and LUCID_API_KEY, which the vendored
+  # lucid gem reads at boot. Hook's `library` sets HOOK_URL and
+  # HOOK_API_TOKEN, a token that may search and ask Hook for films and
+  # television as the person using Stream (Hook::Client, PROPOSAL §7.9).
+  wants:
+    - offer: lucid/monitoring
+    - offer: hook/library

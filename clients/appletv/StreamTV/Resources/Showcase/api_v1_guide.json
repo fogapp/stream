@@ -1,0 +1,1708 @@
+{
+ "now": "2026-09-27T15:25:50Z",
+ "from": "2026-09-27T13:00:00Z",
+ "to": "2026-09-27T23:00:00Z",
+ "time_zone": "Europe/London",
+ "stations": [
+  {
+   "id": "st-2",
+   "number": "2",
+   "name": "Deep Field",
+   "call_sign": null,
+   "hidden": false,
+   "favorite": true,
+   "airings": [
+    {
+     "id": "air-2-0",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T14:00:00Z",
+     "ends_at": "2026-09-27T15:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e1",
+     "title": "Deep Field",
+     "subtitle": "S01E01 \u00b7 First Light",
+     "episode_title": "First Light",
+     "code": "S01E01",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e1-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-1",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T15:00:00Z",
+     "ends_at": "2026-09-27T16:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e2",
+     "title": "Deep Field",
+     "subtitle": "S01E02 \u00b7 Redshift",
+     "episode_title": "Redshift",
+     "code": "S01E02",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e2-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-2",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T16:00:00Z",
+     "ends_at": "2026-09-27T17:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e3",
+     "title": "Deep Field",
+     "subtitle": "S01E03 \u00b7 The Long Exposure",
+     "episode_title": "The Long Exposure",
+     "code": "S01E03",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e3-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-3",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T17:00:00Z",
+     "ends_at": "2026-09-27T18:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e4",
+     "title": "Deep Field",
+     "subtitle": "S01E04 \u00b7 Parallax",
+     "episode_title": "Parallax",
+     "code": "S01E04",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e4-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-4",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T18:00:00Z",
+     "ends_at": "2026-09-27T19:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e5",
+     "title": "Deep Field",
+     "subtitle": "S01E05 \u00b7 Dark Matter",
+     "episode_title": "Dark Matter",
+     "code": "S01E05",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e5-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-5",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T19:00:00Z",
+     "ends_at": "2026-09-27T20:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e6",
+     "title": "Deep Field",
+     "subtitle": "S01E06 \u00b7 Event Horizon",
+     "episode_title": "Event Horizon",
+     "code": "S01E06",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e6-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-6",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T20:00:00Z",
+     "ends_at": "2026-09-27T21:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e1",
+     "title": "Deep Field",
+     "subtitle": "S01E01 \u00b7 First Light",
+     "episode_title": "First Light",
+     "code": "S01E01",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e1-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-7",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T21:00:00Z",
+     "ends_at": "2026-09-27T22:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e2",
+     "title": "Deep Field",
+     "subtitle": "S01E02 \u00b7 Redshift",
+     "episode_title": "Redshift",
+     "code": "S01E02",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e2-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-8",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T22:00:00Z",
+     "ends_at": "2026-09-27T23:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e3",
+     "title": "Deep Field",
+     "subtitle": "S01E03 \u00b7 The Long Exposure",
+     "episode_title": "The Long Exposure",
+     "code": "S01E03",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e3-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-2-9",
+     "station_id": "st-2",
+     "starts_at": "2026-09-27T23:00:00Z",
+     "ends_at": "2026-09-28T00:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "deep-field-s1e4",
+     "title": "Deep Field",
+     "subtitle": "S01E04 \u00b7 Parallax",
+     "episode_title": "Parallax",
+     "code": "S01E04",
+     "show_id": "deep-field",
+     "year": 2020,
+     "content_rating": "TV-14",
+     "overview": "An observatory crew spots a galaxy that wasn't there yesterday, and it's getting closer.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/deep-field-s1e4-still.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/deep-field-backdrop.jpg",
+       "color": "#10002b",
+       "placeholder": null
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "st-4",
+   "number": "4",
+   "name": "NBC",
+   "call_sign": null,
+   "hidden": false,
+   "favorite": false,
+   "airings": [
+    {
+     "id": "air-4-0",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T14:30:00Z",
+     "ends_at": "2026-09-27T15:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e1",
+     "title": "Office Hours",
+     "subtitle": "S01E01 \u00b7 First Light",
+     "episode_title": "First Light",
+     "code": "S01E01",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e1-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-1",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T15:00:00Z",
+     "ends_at": "2026-09-27T15:30:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e2",
+     "title": "Office Hours",
+     "subtitle": "S01E02 \u00b7 Redshift",
+     "episode_title": "Redshift",
+     "code": "S01E02",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e2-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-2",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T15:30:00Z",
+     "ends_at": "2026-09-27T16:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e3",
+     "title": "Office Hours",
+     "subtitle": "S01E03 \u00b7 The Long Exposure",
+     "episode_title": "The Long Exposure",
+     "code": "S01E03",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e3-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-3",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T16:00:00Z",
+     "ends_at": "2026-09-27T16:30:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e4",
+     "title": "Office Hours",
+     "subtitle": "S01E04 \u00b7 Parallax",
+     "episode_title": "Parallax",
+     "code": "S01E04",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e4-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-4",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T16:30:00Z",
+     "ends_at": "2026-09-27T17:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e5",
+     "title": "Office Hours",
+     "subtitle": "S01E05 \u00b7 Dark Matter",
+     "episode_title": "Dark Matter",
+     "code": "S01E05",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e5-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-5",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T17:00:00Z",
+     "ends_at": "2026-09-27T17:30:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e6",
+     "title": "Office Hours",
+     "subtitle": "S01E06 \u00b7 Event Horizon",
+     "episode_title": "Event Horizon",
+     "code": "S01E06",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e6-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-6",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T17:30:00Z",
+     "ends_at": "2026-09-27T18:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e1",
+     "title": "Office Hours",
+     "subtitle": "S01E01 \u00b7 First Light",
+     "episode_title": "First Light",
+     "code": "S01E01",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e1-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-7",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T18:00:00Z",
+     "ends_at": "2026-09-27T18:30:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e2",
+     "title": "Office Hours",
+     "subtitle": "S01E02 \u00b7 Redshift",
+     "episode_title": "Redshift",
+     "code": "S01E02",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e2-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-8",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T18:30:00Z",
+     "ends_at": "2026-09-27T19:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e3",
+     "title": "Office Hours",
+     "subtitle": "S01E03 \u00b7 The Long Exposure",
+     "episode_title": "The Long Exposure",
+     "code": "S01E03",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e3-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-4-9",
+     "station_id": "st-4",
+     "starts_at": "2026-09-27T19:00:00Z",
+     "ends_at": "2026-09-27T19:30:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "office-hours-s1e4",
+     "title": "Office Hours",
+     "subtitle": "S01E04 \u00b7 Parallax",
+     "episode_title": "Parallax",
+     "code": "S01E04",
+     "show_id": "office-hours",
+     "year": 2005,
+     "content_rating": "TV-PG",
+     "overview": "A community college's night-school faculty try, and mostly fail, to teach anyone anything.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/office-hours-s1e4-still.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/office-hours-backdrop.jpg",
+       "color": "#1b263b",
+       "placeholder": null
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "st-5",
+   "number": "5",
+   "name": "Movies",
+   "call_sign": null,
+   "hidden": false,
+   "favorite": false,
+   "airings": [
+    {
+     "id": "air-5-0",
+     "station_id": "st-5",
+     "starts_at": "2026-09-27T13:00:00Z",
+     "ends_at": "2026-09-27T15:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "glass-harbor",
+     "title": "The Glass Harbor",
+     "subtitle": "2021",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 2021,
+     "content_rating": "R",
+     "overview": "When a lighthouse keeper finds a ship's log dated next week, the harbor town starts counting down.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/glass-harbor-backdrop.jpg",
+       "color": "#0b3d3a",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/glass-harbor-poster.jpg",
+       "color": "#0b3d3a",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-1",
+     "station_id": "st-5",
+     "starts_at": "2026-09-27T15:00:00Z",
+     "ends_at": "2026-09-27T17:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "signal-fires",
+     "title": "Signal Fires",
+     "subtitle": "1998",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 1998,
+     "content_rating": "PG-13",
+     "overview": "A forest-fire lookout intercepts a message meant for someone who died twenty years ago.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/signal-fires-backdrop.jpg",
+       "color": "#6a040f",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/signal-fires-poster.jpg",
+       "color": "#6a040f",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-2",
+     "station_id": "st-5",
+     "starts_at": "2026-09-27T17:00:00Z",
+     "ends_at": "2026-09-27T19:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "copperline",
+     "title": "Copperline",
+     "subtitle": "2022",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 2022,
+     "content_rating": "PG-13",
+     "overview": "Miners on a copper moon discover the vein they're following is following them back.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/copperline-backdrop.jpg",
+       "color": "#582f0e",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/copperline-poster.jpg",
+       "color": "#582f0e",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-3",
+     "station_id": "st-5",
+     "starts_at": "2026-09-27T19:00:00Z",
+     "ends_at": "2026-09-27T21:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "midnight-transit",
+     "title": "Midnight Transit",
+     "subtitle": "2012",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 2012,
+     "content_rating": "R",
+     "overview": "A night-bus driver has until dawn to deliver a passenger nobody else can see.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/midnight-transit-backdrop.jpg",
+       "color": "#03071e",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/midnight-transit-poster.jpg",
+       "color": "#03071e",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-4",
+     "station_id": "st-5",
+     "starts_at": "2026-09-27T21:00:00Z",
+     "ends_at": "2026-09-27T23:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "orchardist",
+     "title": "The Orchardist",
+     "subtitle": "2008",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 2008,
+     "content_rating": "PG",
+     "overview": "One apple harvest, four generations, and a letter that arrives forty years late.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/orchardist-backdrop.jpg",
+       "color": "#386641",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/orchardist-poster.jpg",
+       "color": "#386641",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-5",
+     "station_id": "st-5",
+     "starts_at": "2026-09-27T23:00:00Z",
+     "ends_at": "2026-09-28T01:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "glass-harbor",
+     "title": "The Glass Harbor",
+     "subtitle": "2021",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 2021,
+     "content_rating": "R",
+     "overview": "When a lighthouse keeper finds a ship's log dated next week, the harbor town starts counting down.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/glass-harbor-backdrop.jpg",
+       "color": "#0b3d3a",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/glass-harbor-poster.jpg",
+       "color": "#0b3d3a",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-6",
+     "station_id": "st-5",
+     "starts_at": "2026-09-28T01:00:00Z",
+     "ends_at": "2026-09-28T03:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "signal-fires",
+     "title": "Signal Fires",
+     "subtitle": "1998",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 1998,
+     "content_rating": "PG-13",
+     "overview": "A forest-fire lookout intercepts a message meant for someone who died twenty years ago.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/signal-fires-backdrop.jpg",
+       "color": "#6a040f",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/signal-fires-poster.jpg",
+       "color": "#6a040f",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-7",
+     "station_id": "st-5",
+     "starts_at": "2026-09-28T03:00:00Z",
+     "ends_at": "2026-09-28T05:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "copperline",
+     "title": "Copperline",
+     "subtitle": "2022",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 2022,
+     "content_rating": "PG-13",
+     "overview": "Miners on a copper moon discover the vein they're following is following them back.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/copperline-backdrop.jpg",
+       "color": "#582f0e",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/copperline-poster.jpg",
+       "color": "#582f0e",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-8",
+     "station_id": "st-5",
+     "starts_at": "2026-09-28T05:00:00Z",
+     "ends_at": "2026-09-28T07:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "midnight-transit",
+     "title": "Midnight Transit",
+     "subtitle": "2012",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 2012,
+     "content_rating": "R",
+     "overview": "A night-bus driver has until dawn to deliver a passenger nobody else can see.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/midnight-transit-backdrop.jpg",
+       "color": "#03071e",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/midnight-transit-poster.jpg",
+       "color": "#03071e",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-5-9",
+     "station_id": "st-5",
+     "starts_at": "2026-09-28T07:00:00Z",
+     "ends_at": "2026-09-28T09:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "movie",
+     "playable_id": "orchardist",
+     "title": "The Orchardist",
+     "subtitle": "2008",
+     "episode_title": null,
+     "code": null,
+     "show_id": null,
+     "year": 2008,
+     "content_rating": "PG",
+     "overview": "One apple harvest, four generations, and a letter that arrives forty years late.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "backdrop": {
+       "src": "showcase/orchardist-backdrop.jpg",
+       "color": "#386641",
+       "placeholder": null
+      },
+      "poster": {
+       "src": "showcase/orchardist-poster.jpg",
+       "color": "#386641",
+       "placeholder": null
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "st-7",
+   "number": "7",
+   "name": "Kingfisher",
+   "call_sign": null,
+   "hidden": false,
+   "favorite": false,
+   "airings": [
+    {
+     "id": "air-7-0",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T14:00:00Z",
+     "ends_at": "2026-09-27T15:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e1",
+     "title": "Kingfisher",
+     "subtitle": "S01E01 \u00b7 First Light",
+     "episode_title": "First Light",
+     "code": "S01E01",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e1-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-1",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T15:00:00Z",
+     "ends_at": "2026-09-27T16:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e2",
+     "title": "Kingfisher",
+     "subtitle": "S01E02 \u00b7 Redshift",
+     "episode_title": "Redshift",
+     "code": "S01E02",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e2-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-2",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T16:00:00Z",
+     "ends_at": "2026-09-27T17:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e3",
+     "title": "Kingfisher",
+     "subtitle": "S01E03 \u00b7 The Long Exposure",
+     "episode_title": "The Long Exposure",
+     "code": "S01E03",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e3-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-3",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T17:00:00Z",
+     "ends_at": "2026-09-27T18:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e4",
+     "title": "Kingfisher",
+     "subtitle": "S01E04 \u00b7 Parallax",
+     "episode_title": "Parallax",
+     "code": "S01E04",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e4-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-4",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T18:00:00Z",
+     "ends_at": "2026-09-27T19:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e5",
+     "title": "Kingfisher",
+     "subtitle": "S01E05 \u00b7 Dark Matter",
+     "episode_title": "Dark Matter",
+     "code": "S01E05",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e5-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-5",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T19:00:00Z",
+     "ends_at": "2026-09-27T20:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e6",
+     "title": "Kingfisher",
+     "subtitle": "S01E06 \u00b7 Event Horizon",
+     "episode_title": "Event Horizon",
+     "code": "S01E06",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e6-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-6",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T20:00:00Z",
+     "ends_at": "2026-09-27T21:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e1",
+     "title": "Kingfisher",
+     "subtitle": "S01E01 \u00b7 First Light",
+     "episode_title": "First Light",
+     "code": "S01E01",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e1-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-7",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T21:00:00Z",
+     "ends_at": "2026-09-27T22:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e2",
+     "title": "Kingfisher",
+     "subtitle": "S01E02 \u00b7 Redshift",
+     "episode_title": "Redshift",
+     "code": "S01E02",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e2-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-8",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T22:00:00Z",
+     "ends_at": "2026-09-27T23:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e3",
+     "title": "Kingfisher",
+     "subtitle": "S01E03 \u00b7 The Long Exposure",
+     "episode_title": "The Long Exposure",
+     "code": "S01E03",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e3-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-7-9",
+     "station_id": "st-7",
+     "starts_at": "2026-09-27T23:00:00Z",
+     "ends_at": "2026-09-28T00:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "kingfisher-s1e4",
+     "title": "Kingfisher",
+     "subtitle": "S01E04 \u00b7 Parallax",
+     "episode_title": "Parallax",
+     "code": "S01E04",
+     "show_id": "kingfisher",
+     "year": 2017,
+     "content_rating": "TV-MA",
+     "overview": "A river-police unit in a flooded city works the cases nobody on dry land wants.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/kingfisher-s1e4-still.jpg",
+       "color": "#001219",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/kingfisher-backdrop.jpg",
+       "color": "#001219",
+       "placeholder": null
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "st-9",
+   "number": "9",
+   "name": "Coast",
+   "call_sign": null,
+   "hidden": false,
+   "favorite": false,
+   "airings": [
+    {
+     "id": "air-9-0",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T14:00:00Z",
+     "ends_at": "2026-09-27T15:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e1",
+     "title": "The Crossing",
+     "subtitle": "S01E01 \u00b7 First Light",
+     "episode_title": "First Light",
+     "code": "S01E01",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e1-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-1",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T15:00:00Z",
+     "ends_at": "2026-09-27T16:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e2",
+     "title": "The Crossing",
+     "subtitle": "S01E02 \u00b7 Redshift",
+     "episode_title": "Redshift",
+     "code": "S01E02",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e2-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-2",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T16:00:00Z",
+     "ends_at": "2026-09-27T17:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e3",
+     "title": "The Crossing",
+     "subtitle": "S01E03 \u00b7 The Long Exposure",
+     "episode_title": "The Long Exposure",
+     "code": "S01E03",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e3-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-3",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T17:00:00Z",
+     "ends_at": "2026-09-27T18:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e4",
+     "title": "The Crossing",
+     "subtitle": "S01E04 \u00b7 Parallax",
+     "episode_title": "Parallax",
+     "code": "S01E04",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e4-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-4",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T18:00:00Z",
+     "ends_at": "2026-09-27T19:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e5",
+     "title": "The Crossing",
+     "subtitle": "S01E05 \u00b7 Dark Matter",
+     "episode_title": "Dark Matter",
+     "code": "S01E05",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e5-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-5",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T19:00:00Z",
+     "ends_at": "2026-09-27T20:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e6",
+     "title": "The Crossing",
+     "subtitle": "S01E06 \u00b7 Event Horizon",
+     "episode_title": "Event Horizon",
+     "code": "S01E06",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e6-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-6",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T20:00:00Z",
+     "ends_at": "2026-09-27T21:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e1",
+     "title": "The Crossing",
+     "subtitle": "S01E01 \u00b7 First Light",
+     "episode_title": "First Light",
+     "code": "S01E01",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e1-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-7",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T21:00:00Z",
+     "ends_at": "2026-09-27T22:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e2",
+     "title": "The Crossing",
+     "subtitle": "S01E02 \u00b7 Redshift",
+     "episode_title": "Redshift",
+     "code": "S01E02",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e2-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-8",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T22:00:00Z",
+     "ends_at": "2026-09-27T23:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e3",
+     "title": "The Crossing",
+     "subtitle": "S01E03 \u00b7 The Long Exposure",
+     "episode_title": "The Long Exposure",
+     "code": "S01E03",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e3-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    },
+    {
+     "id": "air-9-9",
+     "station_id": "st-9",
+     "starts_at": "2026-09-27T23:00:00Z",
+     "ends_at": "2026-09-28T00:00:00Z",
+     "reason": "The channel's mix",
+     "filler": false,
+     "kind": "episode",
+     "playable_id": "crossing-s1e4",
+     "title": "The Crossing",
+     "subtitle": "S01E04 \u00b7 Parallax",
+     "episode_title": "Parallax",
+     "code": "S01E04",
+     "show_id": "crossing",
+     "year": 2014,
+     "content_rating": "TV-14",
+     "overview": "Hundreds of strangers wash ashore claiming to be from a future that hasn't happened yet.",
+     "reminded": false,
+     "media_start": 0,
+     "media_end": null,
+     "images": {
+      "still": {
+       "src": "showcase/crossing-s1e4-still.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      },
+      "backdrop": {
+       "src": "showcase/crossing-backdrop.jpg",
+       "color": "#335c67",
+       "placeholder": null
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

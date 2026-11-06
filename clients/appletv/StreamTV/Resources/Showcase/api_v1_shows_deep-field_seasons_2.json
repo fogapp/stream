@@ -1,0 +1,191 @@
+{
+ "season_number": 2,
+ "title": "Season 2",
+ "overview": "Season 2 of Deep Field.",
+ "episodes": [
+  {
+   "kind": "episode",
+   "id": "deep-field-s2e1",
+   "code": "S02E01",
+   "title": "First Light",
+   "season_number": 2,
+   "episode_number": 1,
+   "show": {
+    "id": "deep-field",
+    "title": "Deep Field",
+    "images": {
+     "poster": {
+      "src": "showcase/deep-field-poster.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/deep-field-backdrop.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/deep-field-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/deep-field-s1e1-still.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "overview": "The crew argue over what they saw, and a long exposure shows something that shouldn't be there.",
+   "air_date": "2021-01-11",
+   "runtime_minutes": 48,
+   "available": true,
+   "resume_at": null,
+   "my_rating": null,
+   "versions": [],
+   "locked_fields": []
+  },
+  {
+   "kind": "episode",
+   "id": "deep-field-s2e2",
+   "code": "S02E02",
+   "title": "Redshift",
+   "season_number": 2,
+   "episode_number": 2,
+   "show": {
+    "id": "deep-field",
+    "title": "Deep Field",
+    "images": {
+     "poster": {
+      "src": "showcase/deep-field-poster.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/deep-field-backdrop.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/deep-field-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/deep-field-s1e2-still.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "overview": "A night at the telescope becomes a week, and the town below starts to notice the light.",
+   "air_date": "2021-02-12",
+   "runtime_minutes": 48,
+   "available": true,
+   "resume_at": null,
+   "my_rating": null,
+   "versions": [],
+   "locked_fields": []
+  },
+  {
+   "kind": "episode",
+   "id": "deep-field-s2e3",
+   "code": "S02E03",
+   "title": "The Long Exposure",
+   "season_number": 2,
+   "episode_number": 3,
+   "show": {
+    "id": "deep-field",
+    "title": "Deep Field",
+    "images": {
+     "poster": {
+      "src": "showcase/deep-field-poster.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/deep-field-backdrop.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/deep-field-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/deep-field-s1e3-still.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "overview": "The crew argue over what they saw, and a long exposure shows something that shouldn't be there.",
+   "air_date": "2021-03-13",
+   "runtime_minutes": 48,
+   "available": true,
+   "resume_at": null,
+   "my_rating": null,
+   "versions": [],
+   "locked_fields": []
+  },
+  {
+   "kind": "episode",
+   "id": "deep-field-s2e4",
+   "code": "S02E04",
+   "title": "Parallax",
+   "season_number": 2,
+   "episode_number": 4,
+   "show": {
+    "id": "deep-field",
+    "title": "Deep Field",
+    "images": {
+     "poster": {
+      "src": "showcase/deep-field-poster.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/deep-field-backdrop.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/deep-field-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/deep-field-s1e4-still.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "overview": "A night at the telescope becomes a week, and the town below starts to notice the light.",
+   "air_date": "2021-04-14",
+   "runtime_minutes": 48,
+   "available": true,
+   "resume_at": null,
+   "my_rating": null,
+   "versions": [],
+   "locked_fields": []
+  }
+ ]
+}

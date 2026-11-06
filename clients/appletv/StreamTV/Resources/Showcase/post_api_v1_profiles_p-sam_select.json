@@ -1,0 +1,11 @@
+{
+ "token": "showcase",
+ "profile": {
+  "id": "p-sam",
+  "name": "Sam",
+  "color": "#2a9d8f",
+  "avatar": null,
+  "has_pin": true,
+  "kind": "standard"
+ }
+}

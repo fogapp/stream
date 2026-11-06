@@ -1,0 +1,150 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# The transcoder process (PROPOSAL §3.2, §6.3): owns every live ffmpeg run.
+# Web asks for GOPs over Postgres NOTIFY (Playback::Signal); this answers by
+# starting or restarting runs (and live streams' relays, LiveRelays), and
+# every few seconds reaps finished runs,
+# stops idle ones and sweeps the cache. In quiet hours it also encodes
+# optimized versions (Playback::Optimizer), giving way to live viewers.
+#
+# It needs the database and the cache volume, never web: /up doesn't depend
+# on it, and a restart here only costs a playing session a brief rebuffer.
+# Reports to Lucid as its own process, not as another web.
+ENV["LUCID_PROCESS"] ||= "transcoder"
+require_relative "../config/environment"
+
+$stdout.sync = true
+log = ->(message) { puts "[transcoder #{Time.current.strftime('%H:%M:%S')}] #{message}" }
+# The encoder this machine has, found once here and shared with web
+# (Playback::Encoders.kind), then checked again every hour.
+encoder = Playback::Encoders.probe!
+probed_at = Time.current
+# A restart waits 50 ms for a later request to replace it: the last place
+# asked for is the one started (docs/PERF_PROPOSAL.md › P15).
+supervisor = Playback::Supervisor.new(encoder: encoder, log: log, debounce: 0.05)
+optimizer = Playback::Optimizer.new(encoder: encoder, log: log)
+relays = Playback::LiveRelays.new(encoder: encoder, log: log)
+log.call("started (encoder: #{encoder.serialize}, cache: #{Playback::Cache.root})")
+Lucid.event("Transcoder started", tags: { encoder: encoder.serialize })
+
+stop = false
+%w[TERM INT].each { |signal| Signal.trap(signal) { stop = true } }
+
+# Clearing the cache walks every session's fragments: on its own thread,
+# once a minute, so the loop answering seeks never waits behind it (P17).
+# The hourly encoder check is here too: its test encode takes up to 20 s.
+SWEEP_EVERY = 60
+sweeper = Thread.new do
+  swept = Time.current
+  until stop
+    sleep 1
+    if Time.current - probed_at > 1.hour
+      begin
+        found = ActiveRecord::Base.connection_pool.with_connection { Playback::Encoders.probe! }
+        log.call("encoder is now #{found.serialize}; restart the transcoder to use it") if found != encoder
+      rescue StandardError => e
+        log.call("encoder check failed: #{e.class}: #{e.message}")
+      ensure
+        probed_at = Time.current
+      end
+    end
+    next if Time.current - swept < SWEEP_EVERY
+
+    swept = Time.current
+    begin
+      ActiveRecord::Base.connection_pool.with_connection { supervisor.sweep }
+    rescue StandardError => e
+      log.call("sweep failed: #{e.class}: #{e.message}")
+      Rails.error.report(e, handled: true, source: "transcoder")
+    end
+  end
+end
+
+# Each fragment ffmpeg finishes is published under the GOP it holds
+# (Playback::Publisher) and announced to web as it lands
+# (Playback::Readiness), rather than web looking for it every 25 ms.
+PUBLISH_EVERY = 0.02
+publisher = Thread.new do
+  until stop
+    begin
+      ActiveRecord::Base.connection_pool.with_connection do
+        until stop
+          supervisor.publish_ready
+          sleep PUBLISH_EVERY
+        end
+      end
+    rescue StandardError => e
+      log.call("publishing failed: #{e.class}: #{e.message}")
+      Rails.error.report(e, handled: true, source: "transcoder")
+      sleep 1
+    end
+  end
+end
+
+# A lost database connection (a Postgres restart, a network blip) is
+# reconnected and listened on again; the runs carry on meanwhile.
+# It used to end the process, and with
+# it every run.
+last_tick = Time.at(0)
+begin
+  until stop
+    ActiveRecord::Base.connection_pool.with_connection do |connection|
+      connection.verify!
+      raw = connection.raw_connection
+      raw.async_exec("LISTEN #{Playback::Signal::CHANNEL}")
+      until stop
+        # Woken early for a held restart that's due.
+        raw.wait_for_notify([ supervisor.next_due_in || 0.5, 0.5 ].min) do |_channel, _pid, payload|
+          request = JSON.parse(payload.to_s)
+          next relays.request(request["relay"].to_s) if request.key?("relay")
+
+          supervisor.request(request.fetch("session").to_s, request.fetch("gop").to_i, request.fetch("variant", 0).to_i,
+            resent: request["resent"] == true)
+        rescue StandardError => e
+          log.call("request failed: #{e.class}: #{e.message}")
+          Rails.error.report(e, handled: true, source: "transcoder")
+        end
+        begin
+          supervisor.drain
+        rescue StandardError => e
+          log.call("restart failed: #{e.class}: #{e.message}")
+          Rails.error.report(e, handled: true, source: "transcoder")
+        end
+        begin
+          relays.tick
+        rescue StandardError => e
+          log.call("live relays failed: #{e.class}: #{e.message}")
+          Rails.error.report(e, handled: true, source: "transcoder")
+        end
+        next if Time.current - last_tick < 5
+
+        begin
+          supervisor.tick
+          optimizer.tick(busy: supervisor.busy? || relays.converting?)
+          Playback::TranscoderHeartbeat.beat!(encoder: encoder, busy: supervisor.busy? || relays.converting?)
+        rescue StandardError => e
+          log.call("tick failed: #{e.class}: #{e.message}")
+          Rails.error.report(e, handled: true, source: "transcoder")
+        end
+        last_tick = Time.current
+      end
+    rescue PG::Error, ActiveRecord::ConnectionNotEstablished, ActiveRecord::StatementInvalid => e
+      raise unless e.is_a?(PG::Error) || e.cause.is_a?(PG::Error) || e.is_a?(ActiveRecord::ConnectionNotEstablished)
+
+      log.call("lost the database (#{e.class}: #{e.message.lines.first&.strip}); listening again in a second")
+      Rails.error.report(e, handled: true, source: "transcoder")
+      connection.disconnect! rescue nil # rubocop:disable Style/RescueModifier
+      sleep 1
+    end
+  end
+ensure
+  stop = true
+  sweeper.join(2)
+  publisher.join(2)
+  optimizer.stop
+  supervisor.stop_all
+  relays.stop_all
+  Playback::TranscoderHeartbeat.stopped!
+  log.call("stopped")
+end

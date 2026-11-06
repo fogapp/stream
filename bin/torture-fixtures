@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Regenerates spec/fixtures/media/torture — files shaped the ways real
+# libraries break players, each played
+# through every way the server can play it by spec/services/playback/
+# torture_spec.rb. Tiny (2–4 s, 160x90) and committed, like the main
+# corpus (bin/media-fixtures); regenerate only to add a case. Needs ffmpeg
+# 7+ with libx264, libmp3lame and the wmv2/mpeg1 encoders.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+OUT=spec/fixtures/media/torture
+mkdir -p "$OUT"
+rm -f "$OUT"/*
+
+FF=(ffmpeg -hide_banner -nostdin -loglevel error -y)
+V=(-f lavfi -i "testsrc2=size=160x90:rate=25:duration=4")
+A=(-f lavfi -i "sine=frequency=440:sample_rate=48000:duration=4")
+X264=(-c:v libx264 -preset ultrafast -crf 40 -g 25)
+
+# A broadcast recording: MPEG-TS, ADTS AAC, a clock 26 hours in.
+"${FF[@]}" "${V[@]}" "${A[@]}" "${X264[@]}" -c:a aac -output_ts_offset 95000 -f mpegts "$OUT/recording_offset.ts"
+# H.264 in AVI: no presentation times on its packets.
+"${FF[@]}" "${V[@]}" "${A[@]}" "${X264[@]}" -bf 0 -c:a libmp3lame -b:a 64k "$OUT/h264_mp3.avi"
+# Xvid with packed B-frames and MP3, the 2000s' AVI.
+"${FF[@]}" "${V[@]}" "${A[@]}" -c:v mpeg4 -vtag XVID -bf 2 -q:v 20 -c:a libmp3lame -b:a 64k "$OUT/xvid_mp3.avi"
+# An AVCHD camcorder clip: interlaced 4:2:2 H.264 and AC-3 in MPEG-TS.
+"${FF[@]}" "${V[@]}" "${A[@]}" "${X264[@]}" -flags +ildct+ilme -x264-params tff=1 -pix_fmt yuv422p -c:a ac3 -f mpegts "$OUT/avchd_interlaced_422.mts"
+# A screen recording: 4:4:4 H.264.
+"${FF[@]}" "${V[@]}" "${A[@]}" "${X264[@]}" -pix_fmt yuv444p -c:a aac "$OUT/screen_444.mkv"
+# Anamorphic: 4:3 pixels shown 16:9.
+"${FF[@]}" "${V[@]}" "${A[@]}" "${X264[@]}" -aspect 16:9 -vf "scale=120:90,setsar=4/3" -c:a aac "$OUT/anamorphic.mkv"
+# A phone video held upright: rotated by its display matrix.
+"${FF[@]}" "${V[@]}" "${A[@]}" "${X264[@]}" -c:a aac -display_rotation:v:0 90 "$OUT/phone_rotated.mov" 2>/dev/null ||
+  { "${FF[@]}" "${V[@]}" "${A[@]}" "${X264[@]}" -c:a aac /tmp/phone.mov && "${FF[@]}" -display_rotation 90 -i /tmp/phone.mov -c copy "$OUT/phone_rotated.mov"; }
+# MPEG-1 and MP2 in an MPEG program stream: a video CD.
+"${FF[@]}" "${V[@]}" "${A[@]}" -c:v mpeg1video -b:v 100k -c:a mp2 -f mpeg "$OUT/vcd.mpg"
+# Windows Media.
+"${FF[@]}" "${V[@]}" "${A[@]}" -c:v wmv2 -b:v 100k -c:a wmav2 -b:a 32k "$OUT/windows.wmv"
+# Flash video with H.264 and AAC.
+"${FF[@]}" "${V[@]}" "${A[@]}" "${X264[@]}" -c:a aac "$OUT/flash.flv"
+# 96 kHz FLAC, past what MediaSource takes.
+"${FF[@]}" "${V[@]}" -f lavfi -i "sine=frequency=440:sample_rate=96000:duration=4" "${X264[@]}" -c:a flac "$OUT/flac_96k.mkv"
+# No sound at all.
+"${FF[@]}" "${V[@]}" "${X264[@]}" "$OUT/silent.mkv"
+# A commentary flagged default ahead of the film's own sound.
+"${FF[@]}" "${V[@]}" "${A[@]}" -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=4" -map 0:v -map 2:a -map 1:a "${X264[@]}" -c:a aac \
+  -disposition:a:0 default+comment -disposition:a:1 0 -metadata:s:a:0 title=Commentary "$OUT/commentary_first.mkv"
+
+ls -la "$OUT"

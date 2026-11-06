@@ -1,0 +1,57 @@
+{
+ "albums": [
+  {
+   "id": "al-summer",
+   "title": "Summer 2026",
+   "count": 5
+  },
+  {
+   "id": "al-xmas",
+   "title": "Christmas",
+   "count": 2
+  }
+ ],
+ "people": [
+  {
+   "id": "hp-ada-reyes",
+   "name": "Ada",
+   "count": 3,
+   "image": {
+    "src": "showcase/ada-reyes-profile.jpg",
+    "color": "#9d4edd",
+    "placeholder": null
+   }
+  },
+  {
+   "id": "hp-tom-okafor",
+   "name": "Tom",
+   "count": 4,
+   "image": {
+    "src": "showcase/tom-okafor-profile.jpg",
+    "color": "#ff7b00",
+    "placeholder": null
+   }
+  },
+  {
+   "id": "hp-june-park",
+   "name": "June",
+   "count": 5,
+   "image": {
+    "src": "showcase/june-park-profile.jpg",
+    "color": "#2a9d8f",
+    "placeholder": null
+   }
+  },
+  {
+   "id": "hp-leo-marsh",
+   "name": "Leo",
+   "count": 6,
+   "image": {
+    "src": "showcase/leo-marsh-profile.jpg",
+    "color": "#e63946",
+    "placeholder": null
+   }
+  }
+ ],
+ "favorites": 3
+}

@@ -1,0 +1,16 @@
+[
+ {
+  "id": "pl-later",
+  "title": "Watch later",
+  "item_count": 3,
+  "watch_later": true,
+  "first": null
+ },
+ {
+  "id": "pl-friday",
+  "title": "Friday nights",
+  "item_count": 5,
+  "watch_later": false,
+  "first": null
+ }
+]

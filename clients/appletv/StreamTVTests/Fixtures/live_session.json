@@ -1,0 +1,94 @@
+{
+    "id": "3785a82e-5bbc-41b3-81dd-cd89a1591e1a",
+    "method": "direct",
+    "profile_id": "465e9b2b-88a0-4061-95da-6779986afa56",
+    "title": "Alien",
+    "subtitle": "1979",
+    "back_path": "/movie/0c42f24e-d891-42f4-9bf9-ccff0b15fc9b",
+    "source": {
+        "kind": "file",
+        "url": "/media/s/3785a82e-5bbc-41b3-81dd-cd89a1591e1a.1790497439.cbd41af0d3dbbbaf84468c5b823f065b/original.mp4",
+        "mime_type": "video/mp4"
+    },
+    "progress_url": "/media/s/3785a82e-5bbc-41b3-81dd-cd89a1591e1a.1790497439.cbd41af0d3dbbbaf84468c5b823f065b/progress",
+    "events_url": "/media/s/3785a82e-5bbc-41b3-81dd-cd89a1591e1a.1790497439.cbd41af0d3dbbbaf84468c5b823f065b/events",
+    "audio_stream_index": 1,
+    "subtitles": [],
+    "burned_subtitle": null,
+    "fonts": [],
+    "chapters": [],
+    "markers": [],
+    "skip": {
+        "intro": false,
+        "recap": false,
+        "credits": false
+    },
+    "next_up": null,
+    "live_stream": null,
+    "live": {
+        "station_id": "489562fd-01cd-4079-ba1f-dfe693f97944",
+        "number": "5",
+        "name": "Movies",
+        "airing_id": "0f8bf5cd-622a-4038-95f3-7172318239dc",
+        "starts_at": "2026-09-27T01:00:00.000Z",
+        "ends_at": "2026-09-27T03:00:00.000Z",
+        "server_now": "2026-09-27T02:23:59.906Z",
+        "media_start": 0.0,
+        "media_end": null,
+        "next_airing_id": "6b0e7c1a-3f52-4d8e-9a0b-2c4f1e7d5a93",
+        "next_starts_at": "2026-09-27T03:00:00.000Z"
+    },
+    "segments": [],
+    "playlist_id": null,
+    "up_next_seconds": 10,
+    "still_watching_after": 3,
+    "loudness": {
+        "integrated": -21.8,
+        "true_peak": -17.6
+    },
+    "trickplay": {
+        "sheet_url": "/media/s/3785a82e-5bbc-41b3-81dd-cd89a1591e1a.1790497439.cbd41af0d3dbbbaf84468c5b823f065b/trickplay/1/sheet-{index}.webp",
+        "interval": 1,
+        "tile_width": 320,
+        "tile_height": 180,
+        "columns": 10,
+        "rows": 10,
+        "count": 2
+    },
+    "decision": {
+        "summary": "Plays as-is",
+        "video": {
+            "index": 0,
+            "copy": true,
+            "codec": "h264",
+            "height": 90,
+            "tonemap": false,
+            "retag_hvc1": false
+        },
+        "audio": {
+            "index": 1,
+            "copy": true,
+            "codec": "aac",
+            "channels": 1
+        }
+    },
+    "resume_at": 5039.9,
+    "duration_seconds": 2.0,
+    "frame_rate": 24.0,
+    "media_file": {
+        "id": "3e0bda7e-6862-4ce7-a58f-37b63886742b",
+        "filename": "Alien (1979).mp4",
+        "audio": [
+            {
+                "index": 1,
+                "codec": "aac",
+                "language": null,
+                "title": null,
+                "channels": 1,
+                "default": true,
+                "forced": false
+            }
+        ],
+        "subtitles": []
+    }
+}

@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-19",
+  "today": "2026-10-19",
+  "previous_date": "2026-10-18",
+  "next_date": "2026-10-20",
+  "games": [
+    {
+      "id": 849815,
+      "starts_at": "2026-10-20T00:08:00Z",
+      "start_time_tbd": false,
+      "state": "upcoming",
+      "status": "Scheduled",
+      "watchable": false,
+      "venue": "Tropicana Field",
+      "series": {
+        "name": "ALCS Game 6",
+        "status": "TB leads 3-2"
+      },
+      "double_header": null,
+      "inning": null,
+      "innings": [],
+      "scheduled_innings": 9,
+      "away": {
+        "team": {
+          "id": 114,
+          "name": "Cleveland Guardians",
+          "club": "Guardians",
+          "location": "Cleveland",
+          "abbreviation": "CLE",
+          "logo_url": "https://www.mlbstatic.com/team-logos/114.svg",
+          "logo_png_url": "https://img.mlbstatic.com/mlb-photos/image/upload/w_240,f_png,q_auto/v1/team/114/logo/spot/current"
+        },
+        "record": "2-3",
+        "score": null,
+        "hits": null,
+        "errors": null,
+        "winner": false,
+        "probable_pitcher": "Shawn Armstrong"
+      },
+      "home": {
+        "team": {
+          "id": 139,
+          "name": "Tampa Bay Rays",
+          "club": "Rays",
+          "location": "Tampa Bay",
+          "abbreviation": "TB",
+          "logo_url": "https://www.mlbstatic.com/team-logos/139.svg",
+          "logo_png_url": "https://img.mlbstatic.com/mlb-photos/image/upload/w_240,f_png,q_auto/v1/team/139/logo/spot/current"
+        },
+        "record": "3-2",
+        "score": null,
+        "hits": null,
+        "errors": null,
+        "winner": false,
+        "probable_pitcher": "Freddy Peralta"
+      },
+      "broadcasts": [
+        {
+          "name": "TBS",
+          "side": "national"
+        },
+        {
+          "name": "TruTV",
+          "side": "national"
+        }
+      ],
+      "decisions": null
+    }
+  ]
+}

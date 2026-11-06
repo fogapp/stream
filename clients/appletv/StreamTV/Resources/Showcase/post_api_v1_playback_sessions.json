@@ -1,0 +1,146 @@
+{
+ "id": "ps-showcase",
+ "method": "direct_play",
+ "profile_id": "p-alex",
+ "title": "Deep Field",
+ "subtitle": "S01E03 \u00b7 The Long Exposure",
+ "back_path": "/show/deep-field?season=1",
+ "show_id": "deep-field",
+ "season_number": 1,
+ "source": {
+  "kind": "file",
+  "url": "showcase/showcase.mp4",
+  "mime_type": "video/mp4"
+ },
+ "progress_url": "showcase/progress",
+ "events_url": "showcase/events",
+ "audio_stream_index": 1,
+ "subtitles": [
+  {
+   "id": "sub-en",
+   "language": "en",
+   "title": null,
+   "forced": false,
+   "default": true,
+   "format": "srt",
+   "stream_index": 3,
+   "urls": {
+    "vtt": "showcase/showcase.vtt"
+   }
+  },
+  {
+   "id": "sub-fr",
+   "language": "fr",
+   "title": "SDH",
+   "forced": false,
+   "default": false,
+   "format": "pgs",
+   "stream_index": 4,
+   "urls": {}
+  }
+ ],
+ "fonts": [],
+ "chapters": [
+  {
+   "start": 0,
+   "end": 5,
+   "title": "Cold open"
+  },
+  {
+   "start": 5,
+   "end": 12,
+   "title": "The harbour"
+  },
+  {
+   "start": 12,
+   "end": 20,
+   "title": "Northbound"
+  }
+ ],
+ "trickplay": {
+  "sheet_url": "showcase/trickplay-sheet-{index}.webp",
+  "interval": 1,
+  "tile_width": 320,
+  "tile_height": 180,
+  "columns": 5,
+  "rows": 4,
+  "count": 20
+ },
+ "markers": [
+  {
+   "kind": "intro",
+   "start": 2,
+   "end": 8
+  },
+  {
+   "kind": "credits",
+   "start": 15,
+   "end": 20
+  }
+ ],
+ "skip": {
+  "intro": false,
+  "recap": false,
+  "credits": false
+ },
+ "next_up": {
+  "kind": "episode",
+  "id": "deep-field-s1e4",
+  "code": "S01E04",
+  "title": "Parallax",
+  "show_title": "Deep Field",
+  "image": {
+   "src": "showcase/deep-field-s1e4-still.jpg",
+   "color": null,
+   "placeholder": null
+  },
+  "playlist_id": null
+ },
+ "segments": [
+  {
+   "category": "sponsor",
+   "start": 9,
+   "end": 11,
+   "action": "show"
+  }
+ ],
+ "playlist_id": null,
+ "up_next_seconds": 10,
+ "still_watching_after": 3,
+ "loudness": null,
+ "decision": {
+  "summary": "Direct play",
+  "video": null,
+  "audio": null
+ },
+ "resume_at": 0,
+ "duration_seconds": 20,
+ "frame_rate": 24,
+ "burned_subtitle": null,
+ "media_file": {
+  "id": "mf-showcase",
+  "filename": "Deep Field S01E03.mkv",
+  "audio": [
+   {
+    "index": 1,
+    "codec": "eac3",
+    "language": "en",
+    "title": null,
+    "channels": 6,
+    "default": true,
+    "forced": false
+   },
+   {
+    "index": 2,
+    "codec": "aac",
+    "language": "fr",
+    "title": "Commentary",
+    "channels": 2,
+    "default": false,
+    "forced": false
+   }
+  ],
+  "subtitles": []
+ },
+ "live": null
+}

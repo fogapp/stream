@@ -1,0 +1,168 @@
+{
+ "id": "mira-stone",
+ "name": "Mira Stone",
+ "image": {
+  "src": "showcase/mira-stone-profile.jpg",
+  "color": "#457b9d",
+  "placeholder": null
+ },
+ "tmdb_id": 1004,
+ "movies": [
+  {
+   "kind": "movie",
+   "id": "signal-fires",
+   "title": "Signal Fires",
+   "year": 1998,
+   "content_rating": "PG-13",
+   "runtime_minutes": 124,
+   "images": {
+    "poster": {
+     "src": "showcase/signal-fires-poster.jpg",
+     "color": "#6a040f",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/signal-fires-backdrop.jpg",
+     "color": "#6a040f",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/signal-fires-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  },
+  {
+   "kind": "movie",
+   "id": "midnight-transit",
+   "title": "Midnight Transit",
+   "year": 2012,
+   "content_rating": "R",
+   "runtime_minutes": 97,
+   "images": {
+    "poster": {
+     "src": "showcase/midnight-transit-poster.jpg",
+     "color": "#03071e",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/midnight-transit-backdrop.jpg",
+     "color": "#03071e",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  },
+  {
+   "kind": "movie",
+   "id": "orchardist",
+   "title": "The Orchardist",
+   "year": 2008,
+   "content_rating": "PG",
+   "runtime_minutes": 112,
+   "images": {
+    "poster": {
+     "src": "showcase/orchardist-poster.jpg",
+     "color": "#386641",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/orchardist-backdrop.jpg",
+     "color": "#386641",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  },
+  {
+   "kind": "movie",
+   "id": "copperline",
+   "title": "Copperline",
+   "year": 2022,
+   "content_rating": "PG-13",
+   "runtime_minutes": 140,
+   "images": {
+    "poster": {
+     "src": "showcase/copperline-poster.jpg",
+     "color": "#582f0e",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/copperline-backdrop.jpg",
+     "color": "#582f0e",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/copperline-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  }
+ ],
+ "shows": [
+  {
+   "kind": "show",
+   "id": "deep-field",
+   "title": "Deep Field",
+   "year": 2020,
+   "content_rating": "TV-14",
+   "images": {
+    "poster": {
+     "src": "showcase/deep-field-poster.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/deep-field-backdrop.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/deep-field-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "unwatched_count": 0,
+   "arrival": null
+  },
+  {
+   "kind": "show",
+   "id": "office-hours",
+   "title": "Office Hours",
+   "year": 2005,
+   "content_rating": "TV-PG",
+   "images": {
+    "poster": {
+     "src": "showcase/office-hours-poster.jpg",
+     "color": "#1b263b",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/office-hours-backdrop.jpg",
+     "color": "#1b263b",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/office-hours-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "unwatched_count": 0,
+   "arrival": null
+  }
+ ]
+}

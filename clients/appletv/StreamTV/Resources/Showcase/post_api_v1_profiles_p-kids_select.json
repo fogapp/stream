@@ -1,0 +1,11 @@
+{
+ "token": "showcase",
+ "profile": {
+  "id": "p-kids",
+  "name": "Kids",
+  "color": "#e63946",
+  "avatar": null,
+  "has_pin": false,
+  "kind": "kid"
+ }
+}

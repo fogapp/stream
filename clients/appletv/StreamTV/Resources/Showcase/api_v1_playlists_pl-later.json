@@ -1,0 +1,97 @@
+{
+ "id": "pl-later",
+ "title": "Watch later",
+ "item_count": 3,
+ "watch_later": true,
+ "first": null,
+ "pinned_to_home": false,
+ "items": [
+  {
+   "kind": "movie",
+   "id": "glass-harbor",
+   "title": "The Glass Harbor",
+   "year": 2021,
+   "content_rating": "R",
+   "runtime_minutes": 131,
+   "images": {
+    "poster": {
+     "src": "showcase/glass-harbor-poster.jpg",
+     "color": "#0b3d3a",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/glass-harbor-backdrop.jpg",
+     "color": "#0b3d3a",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/glass-harbor-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  },
+  {
+   "kind": "episode",
+   "id": "deep-field-s1e4",
+   "code": "S01E04",
+   "title": "Parallax",
+   "season_number": 1,
+   "episode_number": 4,
+   "show": {
+    "id": "deep-field",
+    "title": "Deep Field",
+    "images": {
+     "poster": {
+      "src": "showcase/deep-field-poster.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "backdrop": {
+      "src": "showcase/deep-field-backdrop.jpg",
+      "color": "#10002b",
+      "placeholder": null
+     },
+     "logo": {
+      "src": "showcase/deep-field-logo.png",
+      "color": null,
+      "placeholder": null
+     }
+    }
+   },
+   "images": {
+    "still": {
+     "src": "showcase/deep-field-s1e4-still.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  },
+  {
+   "kind": "video",
+   "id": "vid-dishwasher",
+   "title": "The dishwasher, revisited",
+   "upload_date": "2026-09-21",
+   "duration_seconds": 754,
+   "channel": {
+    "id": "ch-technology-connections",
+    "title": "Technology Connections",
+    "avatar": null
+   },
+   "images": {
+    "thumb": {
+     "src": "showcase/kingfisher-backdrop.jpg",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false
+  }
+ ]
+}

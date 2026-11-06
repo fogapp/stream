@@ -1,0 +1,168 @@
+{
+ "id": "tom-okafor",
+ "name": "Tom Okafor",
+ "image": {
+  "src": "showcase/tom-okafor-profile.jpg",
+  "color": "#ff7b00",
+  "placeholder": null
+ },
+ "tmdb_id": 1001,
+ "movies": [
+  {
+   "kind": "movie",
+   "id": "glass-harbor",
+   "title": "The Glass Harbor",
+   "year": 2021,
+   "content_rating": "R",
+   "runtime_minutes": 131,
+   "images": {
+    "poster": {
+     "src": "showcase/glass-harbor-poster.jpg",
+     "color": "#0b3d3a",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/glass-harbor-backdrop.jpg",
+     "color": "#0b3d3a",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/glass-harbor-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  },
+  {
+   "kind": "movie",
+   "id": "paper-satellites",
+   "title": "Paper Satellites",
+   "year": 2016,
+   "content_rating": "PG",
+   "runtime_minutes": 102,
+   "images": {
+    "poster": {
+     "src": "showcase/paper-satellites-poster.jpg",
+     "color": "#3a0ca3",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/paper-satellites-backdrop.jpg",
+     "color": "#3a0ca3",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  },
+  {
+   "kind": "movie",
+   "id": "low-tide",
+   "title": "Low Tide",
+   "year": 2023,
+   "content_rating": "R",
+   "runtime_minutes": 109,
+   "images": {
+    "poster": {
+     "src": "showcase/low-tide-poster.jpg",
+     "color": "#283618",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/low-tide-backdrop.jpg",
+     "color": "#283618",
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  },
+  {
+   "kind": "movie",
+   "id": "signal-fires",
+   "title": "Signal Fires",
+   "year": 1998,
+   "content_rating": "PG-13",
+   "runtime_minutes": 124,
+   "images": {
+    "poster": {
+     "src": "showcase/signal-fires-poster.jpg",
+     "color": "#6a040f",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/signal-fires-backdrop.jpg",
+     "color": "#6a040f",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/signal-fires-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "progress": null,
+   "watched": false,
+   "credit": null
+  }
+ ],
+ "shows": [
+  {
+   "kind": "show",
+   "id": "deep-field",
+   "title": "Deep Field",
+   "year": 2020,
+   "content_rating": "TV-14",
+   "images": {
+    "poster": {
+     "src": "showcase/deep-field-poster.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/deep-field-backdrop.jpg",
+     "color": "#10002b",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/deep-field-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "unwatched_count": 0,
+   "arrival": null
+  },
+  {
+   "kind": "show",
+   "id": "office-hours",
+   "title": "Office Hours",
+   "year": 2005,
+   "content_rating": "TV-PG",
+   "images": {
+    "poster": {
+     "src": "showcase/office-hours-poster.jpg",
+     "color": "#1b263b",
+     "placeholder": null
+    },
+    "backdrop": {
+     "src": "showcase/office-hours-backdrop.jpg",
+     "color": "#1b263b",
+     "placeholder": null
+    },
+    "logo": {
+     "src": "showcase/office-hours-logo.png",
+     "color": null,
+     "placeholder": null
+    }
+   },
+   "unwatched_count": 0,
+   "arrival": null
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+    "id": "a15435bd-066c-4cda-bd77-e165b885029a",
+    "name": "Fixture",
+    "browser": "Browser",
+    "label": "Fixture",
+    "remote_control": false,
+    "listening": false,
+    "now_playing": {
+        "title": "Heat",
+        "subtitle": "1995"
+    }
+}

@@ -1,0 +1,61 @@
+{
+    "id": "ea228cf5-eab8-4ad4-9a7d-214c924ffdc1",
+    "method": "remux",
+    "profile_id": "6a79c80c-2c70-40eb-916f-fad15cef472d",
+    "title": "Front door",
+    "subtitle": "By the porch",
+    "back_path": "/library/a3aa387a-3d24-4d85-a4ca-7140bd4d11c3",
+    "source": {
+        "kind": "hls",
+        "url": "/media/s/ea228cf5-eab8-4ad4-9a7d-214c924ffdc1.1791592056.c57398cead877ba65486f33ab30975c8/live/index.m3u8",
+        "mime_type": "application/vnd.apple.mpegurl"
+    },
+    "progress_url": "/media/s/ea228cf5-eab8-4ad4-9a7d-214c924ffdc1.1791592056.c57398cead877ba65486f33ab30975c8/progress",
+    "events_url": "/media/s/ea228cf5-eab8-4ad4-9a7d-214c924ffdc1.1791592056.c57398cead877ba65486f33ab30975c8/events",
+    "audio_stream_index": 0,
+    "subtitles": [],
+    "burned_subtitle": null,
+    "fonts": [],
+    "chapters": [],
+    "markers": [],
+    "skip": {
+        "intro": false,
+        "recap": false,
+        "credits": false
+    },
+    "next_up": null,
+    "live": null,
+    "live_stream": {
+        "id": "41f81be3-b8a3-4971-8f3b-c793a5f9a26d",
+        "name": "Front door",
+        "kind": "camera",
+        "library_id": "a3aa387a-3d24-4d85-a4ca-7140bd4d11c3"
+    },
+    "segments": [],
+    "playlist_id": null,
+    "up_next_seconds": 10,
+    "still_watching_after": 3,
+    "loudness": null,
+    "trickplay": null,
+    "decision": {
+        "summary": "Relayed live from rtsps://192.168.1.1:7441 \u2014 repackaged as it arrives, no quality loss",
+        "video": {
+            "index": 1,
+            "copy": true,
+            "codec": "h264",
+            "height": 2160,
+            "tonemap": false,
+            "retag_hvc1": false
+        },
+        "audio": {
+            "index": 0,
+            "copy": true,
+            "codec": "aac",
+            "channels": 1
+        }
+    },
+    "resume_at": 0.0,
+    "duration_seconds": null,
+    "frame_rate": null,
+    "media_file": null
+}
