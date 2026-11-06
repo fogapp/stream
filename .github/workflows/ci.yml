@@ -35,7 +35,7 @@ jobs:
       BUNDLE_JOBS: "4"
       BUNDLE_PATH: vendor/bundle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: bin/check-tracked
       # The tools the production image ships: specs shell out to real
@@ -71,7 +71,7 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
