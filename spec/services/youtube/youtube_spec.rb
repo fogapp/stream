@@ -175,8 +175,9 @@ RSpec.describe "YouTube pull" do
       path = File.join(root, "TC", "20240131 - Dishwashers [Ql7w1yX7hbI].mp4")
       expect(Youtube::YtDlp).to receive(:download) do |url, args|
         expect(url).to eq("https://www.youtube.com/watch?v=Ql7w1yX7hbI")
-        expect(args.each_cons(2).to_a).to include([ "--paths", "home:#{File.join(root, 'TC')}" ], [ "--merge-output-format", "mp4/mkv" ])
+        expect(args.each_cons(2).to_a).to include([ "--paths", "home:#{File.join(root, 'TC')}" ], [ "--merge-output-format", "mp4/webm/mkv" ])
         expect(args[args.index("-f") + 1]).to start_with("bv*[vcodec^=avc1][height<=720]+ba[acodec^=mp4a]")
+          .and include("bv*[height<=720]+ba[acodec=opus]/bv*[height<=720]+ba")
         FileUtils.mkdir_p(File.dirname(path))
         File.write(path, "video")
         ToolRunner::Result.new(status: 0, stdout: "#{path}\n", stderr: "")

@@ -14,7 +14,7 @@ import { useAutoHide } from "@/components/player/useAutoHide";
 import { AtPlayhead, usePlayhead, usePlayheadValue } from "@/components/player/playhead";
 import { attachSource } from "@/components/player/source";
 import { failureMessage, mediaErrorFailure, type PlayFailure } from "@/components/player/failure";
-import { playOrMute, useAudioLevelling, volumeScale } from "@/components/player/audio";
+import { needsAudioGraph, playOrMute, useAudioLevelling, volumeScale } from "@/components/player/audio";
 import { KeySheet } from "@/components/player/KeySheet";
 import { RelatedPanel } from "@/components/player/RelatedPanel";
 import { hasRelated } from "@/components/player/related";
@@ -269,18 +269,28 @@ export function Player({
   const safariHls = session.source.kind === "hls" && prefersNativeHls();
   const nativeHls = safariHls && !(audioPrefs.night && hasMediaSource());
   const webAudio = session.source.kind === "file" || !nativeHls;
-  const levelling = useAudioLevelling(videoElement, session.loudness, { ...audioPrefs, webAudio });
+  // The sound as it reaches the element: the file's own rate when it's copied.
+  const plannedAudio = session.decision.audio;
+  const sampleRate = plannedAudio?.copy ? (session.media_file?.audio.find((track) => track.index === plannedAudio.index)?.sample_rate ?? null) : null;
+  // Each time a routed element's sound is lined up with its picture again:
+  // counted for the stats overlay, and sent as a recovery (set by the source).
+  const [resyncs, setResyncs] = useState(0);
+  const onResync = useRef<(() => void) | null>(null);
+  const levelling = useAudioLevelling(videoElement, session.loudness, { ...audioPrefs, webAudio, sampleRate }, () => onResync.current?.());
   const audioGraph = levelling.routed;
   const routeAudio = levelling.route;
   const scale = volumeScale(session.loudness, audioPrefs.levelling, audioGraph);
-  // The sound goes through the levelling graph from the moment the element
-  // exists, before it has any data (docs/PERF_PROPOSAL.md › P22): the press
-  // that started playing already started the shared AudioContext, so
-  // nothing is moved once it's audible. (Night mode turned on in Safari
-  // moves a stream onto hls.js mid-film, and is routed then.)
+  // The sound goes through the levelling graph only when this file needs
+  // it (night mode, or turning it up: needsAudioGraph) — Web Audio costs
+  // the picture its sync — and then from the moment the element exists,
+  // before it has any data (docs/PERF_PROPOSAL.md › P22): the press that
+  // started playing already started the shared AudioContext, so nothing is
+  // moved once it's audible. Night mode turned on mid-film routes it then
+  // (and in Safari moves a stream onto hls.js).
+  const wantsGraph = webAudio && needsAudioGraph(session.loudness, audioPrefs);
   useEffect(() => {
-    if (webAudio) routeAudio();
-  }, [webAudio, routeAudio]);
+    if (wantsGraph) routeAudio();
+  }, [wantsGraph, routeAudio]);
 
   useEffect(() => {
     if (videoElement) videoElement.playbackRate = rate;
@@ -386,6 +396,10 @@ export function Player({
       onUnsupported: () => onFailedRef.current("This browser can't play streamed video."),
       onFailure: fallBack,
     }, { fallback: true });
+    onResync.current = () => {
+      recovered.add("audio resynced", element.currentTime);
+      setResyncs((count) => count + 1);
+    };
     // A start that never comes is a failure too: thirty seconds of nothing.
     const startTimer = window.setTimeout(() => {
       if (element.readyState < 2 && !element.error) fallBack({ failureClass: "stalled", cause: "nothing to show after 30 s" });
@@ -393,6 +407,7 @@ export function Player({
     return () => {
       window.clearTimeout(startTimer);
       detachedAt.current = { startAt, at: element.readyState > 0 ? element.currentTime : from };
+      onResync.current = null;
       recovered.flush();
       attached.detach();
     };
@@ -804,7 +819,7 @@ export function Player({
           <span />
         )}
 
-        {showStats ? <StatsOverlay video={videoElement} session={session} quality={quality} startup={timing.startup} lastSeek={timing.lastSeek} /> : null}
+        {showStats ? <StatsOverlay video={videoElement} session={session} quality={quality} startup={timing.startup} lastSeek={timing.lastSeek} sound={{ levelling: audioPrefs.levelling, night: audioPrefs.night, sampleRate, resyncs }} /> : null}
         {over && endScreen ? null : (
           <AtPlayhead playhead={playhead}>
             {(current) => <SponsorSkip segments={session.segments} current={current} onSeek={(seconds) => seekTo(seconds, { now: true })} />}

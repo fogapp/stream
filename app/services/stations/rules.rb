@@ -10,6 +10,9 @@ module Stations
   # answers only the rules it can (channel, library, upload year, length):
   # genres, keywords, networks, studios, a rating floor or people leave
   # videos out, and a rating ceiling lets them in only with unrated titles.
+  # Unwatched leaves out what any profile (or any of the picked ones) has
+  # finished — the household's lineup, so nobody's in particular unless
+  # asked.
   module Rules
     extend T::Sig
 
@@ -19,7 +22,8 @@ module Stations
     DEFAULT_KINDS = T.let(%w[movie episode].freeze, T::Array[String])
     UUID = /\A[0-9a-f-]{36}\z/
     LISTS = T.let(%w[genres exclude_genres networks studios keywords exclude_keywords].freeze, T::Array[String])
-    IDS = T.let(%w[show_ids exclude_show_ids movie_ids exclude_movie_ids collection_ids channel_ids library_ids person_ids].freeze, T::Array[String])
+    IDS = T.let(%w[show_ids exclude_show_ids movie_ids exclude_movie_ids collection_ids channel_ids library_ids person_ids
+      unwatched_profile_ids].freeze, T::Array[String])
 
     sig { params(raw: T.untyped).returns(T::Hash[String, T.untyped]) }
     def self.normalize(raw)
@@ -32,6 +36,8 @@ module Stations
       IDS.each { |key| rules[key] = Array(raw[key]).map(&:to_s).grep(UUID).uniq.first(500) }
       # Picked channels would narrow shows and films to none without videos.
       rules.delete("channel_ids") unless rules.fetch("kinds").include?("video")
+      unwatched = bool.call(raw["unwatched"])
+      rules.delete("unwatched_profile_ids") unless unwatched
       LISTS.each { |key| rules[key] = Array(raw[key]).map { |value| value.to_s.strip }.compact_blank.uniq.first(30) }
       rules.merge(
         "year_from" => int.call(raw["year_from"]), "year_to" => int.call(raw["year_to"]),
@@ -39,7 +45,8 @@ module Stations
         "max_rating_age" => int.call(raw["max_rating_age"])&.clamp(0, 21),
         "allow_unrated" => raw.key?("allow_unrated") ? bool.call(raw["allow_unrated"]) : true,
         "min_minutes" => int.call(raw["min_minutes"]), "max_minutes" => int.call(raw["max_minutes"]),
-        "include_specials" => bool.call(raw["include_specials"])
+        "include_specials" => bool.call(raw["include_specials"]),
+        "unwatched" => unwatched || nil
       ).compact.reject { |_, value| value == [] }
     end
   end

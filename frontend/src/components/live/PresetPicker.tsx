@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Baby, CalendarHeart, Clapperboard, History, Laugh, PencilRuler, Repeat, Tv } from "lucide-react";
+import { Baby, CalendarHeart, Clapperboard, History, Laugh, MonitorPlay, PencilRuler, Repeat, Tv } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import type { PresetKind, StationOptions } from "@/types";
@@ -123,6 +123,15 @@ export function PresetPicker({ options, pending, onPick, onScratch }: { options:
         <Button disabled={pending} onClick={() => onPick("holiday", holiday)}>
           Make it
         </Button>
+      </Card>
+      <Card icon={<MonitorPlay className="h-5 w-5" aria-hidden />} title="Unwatched YouTube" text="The YouTube videos nobody has watched yet, shuffled across channels and back to back. What's watched drops out of the schedule from the next night on.">
+        {options.youtube_channels.length > 0 ? (
+          <Button disabled={pending} onClick={() => onPick("youtube")}>
+            Make it
+          </Button>
+        ) : (
+          <p className="text-sm text-muted">No YouTube channels yet — add one in Settings › YouTube.</p>
+        )}
       </Card>
       <Card icon={<PencilRuler className="h-5 w-5" aria-hidden />} title="From scratch" text="An empty channel: choose its mix, then add dayparts, appointments and specials.">
         <Button variant="secondary" disabled={pending} onClick={onScratch}>

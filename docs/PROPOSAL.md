@@ -722,7 +722,9 @@ turning the TV on and seeing what's on, with nothing but the library.
   channel, library, upload year and length, and counts as unrated); every
   network a show aired on and the studios behind a film (TMDB's); genres
   and keywords, in and out; years (an episode's own air date); rating
-  floor and ceiling; length — in an **ordering**: shuffled (not repeated
+  floor and ceiling; length; unwatched (nothing any profile — or any of
+  the chosen ones — has finished, read as each plan is made, so what's
+  seen leaves from the next night's schedule) — in an **ordering**: shuffled (not repeated
   within the channel's window), in order, rotating shows like syndication,
   marathons, or by original air date. Cursors ("Breaking Bad is up to
   S2E4") are read from the airings themselves, so a rebuild that drops the

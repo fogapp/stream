@@ -4,7 +4,8 @@
 module Youtube
   # Fetches one video into its channel's folder (PROPOSAL §5.4): the best
   # format that plays in a browser as it is (H.264 and AAC in MP4, up to
-  # the channel's height), with the info.json, thumbnail and subtitles the
+  # the channel's height; above 1080p, where YouTube has no H.264, VP9 or
+  # AV1 with Opus in WebM), with the info.json, thumbnail and subtitles the
   # channel shape reads. Then a scan of that folder takes it from there.
   # Fetched again, it goes over the file it fetched before.
   class Downloader
@@ -53,8 +54,11 @@ module Youtube
     sig { params(folder: String).returns(T::Array[String]) }
     def args(folder)
       height = @channel.max_height
+      # Past H.264, Opus with the picture: VP9 or AV1 and Opus merge into
+      # WebM, which a browser plays as a file. Any other sound with them
+      # makes an MKV, which only plays repackaged as a stream.
       format = "bv*[vcodec^=avc1][height<=#{height}]+ba[acodec^=mp4a]/b[vcodec^=avc1][height<=#{height}]/" \
-               "bv*[height<=#{height}]+ba/b[height<=#{height}]/b"
+               "bv*[height<=#{height}]+ba[acodec=opus]/bv*[height<=#{height}]+ba/b[height<=#{height}]/b"
       # A video someone asked for is fetched whatever the channel's rules say.
       rules = !@download.by_hand
       filters = rules && @channel.skip_live ? [ "--match-filters", LIVE_FILTER ] : []
@@ -63,7 +67,7 @@ module Youtube
       overwrite = @download.path ? "--force-overwrites" : "--no-overwrites"
       [
         "--no-simulate", "--print", "after_move:filepath", "--quiet",
-        "-f", format, "--merge-output-format", "mp4/mkv",
+        "-f", format, "--merge-output-format", "mp4/webm/mkv",
         "--paths", "home:#{folder}", "--paths", "temp:#{temp_dir}", "--output", OUTPUT, "--windows-filenames",
         "--write-info-json", "--no-write-playlist-metafiles", "--write-thumbnail", "--convert-thumbnails", "jpg",
         "--write-subs", "--sub-langs", "en.*,-live_chat", "--sub-format", "vtt/srt/best",

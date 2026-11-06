@@ -139,10 +139,14 @@ RSpec.describe "Grid", type: :request do
       Show.create!(household: household, library: library, folder: "a", title: "The Office", networks: [ "NBC" ], genres: [ "Comedy" ],
         keywords: [ "sitcom" ])
       Show.create!(household: household, library: library, folder: "b", title: "Frasier", networks: [ "NBC" ], genres: [ "Comedy" ])
+      Profile.create!(household: create_household(name: "Elsewhere"), name: "Neighbour")
       get "/api/v1/stations/options", headers: auth_headers(admin)
       expect(json["networks"]).to eq([ { "value" => "NBC", "count" => 2 } ])
       expect(json["keywords"]).to eq([ { "value" => "sitcom", "count" => 1 } ])
       expect(json["shows"].map { |row| row["title"] }).to eq([ "Frasier", "The Office" ])
+      # Whose watching an unwatched block counts: this household's profiles only.
+      expect(json["profiles"].map { |row| row["name"] }).to match_array(Profile.unscoped.where(household: household).pluck(:name))
+      expect(json["profiles"].map { |row| row["name"] }).not_to include("Neighbour")
     end
   end
 

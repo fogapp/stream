@@ -149,6 +149,5 @@ end
 
 class RubyVM::InstructionSequence
   extend ::RequireHooks::LoadIseq
-  extend ::Bootsnap::CompileCache::ISeq::Compiler::PatchRubyBug22023
   extend ::Bootsnap::CompileCache::ISeq::InstructionSequenceMixin
 end

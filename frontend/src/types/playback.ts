@@ -49,6 +49,8 @@ export interface Track {
   language: string | null;
   title: string | null;
   channels: number | null;
+  /** Hz, for an audio track; null when the file doesn't say. */
+  sample_rate: number | null;
   default: boolean;
   forced: boolean;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isResyncSeek } from "@/components/player/audio";
 
 /**
  * How long playing took to start and seeks took to land
@@ -169,7 +170,8 @@ export function usePlaybackTiming(
     if (!element) return;
     let seeking: { at: number; ready: boolean } | null = null;
     const onSeeking = () => {
-      if (!started.current) return;
+      // A resync's seek (audio.ts) is the player's, not the viewer's.
+      if (!started.current || isResyncSeek(element)) return;
       seeking = { at: performance.now(), ready: isBuffered(element.buffered, element.currentTime) };
     };
     const onSeeked = () => {

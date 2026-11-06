@@ -9,34 +9,55 @@
 module JsonRpcHandler
   extend ::JsonRpcHandler
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:200
+  # `response` with each part JSON cannot generate replaced with Internal error. A batch is replaced item by item,
+  # so the other items keep their results.
+  #
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:92
+  def encodable_response(response, id_validation_pattern: T.unsafe(nil)); end
+
+  # An error response for a request whose id could not be read carries no `id` member: JSON-RPC 2.0 puts
+  # a null there, but the MCP schema allows only a string or an integer, and the Streamable HTTP transport
+  # specification describes such a body as an error response that has no id.
+  #
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:248
   def error_response(id:, id_validation_pattern:, error:); end
 
   # pkg:gem/mcp#lib/json_rpc_handler.rb:28
   def handle(request, id_validation_pattern: T.unsafe(nil), &method_finder); end
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:56
-  def handle_json(request_json, id_validation_pattern: T.unsafe(nil), &method_finder); end
+  # `on_generate_error`, when given, is called with the `JSON::GeneratorError` of a response that cannot be generated,
+  # before that response is replaced with Internal error.
+  #
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:58
+  def handle_json(request_json, id_validation_pattern: T.unsafe(nil), on_generate_error: T.unsafe(nil), &method_finder); end
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:148
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:191
   def handle_request_error(error, id, id_validation_pattern); end
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:78
+  # The error answering a request whose response cannot be generated: a result or an error holding a string that
+  # is not valid UTF-8, typically one the request carried and the SDK or a handler repeated, such as a tool name
+  # in its Tool not found error. It carries the request id when the response has one, which was validated before
+  # the method ran.
+  #
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:105
+  def internal_error_for(response, id_validation_pattern: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:113
   def process_request(request, id_validation_pattern:, &method_finder); end
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:192
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:237
   def success_response(id:, result:); end
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:177
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:220
   def valid_id?(id, pattern = T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:184
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:229
   def valid_method_name?(method); end
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:188
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:233
   def valid_params?(params); end
 
-  # pkg:gem/mcp#lib/json_rpc_handler.rb:173
+  # pkg:gem/mcp#lib/json_rpc_handler.rb:216
   def valid_version?(version); end
 end
 
@@ -80,10 +101,10 @@ JsonRpcHandler::Version::V2_0 = T.let(T.unsafe(nil), String)
 # pkg:gem/mcp#lib/mcp/configuration.rb:3
 module MCP
   class << self
-    # pkg:gem/mcp#lib/mcp.rb:35
+    # pkg:gem/mcp#lib/mcp.rb:36
     def configuration; end
 
-    # pkg:gem/mcp#lib/mcp.rb:31
+    # pkg:gem/mcp#lib/mcp.rb:32
     def configure; end
   end
 end
@@ -254,6 +275,8 @@ end
 
 # pkg:gem/mcp#lib/mcp/client/elicitation.rb:4
 class MCP::Client
+  include ::MCP::Client::Skills
+
   # Initializes a new MCP::Client instance.
   #
   # @param transport [Object] The transport object to use for communication with the server.
@@ -271,7 +294,7 @@ class MCP::Client
   #   transport = MCP::Client::HTTP.new(url: "http://localhost:3000")
   #   client = MCP::Client.new(transport: transport)
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:133
+  # pkg:gem/mcp#lib/mcp/client.rb:138
   def initialize(transport:, input_required_max_rounds: T.unsafe(nil), max_pages: T.unsafe(nil)); end
 
   # Calls a tool via the transport layer and returns the full response from the server.
@@ -313,7 +336,7 @@ class MCP::Client
   #   keyed identically (manual retry legs).
   # @param request_state [String, nil] The opaque `requestState` echoed back byte-exactly.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:482
+  # pkg:gem/mcp#lib/mcp/client.rb:506
   def call_tool(name: T.unsafe(nil), tool: T.unsafe(nil), arguments: T.unsafe(nil), progress_token: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil), input_responses: T.unsafe(nil), request_state: T.unsafe(nil)); end
 
   # Requests completion suggestions from the server for a prompt argument or resource template URI.
@@ -327,7 +350,7 @@ class MCP::Client
   # @param cancellation [MCP::Cancellation, nil] Optional cancellation token.
   # @return [Hash] The completion result with `"values"`, `"hasMore"`, and optionally `"total"`.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:545
+  # pkg:gem/mcp#lib/mcp/client.rb:569
   def complete(ref:, argument:, context: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
 
   # Performs the MCP `initialize` handshake by delegating to the transport
@@ -356,14 +379,14 @@ class MCP::Client
   #   Prefer the era-independent readers over inspecting this Hash directly.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:215
+  # pkg:gem/mcp#lib/mcp/client.rb:222
   def connect(client_info: T.unsafe(nil), protocol_version: T.unsafe(nil), capabilities: T.unsafe(nil), mode: T.unsafe(nil)); end
 
   # Returns true once `connect` has completed the handshake on the underlying
   # transport. Transports that do not expose connection state are assumed
   # connected and return `true`.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:264
+  # pkg:gem/mcp#lib/mcp/client.rb:284
   def connected?; end
 
   # Sends `server/discover` (MCP 2026-07-28, SEP-2575): sessionless capability discovery
@@ -375,7 +398,7 @@ class MCP::Client
   # @raise [ServerError] If the server returns a JSON-RPC error.
   # @raise [ValidationError] If the response `result` is missing or not a Hash.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:244
+  # pkg:gem/mcp#lib/mcp/client.rb:264
   def discover(meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
 
   # Gets a prompt from the server by name and returns its details.
@@ -386,12 +409,12 @@ class MCP::Client
   # @param cancellation [MCP::Cancellation, nil] Optional cancellation token.
   # @return [Hash] A hash containing the prompt details.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:524
+  # pkg:gem/mcp#lib/mcp/client.rb:548
   def get_prompt(name:, meta: T.unsafe(nil), cancellation: T.unsafe(nil), input_responses: T.unsafe(nil), request_state: T.unsafe(nil)); end
 
   # The server's instructions text, present in both eras when provided.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:179
+  # pkg:gem/mcp#lib/mcp/client.rb:186
   def instructions; end
 
   # Returns a single page of prompts from the server.
@@ -403,7 +426,7 @@ class MCP::Client
   # @return [MCP::Client::ListPromptsResult] Result with `prompts` (Array<Hash>)
   #   and `next_cursor` (String or nil).
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:416
+  # pkg:gem/mcp#lib/mcp/client.rb:440
   def list_prompts(cursor: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
 
   # Returns a single page of resource templates from the server.
@@ -415,7 +438,7 @@ class MCP::Client
   # @return [MCP::Client::ListResourceTemplatesResult] Result with `resource_templates`
   #   (Array<Hash>) and `next_cursor` (String or nil).
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:380
+  # pkg:gem/mcp#lib/mcp/client.rb:404
   def list_resource_templates(cursor: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
 
   # Returns a single page of resources from the server.
@@ -427,7 +450,7 @@ class MCP::Client
   # @return [MCP::Client::ListResourcesResult] Result with `resources` (Array<Hash>)
   #   and `next_cursor` (String or nil).
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:344
+  # pkg:gem/mcp#lib/mcp/client.rb:368
   def list_resources(cursor: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
 
   # Returns a single page of tools from the server.
@@ -449,7 +472,7 @@ class MCP::Client
   #     break unless cursor
   #   end
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:288
+  # pkg:gem/mcp#lib/mcp/client.rb:308
   def list_tools(cursor: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
 
   # Registers a handler for `elicitation/create` requests the server sends while one of
@@ -472,7 +495,7 @@ class MCP::Client
   #   end
   # https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:573
+  # pkg:gem/mcp#lib/mcp/client.rb:597
   def on_elicitation(&handler); end
 
   # Registers a handler for `roots/list`, answering both a server-to-client request on transports that
@@ -488,7 +511,7 @@ class MCP::Client
   #
   # https://modelcontextprotocol.io/specification/2025-11-25/client/roots
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:626
+  # pkg:gem/mcp#lib/mcp/client.rb:650
   def on_roots(&handler); end
 
   # Registers a handler for `sampling/createMessage` requests the server sends while one of this client's requests is in flight.
@@ -525,7 +548,7 @@ class MCP::Client
   #   Register this handler only to interoperate with servers that still send sampling requests during the deprecation window;
   #   new servers should call LLM provider APIs directly.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:610
+  # pkg:gem/mcp#lib/mcp/client.rb:634
   def on_sampling(&handler); end
 
   # Sends a `ping` request to the server to verify the connection is alive.
@@ -543,7 +566,7 @@ class MCP::Client
   #
   # @see https://modelcontextprotocol.io/specification/latest/basic/utilities/ping
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:644
+  # pkg:gem/mcp#lib/mcp/client.rb:668
   def ping(meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
 
   # Returns every prompt available on the server. Iterates through all pages automatically
@@ -556,14 +579,14 @@ class MCP::Client
   # @return [Array<Hash>] An array of available prompts.
   # @raise [MCP::Client::PaginationLimitError] See {#tools}.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:439
+  # pkg:gem/mcp#lib/mcp/client.rb:463
   def prompts(cancellation: T.unsafe(nil)); end
 
   # The protocol version in use on this connection, independent of its era:
   # the version negotiated by `initialize` (legacy) or adopted via `server/discover` (modern).
   # Returns `nil` before `connect`.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:167
+  # pkg:gem/mcp#lib/mcp/client.rb:174
   def protocol_version; end
 
   # Reads a resource from the server by URI and returns the contents.
@@ -574,7 +597,7 @@ class MCP::Client
   # @param cancellation [MCP::Cancellation, nil] Optional cancellation token.
   # @return [Array<Hash>] An array of resource contents (text or blob).
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:506
+  # pkg:gem/mcp#lib/mcp/client.rb:530
   def read_resource(uri:, meta: T.unsafe(nil), cancellation: T.unsafe(nil), input_responses: T.unsafe(nil), request_state: T.unsafe(nil)); end
 
   # Returns every resource template available on the server. Iterates through all pages automatically
@@ -587,7 +610,7 @@ class MCP::Client
   # @return [Array<Hash>] An array of available resource templates.
   # @raise [MCP::Client::PaginationLimitError] See {#tools}.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:403
+  # pkg:gem/mcp#lib/mcp/client.rb:427
   def resource_templates(cancellation: T.unsafe(nil)); end
 
   # Returns every resource available on the server. Iterates through all pages automatically
@@ -600,19 +623,19 @@ class MCP::Client
   # @return [Array<Hash>] An array of available resources.
   # @raise [MCP::Client::PaginationLimitError] See {#tools}.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:367
+  # pkg:gem/mcp#lib/mcp/client.rb:391
   def resources(cancellation: T.unsafe(nil)); end
 
   # The server's capabilities Hash, present in both eras. Returns `nil` before `connect`.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:174
+  # pkg:gem/mcp#lib/mcp/client.rb:181
   def server_capabilities; end
 
   # The server's identity (`name`/`version`), independent of where the era puts it: top-level `serverInfo`
   # on legacy results, the optional `_meta` `io.modelcontextprotocol/serverInfo` stamp on modern results.
   # Returns `nil` when a modern server does not identify itself.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:186
+  # pkg:gem/mcp#lib/mcp/client.rb:193
   def server_implementation; end
 
   # The raw handshake result exactly as the server returned it, so its shape depends on the connection's era (SEP-2575):
@@ -623,7 +646,7 @@ class MCP::Client
   # (`supportedVersions`, cache hints, `_meta`, extension data). Returns `nil` before `connect`, after `close`,
   # or when the transport does not expose a cached handshake result.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:160
+  # pkg:gem/mcp#lib/mcp/client.rb:167
   def server_info; end
 
   # Returns every tool available on the server. Iterates through all pages automatically
@@ -644,13 +667,13 @@ class MCP::Client
   #     puts tool.name
   #   end
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:331
+  # pkg:gem/mcp#lib/mcp/client.rb:355
   def tools(cancellation: T.unsafe(nil)); end
 
   # The user may want to access additional transport-specific methods/attributes
   # So keeping it public
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:151
+  # pkg:gem/mcp#lib/mcp/client.rb:158
   def transport; end
 
   private
@@ -660,7 +683,7 @@ class MCP::Client
   # with no acknowledgement returned. Driven internally by {#dispatch_with_cancellation} when a request's
   # `cancellation` token fires.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:999
+  # pkg:gem/mcp#lib/mcp/client.rb:1032
   def cancel(request_id:, reason: T.unsafe(nil)); end
 
   # Sends `request_body` while watching `cancellation`. The actual blocking `transport.send_request` runs on
@@ -674,7 +697,7 @@ class MCP::Client
   # (or the transport closes). This is the same trade-off the server-side `StreamableHTTPTransport#send_request` accepts and
   # is noted in the README's Cancellation section.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:894
+  # pkg:gem/mcp#lib/mcp/client.rb:927
   def dispatch_with_cancellation(request_body, cancellation); end
 
   # Drives the SEP-2322 multi round-trip loop for `tools/call`, `prompts/get`, and `resources/read`.
@@ -685,7 +708,7 @@ class MCP::Client
   # A `requestState`-only result (load shedding) retries after an exponential backoff.
   # Every leg counts against `input_required_max_rounds`.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:785
+  # pkg:gem/mcp#lib/mcp/client.rb:818
   def drive_input_required(method:, params:, cancellation:); end
 
   # SEP-2243: on the modern lifecycle, a tool definition whose `x-mcp-header` annotations violate
@@ -693,7 +716,7 @@ class MCP::Client
   # does not block the valid tools. The TypeScript and Python SDKs filter their listings the same way.
   # Legacy connections, and transports without a lifecycle notion, list everything as before.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:670
+  # pkg:gem/mcp#lib/mcp/client.rb:694
   def exclude_invalid_x_mcp_header?(tool); end
 
   # Walks every page of a list endpoint, following `next_cursor`, and returns
@@ -701,30 +724,30 @@ class MCP::Client
   # cycles cursors, and `@max_pages` bounds one that returns a fresh cursor every
   # time, so the loop always terminates.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:724
+  # pkg:gem/mcp#lib/mcp/client.rb:757
   def fetch_all_pages; end
 
   # Dispatches every embedded request to its configured handler and collects
   # the answers under the same keys. A kind without a handler falls back to
   # the manual path by raising `InputRequiredError` with the full result.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:839
+  # pkg:gem/mcp#lib/mcp/client.rb:872
   def fulfill_input_requests(input_requests, result); end
 
   # Generates a fresh JSON-RPC request id for an outgoing request.
   # Ids are an internal concern: the public API never accepts or exposes them, and cancellation is driven through
   # an `MCP::Cancellation` token instead.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:880
+  # pkg:gem/mcp#lib/mcp/client.rb:913
   def generate_request_id; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:857
+  # pkg:gem/mcp#lib/mcp/client.rb:890
   def input_required?(response); end
 
   # Recognizes a SEP-2322 `input_required` result and raises rather than returning it as if it were a final result.
   # Servers on stable protocol versions never emit `resultType`, so this is a no-op for them.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:864
+  # pkg:gem/mcp#lib/mcp/client.rb:897
   def raise_on_input_required(response); end
 
   # Records a handler for one of the three kinds of input a server can ask this client for, and wires it to
@@ -734,7 +757,7 @@ class MCP::Client
   # requests outright. Registering is therefore valid on a transport with no `on_server_request` (stdio,
   # and every modern-lifecycle connection); only the wire route is skipped there.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:659
+  # pkg:gem/mcp#lib/mcp/client.rb:683
   def register_input_handler(method, &handler); end
 
   # Merges caller-supplied `meta` entries into the request params as `_meta`,
@@ -742,7 +765,7 @@ class MCP::Client
   # request-specific metadata such as W3C trace context (`traceparent`,
   # `tracestate`, `baggage`); see {MCP::TraceContext}.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:751
+  # pkg:gem/mcp#lib/mcp/client.rb:784
   def request(method:, params: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil), raise_on_input_required: T.unsafe(nil)); end
 
   # Resolves the effective SEP-2575 lifecycle mode for `connect`:
@@ -754,8 +777,15 @@ class MCP::Client
   # - An explicit `:modern`/`:auto` on a transport without `mode:` raises, rather than silently downgrading to
   #   a lifecycle the caller did not ask for.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:688
+  # pkg:gem/mcp#lib/mcp/client.rb:721
   def resolve_connect_mode(mode, protocol_version); end
+
+  # Whether a `connect` would only hand back the transport's cached handshake: the transport reports itself
+  # connected and Skills already recorded a handshake of this connection. A transport without connection
+  # state always starts a new generation.
+  #
+  # pkg:gem/mcp#lib/mcp/client.rb:709
+  def skills_ready_on_connected_transport?; end
 
   # `mode:` is forwarded only when the transport's `connect` declares it as a keyword.
   # A bare `**kwargs` deliberately does not count, so wrappers and test doubles that
@@ -763,71 +793,71 @@ class MCP::Client
   # dispatch `connect` through `method_missing` (e.g. mocks) may not support `method`,
   # which reads as not declaring `mode:`.
   #
-  # pkg:gem/mcp#lib/mcp/client.rb:710
+  # pkg:gem/mcp#lib/mcp/client.rb:743
   def transport_connect_accepts_mode?; end
 end
 
 # Rounds the SEP-2322 driver runs before giving up, matching the TypeScript and
 # Python SDK defaults. Every leg counts, including `requestState`-only retries.
 #
-# pkg:gem/mcp#lib/mcp/client.rb:110
+# pkg:gem/mcp#lib/mcp/client.rb:112
 MCP::Client::DEFAULT_INPUT_REQUIRED_MAX_ROUNDS = T.let(T.unsafe(nil), Integer)
 
 # The server's `DiscoverResult` (MCP 2026-07-28, SEP-2575): the modern protocol versions it serves,
 # its capabilities and identity, optional instructions, and the REQUIRED `ttlMs`/`cacheScope` cache hints.
 #
-# pkg:gem/mcp#lib/mcp/client.rb:98
+# pkg:gem/mcp#lib/mcp/client.rb:100
 class MCP::Client::DiscoverResult < ::Struct
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def cache_scope; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def cache_scope=(_); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def capabilities; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def capabilities=(_); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def instructions; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def instructions=(_); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def server_info; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def server_info=(_); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def supported_versions; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def supported_versions=(_); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def ttl_ms; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:98
+  # pkg:gem/mcp#lib/mcp/client.rb:100
   def ttl_ms=(_); end
 
   class << self
-    # pkg:gem/mcp#lib/mcp/client.rb:98
+    # pkg:gem/mcp#lib/mcp/client.rb:100
     def [](*_arg0); end
 
-    # pkg:gem/mcp#lib/mcp/client.rb:98
+    # pkg:gem/mcp#lib/mcp/client.rb:100
     def inspect; end
 
-    # pkg:gem/mcp#lib/mcp/client.rb:98
+    # pkg:gem/mcp#lib/mcp/client.rb:100
     def keyword_init?; end
 
-    # pkg:gem/mcp#lib/mcp/client.rb:98
+    # pkg:gem/mcp#lib/mcp/client.rb:100
     def members; end
 
-    # pkg:gem/mcp#lib/mcp/client.rb:98
+    # pkg:gem/mcp#lib/mcp/client.rb:100
     def new(*_arg0); end
   end
 end
@@ -843,9 +873,58 @@ module MCP::Client::Elicitation
   end
 end
 
+# The entry `skills/get` returned for exactly the requested URI. Frozen on construction.
+#
+# pkg:gem/mcp#lib/mcp/client/skills.rb:18
+class MCP::Client::GetSkillResult < ::Struct
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:19
+  def initialize(**kwargs); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+  def cache_scope; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+  def cache_scope=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+  def meta; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+  def meta=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+  def skill; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+  def skill=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+  def ttl_ms; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+  def ttl_ms=(_); end
+
+  class << self
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+    def [](*_arg0); end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+    def inspect; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+    def keyword_init?; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+    def members; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:18
+    def new(*_arg0); end
+  end
+end
+
 # pkg:gem/mcp#lib/mcp/client/http.rb:14
 class MCP::Client::HTTP
-  # pkg:gem/mcp#lib/mcp/client/http.rb:242
+  # pkg:gem/mcp#lib/mcp/client/http.rb:255
   def initialize(url:, headers: T.unsafe(nil), oauth: T.unsafe(nil), max_message_bytes: T.unsafe(nil), max_reconnection_wait: T.unsafe(nil), &block); end
 
   # Terminates the session by sending an HTTP DELETE to the MCP endpoint
@@ -859,7 +938,7 @@ class MCP::Client::HTTP
   # session state is cleared either way.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:546
+  # pkg:gem/mcp#lib/mcp/client/http.rb:569
   def close; end
 
   # Performs the MCP `initialize` handshake: sends an `initialize` request
@@ -886,7 +965,7 @@ class MCP::Client::HTTP
   #   when the server does not serve a mutually supported modern version.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:342
+  # pkg:gem/mcp#lib/mcp/client/http.rb:355
   def connect(client_info: T.unsafe(nil), protocol_version: T.unsafe(nil), capabilities: T.unsafe(nil), mode: T.unsafe(nil)); end
 
   # Returns true once `connect` has completed the full handshake
@@ -894,16 +973,16 @@ class MCP::Client::HTTP
   # or once the modern lifecycle was adopted via `server/discover`.
   # Returns false before the first handshake and after `close`.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:372
+  # pkg:gem/mcp#lib/mcp/client/http.rb:385
   def connected?; end
 
   # Whether the transport operates in the stateless modern lifecycle (SEP-2575):
   # no handshake was performed and every request carries the `_meta` envelope.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:364
+  # pkg:gem/mcp#lib/mcp/client/http.rb:377
   def modern?; end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:240
+  # pkg:gem/mcp#lib/mcp/client/http.rb:253
   def oauth; end
 
   # Registers a handler for a server-to-client request (e.g. `elicitation/create`) delivered on an SSE stream.
@@ -916,17 +995,17 @@ class MCP::Client::HTTP
   # which start listening after the `initialize` handshake.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#listening-for-messages-from-the-server
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:312
+  # pkg:gem/mcp#lib/mcp/client/http.rb:325
   def on_server_request(method, &handler); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:240
+  # pkg:gem/mcp#lib/mcp/client/http.rb:253
   def protocol_version; end
 
   # Sends a JSON-RPC notification (no response expected). Used by `Client#cancel` to deliver
   # `notifications/cancelled` for an in-flight request. The server acknowledges with HTTP 202 Accepted
   # per the Streamable HTTP spec.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:522
+  # pkg:gem/mcp#lib/mcp/client/http.rb:545
   def send_notification(notification:); end
 
   # Sends a JSON-RPC request and returns the parsed response body.
@@ -943,16 +1022,16 @@ class MCP::Client::HTTP
   # a cancellation referring to an unknown request id when the cancel POST happens to arrive first.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:389
+  # pkg:gem/mcp#lib/mcp/client/http.rb:402
   def send_request(request:); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:240
+  # pkg:gem/mcp#lib/mcp/client/http.rb:253
   def server_info; end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:240
+  # pkg:gem/mcp#lib/mcp/client/http.rb:253
   def session_id; end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:240
+  # pkg:gem/mcp#lib/mcp/client/http.rb:253
   def url; end
 
   private
@@ -961,7 +1040,7 @@ class MCP::Client::HTTP
   # on success and falsy on either "no refresh token available" or "refresh attempt failed"
   # (in which case the caller should run the full interactive flow).
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:919
+  # pkg:gem/mcp#lib/mcp/client/http.rb:952
   def attempt_refresh(flow:, resource_metadata_url:); end
 
   # SEP-1699 resumability: the server closed the SSE stream after a priming event
@@ -977,7 +1056,7 @@ class MCP::Client::HTTP
   # reconnecting instead, so the server's `retry:` is honored in full or not acted on at all.
   # https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1699
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:1177
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1277
   def await_response_after_disconnect(stream, method, params); end
 
   # Learns the `x-mcp-header` declarations of the tools a `tools/list` response advertises,
@@ -987,16 +1066,16 @@ class MCP::Client::HTTP
   # an invalid tool definition mirrors nothing,
   # following the spec's guidance to send without custom headers when no reliable declarations are available.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:791
+  # pkg:gem/mcp#lib/mcp/client/http.rb:814
   def capture_mcp_param_declarations(method, params, body); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:948
-  def capture_session_info(method, response, body); end
+  # pkg:gem/mcp#lib/mcp/client/http.rb:981
+  def capture_session_info(method, headers, body); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:957
+  # pkg:gem/mcp#lib/mcp/client/http.rb:990
   def clear_session; end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:722
+  # pkg:gem/mcp#lib/mcp/client/http.rb:745
   def client; end
 
   # Probes `server/discover` and adopts the modern lifecycle when the server serves
@@ -1005,16 +1084,16 @@ class MCP::Client::HTTP
   # version as well: during the 2026-07-28 rollout a server may answer discovery while
   # only serving legacy versions.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:669
+  # pkg:gem/mcp#lib/mcp/client/http.rb:692
   def connect_auto(client_info:, protocol_version:, capabilities:); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:565
+  # pkg:gem/mcp#lib/mcp/client/http.rb:588
   def connect_legacy(client_info:, protocol_version:, capabilities:); end
 
   # Enters the modern lifecycle by probing `server/discover` at the requested (or latest) modern version.
   # No `initialize` or `notifications/initialized` is sent; the probe response becomes `server_info`.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:629
+  # pkg:gem/mcp#lib/mcp/client/http.rb:652
   def connect_modern(client_info:, protocol_version:, capabilities:); end
 
   # Answers a server-to-client request received on an SSE stream by invoking the handler registered via
@@ -1025,17 +1104,17 @@ class MCP::Client::HTTP
   # In every case the server is not left waiting, matching how the TypeScript and Python SDKs convert handler
   # failures into JSON-RPC error responses.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:1097
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1183
   def dispatch_server_request(message); end
 
   # A header value that is not safe to transmit as-is - non-ASCII, control characters (including CR/LF,
   # which would otherwise allow header injection), or significant leading/trailing whitespace - is wrapped as
   # `=?base64?<base64>?=`. Safe ASCII values are sent unchanged.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:827
+  # pkg:gem/mcp#lib/mcp/client/http.rb:850
   def encode_header_value(value); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:680
+  # pkg:gem/mcp#lib/mcp/client/http.rb:703
   def enter_modern_mode(protocol_version:, client_info:, capabilities:); end
 
   # Returns the space-separated union of the currently granted scope (read
@@ -1045,10 +1124,10 @@ class MCP::Client::HTTP
   # ones. Returns `nil` when neither side carries a scope so
   # `build_authorization_url` omits the `scope` parameter entirely.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:882
+  # pkg:gem/mcp#lib/mcp/client/http.rb:905
   def escalated_step_up_scope(challenge_scope); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:563
+  # pkg:gem/mcp#lib/mcp/client/http.rb:586
   def headers; end
 
   # True when the response on `forbidden_error` carries a Bearer challenge
@@ -1056,10 +1135,10 @@ class MCP::Client::HTTP
   # scope-selection-strategy section. A 403 without that signal is not a
   # step-up challenge and must not trigger re-authorization.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:894
+  # pkg:gem/mcp#lib/mcp/client/http.rb:917
   def insufficient_scope_challenge?(forbidden_error); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:688
+  # pkg:gem/mcp#lib/mcp/client/http.rb:711
   def leave_modern_mode; end
 
   # Reconnection semantics match the TypeScript and Python SDK clients: a stream that was established and
@@ -1068,16 +1147,16 @@ class MCP::Client::HTTP
   # once they reach `MAX_RECONNECTION_ATTEMPTS`; a successful stream in between resets the count.
   # A 405 stops immediately without retrying, since it is the spec's answer from a server that offers no listening stream.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:986
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1019
   def listen_for_server_requests; end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:1153
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1239
   def parse_json_buffer(buffer, method, params); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:898
+  # pkg:gem/mcp#lib/mcp/client/http.rb:921
   def parse_www_authenticate_from_error(error); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:694
+  # pkg:gem/mcp#lib/mcp/client/http.rb:717
   def probe_discover; end
 
   # The reconnection delay in seconds: the server's `retry:` value when it sent one and
@@ -1085,16 +1164,48 @@ class MCP::Client::HTTP
   # asked for less than that. A `retry:` that is negative or not a run of digits is not a value at all;
   # the SSE parser drops it, so those arrive here as the default rather than as something to guard.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:1026
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1059
   def reconnection_delay_seconds(stream); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:941
+  # `raise_error` retains the request as a Hash under `:request`; a JSON middleware the customizer added raises
+  # `Faraday::ParsingError` with the `Faraday::Response` itself, whose `env` holds the request headers.
+  #
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1087
+  def redact_authorization_header!(error); end
+
+  # The headers are a `Faraday::Utils::Headers`, which spells the name `Authorization` whatever the caller wrote,
+  # unless a customizer middleware replaced them with a plain Hash or froze them: the name is matched regardless
+  # of case so such a Hash is covered too, and a frozen object is swapped for a copy, so the redaction never
+  # raises in place of the error it is redacting.
+  #
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1102
+  def redact_authorization_header_in!(holder, key); end
+
+  # Runs a request on the transport's connection and, when Faraday raises, replaces the value of the `Authorization` header
+  # in the request headers the exception retains before it leaves the transport.
+  # Faraday's `raise_error` middleware keeps a reference to `env.request_headers` in `Faraday::Error#response`
+  # under `:request`, so the exception that becomes `RequestHandlerError#original_error` (and its `cause`) would otherwise print
+  # the bearer token through `inspect`, which is what error reporters and log lines do with it. The request is complete by
+  # the time the exception surfaces, and every request builds its own headers from the connection's defaults,
+  # so the rewrite reaches neither those defaults nor a later request.
+  #
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1078
+  def redacting_authorization_header; end
+
+  # pkg:gem/mcp#lib/mcp/client/http.rb:974
   def refresh_token_available?; end
+
+  # A response is a JSON object whose `jsonrpc` is exactly "2.0". No body at all (202, or an empty 200)
+  # is not a message and is left to the caller as before; a JSON `null` body parses to the same `nil`.
+  # The received value is left out of the message because it can be any JSON value.
+  #
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1254
+  def reject_invalid_response!(body, method, params); end
 
   # Seconds left before `deadline`, floored just above zero so a budget consumed down to the last instant
   # still asks the adapter for a timeout rather than for "no timeout".
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:1034
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1067
   def remaining_reconnection_budget(deadline); end
 
   # Per SEP-2243, mirror the JSON-RPC method and target name/uri into HTTP headers so intermediaries
@@ -1103,19 +1214,26 @@ class MCP::Client::HTTP
   #
   # https://modelcontextprotocol.io/specification/draft/basic/transports/streamable-http#request-metadata
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:766
+  # pkg:gem/mcp#lib/mcp/client/http.rb:789
   def request_metadata_headers(method, params); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:1038
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1116
   def require_faraday!; end
 
   # Determines the logical JSON-RPC body of the exchange after the POST stream finished
-  # (or was aborted because the response already arrived).
+  # (or was aborted because the response already arrived). A notification (no `request_id`) awaits
+  # no response, so any success status acknowledges it, as it does for the TypeScript and Python clients,
+  # which check the content type of a response only for a request; the spec has the server answer
+  # a notification with 202, but a server answering with another 2xx is accepted as well.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:1048
-  def resolve_response_body(stream, response, method, params); end
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1129
+  def resolve_response_body(stream, response, request_id, method, params); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:905
+  # A provider without a `callback_handler` finishes the authorization in the request that receives the redirect,
+  # not here, so there is nothing to retry with yet: the pending authorization surfaces as
+  # `Flow::AuthorizationPendingError`, and requests made after `Flow#finish!` pick up the stored tokens.
+  #
+  # pkg:gem/mcp#lib/mcp/client/http.rb:931
   def run_full_authorization_flow!(flow:, params:); end
 
   # Drives the OAuth orchestrator on a 401 from the MCP endpoint.
@@ -1128,7 +1246,7 @@ class MCP::Client::HTTP
   #
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#error-handling
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:848
+  # pkg:gem/mcp#lib/mcp/client/http.rb:871
   def run_oauth_flow!(unauthorized_error:); end
 
   # Drives a full Authorization Code + PKCE flow without first attempting
@@ -1144,13 +1262,13 @@ class MCP::Client::HTTP
   # on the next operation that needs them.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#scope-selection-strategy
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:868
+  # pkg:gem/mcp#lib/mcp/client/http.rb:891
   def run_step_up_flow!(forbidden_error:); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:833
+  # pkg:gem/mcp#lib/mcp/client/http.rb:856
   def safe_header_value?(value); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:1149
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1235
   def send_client_response(response); end
 
   # Per spec, the client MUST include `MCP-Session-Id` (when the server assigned one)
@@ -1159,17 +1277,17 @@ class MCP::Client::HTTP
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:751
+  # pkg:gem/mcp#lib/mcp/client/http.rb:774
   def session_headers; end
 
   # Opens the standalone GET SSE listening stream on a background thread so server-to-client requests
   # can arrive while the main thread is blocked on its own request (e.g. a tools/call awaiting elicitation).
   # Like the TypeScript and Python SDK clients, the GET is fired without waiting for it to be established.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:970
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1003
   def start_listening; end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:976
+  # pkg:gem/mcp#lib/mcp/client/http.rb:1009
   def stop_listening; end
 end
 
@@ -1298,12 +1416,21 @@ class MCP::Client::HTTP::SSEStream
   # pkg:gem/mcp#lib/mcp/client/http.rb:123
   def buffer; end
 
+  # An error status must reach Faraday's `raise_error` middleware (which drives the
+  # OAuth and step-up retries in `send_request`), so the stream is read to EOF instead
+  # of aborting when the server answered with one. This is the behavior every
+  # method had before the abort shortcut. It is the only case that still needs
+  # the finished response object.
+  #
+  # pkg:gem/mcp#lib/mcp/client/http.rb:173
+  def error_status?(env); end
+
   # Parses an SSE body that was delivered outside the streaming callback:
   # Faraday versions that do not pass `env` to `on_data` leave SSE chunks in `buffer`
   # (consumed here so they are not parsed twice), and adapters without `on_data` support
   # yield the whole body only via `fallback_body` (the Faraday `response.body`).
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:176
+  # pkg:gem/mcp#lib/mcp/client/http.rb:188
   def ingest_pending!(fallback_body); end
 
   # pkg:gem/mcp#lib/mcp/client/http.rb:123
@@ -1314,36 +1441,39 @@ class MCP::Client::HTTP::SSEStream
   # by `max_message_bytes`, checked after the awaited response had its chance to
   # abort the stream so an over-limit tail cannot mask a response that already arrived.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:147
+  # pkg:gem/mcp#lib/mcp/client/http.rb:148
   def on_data; end
 
   # Whether the server sent a SEP-1699 priming event (any event carrying an id),
   # which marks the stream as resumable after a graceful close.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:139
+  # pkg:gem/mcp#lib/mcp/client/http.rb:140
   def primed?; end
 
   # A fresh parser for a new HTTP connection (reconnection GET),
   # so a partial line from the previous stream cannot corrupt the next one.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:168
+  # pkg:gem/mcp#lib/mcp/client/http.rb:180
   def reset_parser!; end
 
   # pkg:gem/mcp#lib/mcp/client/http.rb:123
   def response; end
 
   # pkg:gem/mcp#lib/mcp/client/http.rb:123
+  def response_headers; end
+
+  # pkg:gem/mcp#lib/mcp/client/http.rb:123
   def retry_ms; end
 
   private
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:183
+  # pkg:gem/mcp#lib/mcp/client/http.rb:195
   def event_stream?(env); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:189
+  # pkg:gem/mcp#lib/mcp/client/http.rb:201
   def feed(chunk); end
 
-  # pkg:gem/mcp#lib/mcp/client/http.rb:227
+  # pkg:gem/mcp#lib/mcp/client/http.rb:240
   def parser; end
 
   # Bytes the parser has buffered for a not-yet-dispatched event: the partial line
@@ -1354,7 +1484,7 @@ class MCP::Client::HTTP::SSEStream
   # A parser rewrite that buffered elsewhere would make this return 0 and quietly lift the cap -
   # the regression tests feeding an over-limit event guard against that.
   #
-  # pkg:gem/mcp#lib/mcp/client/http.rb:220
+  # pkg:gem/mcp#lib/mcp/client/http.rb:233
   def parser_buffered_bytes; end
 end
 
@@ -1386,18 +1516,18 @@ class MCP::Client::HTTP::StreamAbort < ::StandardError; end
 # `input_requests` and the `input_responses:`/`request_state:` kwargs), or when the round cap is exhausted.
 # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2322
 #
-# pkg:gem/mcp#lib/mcp/client.rb:75
+# pkg:gem/mcp#lib/mcp/client.rb:77
 class MCP::Client::InputRequiredError < ::StandardError
-  # pkg:gem/mcp#lib/mcp/client.rb:78
+  # pkg:gem/mcp#lib/mcp/client.rb:80
   def initialize(message, input_requests:, request_state: T.unsafe(nil), result: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:76
+  # pkg:gem/mcp#lib/mcp/client.rb:78
   def input_requests; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:76
+  # pkg:gem/mcp#lib/mcp/client.rb:78
   def request_state; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:76
+  # pkg:gem/mcp#lib/mcp/client.rb:78
   def result; end
 end
 
@@ -1551,6 +1681,62 @@ class MCP::Client::ListResourcesResult < ::Struct
   end
 end
 
+# One page of `skills/list`: `skills` is a frozen Array of `MCP::Skill`; `next_cursor`, `meta`, `ttl_ms`, and
+# `cache_scope` mirror the response members. Frozen on construction.
+#
+# pkg:gem/mcp#lib/mcp/client/skills.rb:10
+class MCP::Client::ListSkillsResult < ::Struct
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:11
+  def initialize(**kwargs); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def cache_scope; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def cache_scope=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def meta; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def meta=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def next_cursor; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def next_cursor=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def skills; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def skills=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def ttl_ms; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+  def ttl_ms=(_); end
+
+  class << self
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+    def [](*_arg0); end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+    def inspect; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+    def keyword_init?; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+    def members; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:10
+    def new(*_arg0); end
+  end
+end
+
 # Result objects returned by `list_tools`, `list_prompts`, `list_resources`, and `list_resource_templates`.
 # Each carries the page items, an optional opaque `next_cursor` string for continuing pagination,
 # an optional `meta` hash mirroring the MCP `_meta` response field, and the optional SEP-2549
@@ -1612,7 +1798,7 @@ end
 # stops a server that repeats or cycles cursors; one that returns a fresh `nextCursor` on
 # every response would otherwise be followed indefinitely, growing the retained pages with it.
 #
-# pkg:gem/mcp#lib/mcp/client.rb:19
+# pkg:gem/mcp#lib/mcp/client.rb:21
 MCP::Client::MAX_PAGES = T.let(T.unsafe(nil), Integer)
 
 # The custom-header half of SEP-2243 (MCP 2026-07-28): scanning a tool's `inputSchema` for
@@ -2076,7 +2262,7 @@ class MCP::Client::OAuth::CrossAppAccessProvider::InvalidConfigurationError < ::
 # Every entry point is a class method so it can be called from initializers and
 # from any thread without synchronization.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:40
+# pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:41
 module MCP::Client::OAuth::Discovery
   class << self
     # Returns the candidate Authorization Server metadata URLs to probe, in priority order.
@@ -2092,7 +2278,7 @@ module MCP::Client::OAuth::Discovery
     # - https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2351
     # - https://www.rfc-editor.org/rfc/rfc8414#section-3.1
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:108
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:111
     def authorization_server_metadata_urls(issuer_url); end
 
     # Like `canonicalize_url` but also strips query string, fragment, and
@@ -2107,7 +2293,7 @@ module MCP::Client::OAuth::Discovery
     # message - both of which would defeat the bearer-token-protection
     # purpose of the identity check.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:317
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:320
     def canonicalize_origin_and_path(url); end
 
     # Returns a canonical form of `url` suitable for comparing two URIs
@@ -2126,7 +2312,7 @@ module MCP::Client::OAuth::Discovery
     # an attacker-supplied URL like `https://srv.example.com/api/%2e%2e/mcp` from sneaking
     # past the PRM `resource` check in `resource_covers?`.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:139
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:142
     def canonicalize_url(url); end
 
     # Returns true when `url` satisfies the structural requirements for
@@ -2152,7 +2338,7 @@ module MCP::Client::OAuth::Discovery
     #   but different encodings of the same query (`?a=1&b=2` vs `?b=2&a=1`) would yield distinct
     #   `client_id` values for the same logical document.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:267
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:270
     def client_id_metadata_document_url?(url); end
 
     # Infers the OIDC Dynamic Client Registration `application_type` for a client from its `redirect_uris`.
@@ -2166,7 +2352,7 @@ module MCP::Client::OAuth::Discovery
     # - https://github.com/modelcontextprotocol/modelcontextprotocol/pull/837
     # - https://openid.net/specs/openid-connect-registration-1_0.html#ClientMetadata
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:299
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:302
     def infer_application_type(redirect_uris); end
 
     # Parses a `WWW-Authenticate` header and returns the parameters of
@@ -2178,7 +2364,7 @@ module MCP::Client::OAuth::Discovery
     # - https://www.rfc-editor.org/rfc/rfc9728.html#section-5.1
     # - https://www.rfc-editor.org/rfc/rfc7235.html#section-4.1
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:55
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:62
     def parse_www_authenticate(header); end
 
     # Returns true when `host` is an IP literal that is not reachable from the public internet,
@@ -2190,13 +2376,13 @@ module MCP::Client::OAuth::Discovery
     # a moment later, so the check would read as a guarantee it cannot make. That leaves names like `vault.corp.internal`
     # out of reach of this predicate; it is one layer of an SSRF defense, not the whole of one.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:227
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:230
     def private_network_host?(host); end
 
     # Returns the candidate Protected Resource Metadata URLs to probe, in priority order.
     # https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#protected-resource-metadata-discovery-requirements
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:83
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:86
     def protected_resource_metadata_urls(server_url:, resource_metadata_url: T.unsafe(nil)); end
 
     # Drops userinfo, query and fragment from `url` and leaves the host and path spelled as given, for reporting
@@ -2206,7 +2392,7 @@ module MCP::Client::OAuth::Discovery
     # for a URL the server chose. A URL that does not parse is not echoed, since the raw value could carry
     # the very credentials being dropped.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:345
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:348
     def redact_url(url); end
 
     # Returns true when `prm` (a PRM `resource` URL) covers `server` (the MCP endpoint URL):
@@ -2223,7 +2409,7 @@ module MCP::Client::OAuth::Discovery
     #
     # Both arguments must already be canonicalized.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:375
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:378
     def resource_covers?(prm:, server:); end
 
     # Returns true when `url` and `other` share an origin: same scheme, same host,
@@ -2233,7 +2419,7 @@ module MCP::Client::OAuth::Discovery
     # Anything that fails to parse or carries no host returns false, so a caller using this as
     # a security gate refuses rather than admits on malformed input.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:206
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:209
     def same_origin?(url, other); end
 
     # Returns true when `url` is safe to use for OAuth communication per
@@ -2260,22 +2446,22 @@ module MCP::Client::OAuth::Discovery
     # which would otherwise pass a naive `start_with?("127.")` check.
     # https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#communication-security
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:185
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:188
     def secure_url?(url); end
 
     private
 
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:496
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:499
     def base_url(uri); end
 
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:435
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:438
     def loopback_host?(host); end
 
     # A redirect URI counts as native when it uses a custom non-http(s) scheme
     # (e.g. `com.example.app:/callback`) or when it is an http(s) URI whose host is
     # a loopback address. A URI without a scheme or one that fails to parse is not native.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:485
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:488
     def native_redirect_uri?(url); end
 
     # Normalizes a URL query string so two URLs that are equivalent in
@@ -2302,7 +2488,7 @@ module MCP::Client::OAuth::Discovery
     # Returns `nil` when the resulting query is empty
     # (matching Faraday's drop-empty-query behavior).
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:524
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:527
     def normalize_query(query); end
 
     # Returns true when `host` is written in the numeric IPv4 grammar `inet_aton` accepts
@@ -2319,39 +2505,49 @@ module MCP::Client::OAuth::Discovery
     # through. No authorization server is legitimately addressed in this notation, so
     # refusing the grammar entirely costs nothing and leaves no spelling to miss.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:475
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:478
     def numeric_ipv4_spelling?(host); end
 
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:451
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:454
     def parse_ip_address(candidate); end
 
-    # Implements RFC 3986 Section 5.2.4 `remove_dot_segments`. Walks the input
-    # buffer one segment at a time, popping the previous output segment
-    # whenever a `..` is encountered, so that `/api/../mcp` collapses to
-    # `/mcp` and `/foo/./bar` collapses to `/foo/bar`.
+    # Implements RFC 3986 Section 5.2.4 `remove_dot_segments` over the path's segments, so that `/api/../mcp` collapses to
+    # `/mcp` and `/foo/./bar` collapses to `/foo/bar`. Each segment is visited once: the RFC's buffer rewriting,
+    # applied literally, copies the remaining input for every dot segment, and the path is the server's to choose.
+    #
+    # The output matches the RFC's algorithm for a relative path as well, including its quirk that a `..` popping
+    # the first segment leaves the result absolute (`a/../b` becomes `/b`), although `URI#path` never hands over a relative path.
+    # The rule letters below are the RFC's own: steps A through E of its loop.
     # https://www.rfc-editor.org/rfc/rfc3986#section-5.2.4
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:584
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:590
     def remove_dot_segments(path); end
-
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:615
-    def remove_last_segment(output); end
 
     # Unescapes a `quoted-string` value's `quoted-pair` octets per
     # RFC 7230 Section 3.2.6 (referenced from RFC 7235): `\<char>` becomes `<char>`.
     # https://www.rfc-editor.org/rfc/rfc7230#section-3.2.6
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:400
+    # pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:403
     def unescape_quoted_pair(value); end
   end
 end
+
+# The `Bearer` challenge: at the start of the header or after a comma.
+#
+# pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:51
+MCP::Client::OAuth::Discovery::WWW_AUTH_BEARER_PATTERN = T.let(T.unsafe(nil), Regexp)
 
 # Matches a single `key=value` pair inside an HTTP auth-scheme challenge.
 # `value` is either a quoted string (which can contain commas and spaces)
 # or a bare token, per RFC 7235.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:44
+# pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:45
 MCP::Client::OAuth::Discovery::WWW_AUTH_PARAM_PATTERN = T.let(T.unsafe(nil), Regexp)
+
+# The whitespace and optional comma between two `key=value` pairs, or before the first one.
+#
+# pkg:gem/mcp#lib/mcp/client/oauth/discovery.rb:48
+MCP::Client::OAuth::Discovery::WWW_AUTH_PARAM_SEPARATOR_PATTERN = T.let(T.unsafe(nil), Regexp)
 
 # Internal orchestrator for the MCP OAuth 2.1 + PKCE + DCR authorization flow.
 # Driven by `MCP::Client::HTTP` on a 401 response. The user-facing surface is
@@ -2360,8 +2556,13 @@ MCP::Client::OAuth::Discovery::WWW_AUTH_PARAM_PATTERN = T.let(T.unsafe(nil), Reg
 #
 # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:16
 class MCP::Client::OAuth::Flow
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:192
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:219
   def initialize(provider:, http_client_factory: T.unsafe(nil)); end
+
+  # The authorization URL the last `run!` handed to `redirect_handler` before returning `:redirect`, or `nil`.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:217
+  def authorization_url; end
 
   # Reads the pre-registered credentials for the `client_credentials` grant directly from the provider's stored
   # `client_information`, rather than going through `ensure_client_registered` (which targets the authorization-code
@@ -2369,7 +2570,7 @@ class MCP::Client::OAuth::Flow
   # The grant is for confidential clients, so a missing `client_id` is a clean configuration error, not a fallback
   # to dynamic registration.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:314
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:362
   def client_credentials_client_info; end
 
   # Per SEP-2352, static machine-to-machine credentials are bound to their authorization
@@ -2381,8 +2582,36 @@ class MCP::Client::OAuth::Flow
   # are pre-registered, not DCR results - so the operator must update the stored credentials.
   # Credentials without a recorded issuer keep working unchanged.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:332
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:380
   def ensure_client_credentials_issuer!(client_info, as_metadata:); end
+
+  # Finishes an authorization that `run!` left pending, in the request that receives the redirect to `redirect_uri`,
+  # which may run in another process. `callback_params` is that redirect's whole query as a Hash (`code`, `state`, and,
+  # when present, `iss`, `error`, and `error_description`); passing all of it, rather than picking values out, is
+  # the caller's part of the `iss` check: an `iss` the caller drops reads as absent, and the flow cannot tell the difference.
+  #
+  # The pending authorization is looked up by `state` before any request is made, and it binds the rest of the exchange:
+  # the code is redeemed at the token endpoint recorded when the authorization began, with the client registration,
+  # `resource`, and `redirect_uri` used then, and without discovery running again, so the code reaches the authorization
+  # server the user was sent to (SEP-2352). The RFC 9207 `iss` is validated against the recorded issuer before the pending
+  # authorization is consumed, so a callback from another authorization server, as in a mix-up, is refused without
+  # consuming the entry the legitimate callback needs, and before the callback's `error` is read, since in a mix-up
+  # those parameters are the other server's. The check establishes only that a present `iss` matches the recorded issuer,
+  # not who sent the callback, and a callback without `iss` passes it unless the metadata advertises
+  # `authorization_response_iss_parameter_supported`: whoever holds the `state`, passes that check, and reaches
+  # the consume first takes the entry, and the legitimate callback then finds nothing.
+  #
+  # Past that check the pending authorization is consumed with `delete_pending_authorization`, which returns the entry
+  # it removed; only a callback that gets the entry back redeems the code, so of callbacks racing on the same `state`
+  # (a retried redirect, say), at most one does.
+  #
+  # Binding the callback to the user who started the authorization stays with the application: scoping `storage`
+  # to that user means a callback delivered to another user's session finds no pending authorization.
+  #
+  # On success, persists tokens via the provider and returns `:authorized`.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:524
+  def finish!(server_url:, callback_params:); end
 
   # Exchanges the saved `refresh_token` for a fresh access token (RFC 6749 Section 6).
   # Re-discovers PRM and AS metadata so we always pick up a moved token endpoint, and re-runs the audience / issuer / security
@@ -2393,13 +2622,16 @@ class MCP::Client::OAuth::Flow
   # or when the token endpoint refuses the refresh request.
   # https://www.rfc-editor.org/rfc/rfc6749#section-6
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:386
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:434
   def refresh!(server_url:, resource_metadata_url: T.unsafe(nil)); end
 
   # Runs the full discovery, registration, authorization, and token exchange flow.
   # On success, persists tokens via the provider and returns `:authorized`.
+  # A provider without a `callback_handler` stops after the redirect instead: the flow saves
+  # a pending authorization in the provider's storage, keyed by `state`, and returns `:redirect`, leaving the code
+  # exchange to `finish!` in the request that receives the redirect.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:199
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:230
   def run!(server_url:, resource_metadata_url: T.unsafe(nil), scope: T.unsafe(nil)); end
 
   # Runs the OAuth 2.1 `client_credentials` grant (machine-to-machine, no user interaction) and persists
@@ -2409,7 +2641,7 @@ class MCP::Client::OAuth::Flow
   # The pre-registered `client_id` / `client_secret` come from the provider's stored `client_information`.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:293
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:341
   def run_client_credentials!(as_metadata:, prm:, resource:, scope:, server_url:); end
 
   # Runs the RFC 7523 `jwt-bearer` grant for the SEP-990 Enterprise Managed Authorization extension:
@@ -2419,10 +2651,27 @@ class MCP::Client::OAuth::Flow
   # The assertion's audience is the issuer identifier that `ensure_issuer_matches!` validated.
   # https://github.com/modelcontextprotocol/modelcontextprotocol/issues/990
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:349
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:397
   def run_jwt_bearer!(as_metadata:, prm:, resource:, scope:, server_url:); end
 
   private
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1431
+  def authorization_endpoint_parameters(as_metadata:); end
+
+  # A flow scope replaces every endpoint scope; otherwise a single prefilled value survives.
+  # Decode once before policy approval and reuse those parameters when building the URL.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1450
+  def authorization_request_scope(scope:, endpoint_params:); end
+
+  # An RFC 6749 Section 4.1.2.1 error response, reported with the bounds a token endpoint error gets.
+  # Reached only after the `iss` check, so any `iss` beside the values matched the recorded issuer; that does not
+  # prove who sent them, and they are text the sender chose, so they are cut to a bounded length and confined to
+  # the printable ASCII the RFC permits.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1302
+  def authorization_response_error(error, description); end
 
   # Fetches and validates the authorization server's RFC 8414 metadata.
   #
@@ -2435,7 +2684,7 @@ class MCP::Client::OAuth::Flow
   # bound to it.
   # When even the metadata document is absent, the legacy spec's default endpoints are used.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:529
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:658
   def authorization_server_metadata(authorization_server:, legacy:, server_url:); end
 
   # Refuses an OAuth URL that points into a private, loopback, link-local, or unique-local address,
@@ -2450,23 +2699,23 @@ class MCP::Client::OAuth::Flow
   # Hands the embedding application the authorization server and the scopes that are about to be requested,
   # and abandons the flow when it refuses them.
   #
-  # Both values are chosen by the MCP server: it names its own authorization server in Protected
-  # Resource Metadata and states the scopes in `scopes_supported` or the `WWW-Authenticate` challenge.
+  # The MCP server names its authorization server in Protected Resource Metadata and states scopes
+  # in `scopes_supported` or the `WWW-Authenticate` challenge. Authorization-code policy also sees
+  # any prefilled endpoint scope that will survive URL assembly.
   # Neither the specification nor any MCP SDK binds that choice to the server's own identity,
   # and validating that a token was issued for the intended audience is a responsibility the specification
   # places on MCP servers rather than on clients.
   # A host that knows which providers its user deals with can apply that knowledge here.
   #
-  # The scopes are passed on unchanged whatever the host decides, because the specification requires
-  # a client to treat the challenged scopes as authoritative for the operation; the choice offered is
-  # to proceed or to stop, not to quietly ask for less. A provider without the hook proceeds as before.
+  # Challenged scopes are authoritative for the operation and bypass the PRM scope selector.
+  # The validator can accept or refuse them, not quietly request fewer scopes.
   #
   # Only asked when a new grant is being requested. A refresh is not a new grant, and the host already answered
   # this question for that authorization server, so `refresh!` enforces `ensure_token_issuer!` instead:
   # an authorization server that has changed since the tokens were issued sends the flow back through here,
   # where the host sees the new one and decides again.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:745
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:874
   def authorize_request!(as_metadata:, scope:, server_url:, resource:); end
 
   # Per RFC 6749 Section 2.3.1, the `client_id` and `client_secret` MUST be
@@ -2476,10 +2725,10 @@ class MCP::Client::OAuth::Flow
   # from being mis-parsed by the authorization server.
   # https://www.rfc-editor.org/rfc/rfc6749#section-2.3.1
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1377
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1644
   def basic_auth_credentials(client_id, client_secret); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1354
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1621
   def bounded_diagnostic(value, limit:); end
 
   # Issues a request with the response body bounded as it arrives, and returns the status paired with
@@ -2487,11 +2736,17 @@ class MCP::Client::OAuth::Flow
   # cannot be validated, and `fetch_metadata_json` must not fall through to the next candidate URL either,
   # since the same server would serve the same body.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1422
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1689
   def bounded_request; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1195
-  def build_authorization_url(as_metadata:, client_id:, scope:, state:, code_challenge:, resource:); end
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1461
+  def build_authorization_url(endpoint_uri:, endpoint_params:, client_id:, scope:, state:, code_challenge:, resource:); end
+
+  # Reads one parameter of an authorization response. Only a non-empty String counts: a repeated parameter that
+  # a framework delivers as an Array, or an empty value, is treated as absent.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1287
+  def callback_param(params, key); end
 
   # Returns the canonical RFC 8707 `resource` URI to send on authorization and
   # token requests. When PRM advertises `resource`, that value is
@@ -2503,7 +2758,7 @@ class MCP::Client::OAuth::Flow
   # the server URL's path) to prevent a malicious or misconfigured PRM from
   # redirecting credentials to a different audience.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1023
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1152
   def canonical_resource(server_url:, prm_resource:); end
 
   # Same as `client_info_value` but treats blank strings (`""` or only
@@ -2513,31 +2768,31 @@ class MCP::Client::OAuth::Flow
   # `client_information` short-circuit the "is the client registered?"
   # check, or send a literal `client_secret: "   "` to the token endpoint.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1006
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1135
   def client_info_required_value(info, key); end
 
   # Reads `key` from a `client_information` hash that may use either string or
   # symbol keys, so users can persist the result of `JSON.parse` *or* a hand-built
   # `{ client_id:, client_secret: }` and have both work.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:996
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1125
   def client_info_value(info, key); end
 
   # A connection supplied through `http_client_factory:` replaces this one, the provider's customizer and
   # `RequestedOriginGuard` included, so that caller takes on the redirect responsibility described on
   # `build_http_client`; `bounded_request` caps its responses all the same.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1439
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1706
   def default_http_client; end
 
   # The 2025-03-26 spec's "Fallbacks for Servers without Metadata Discovery": clients MUST use these default endpoint paths
   # relative to the authorization base URL. PKCE S256 is assumed because the legacy spec mandates PKCE and there is no metadata
   # to advertise it (the TypeScript and Python SDKs hardcode S256 on this path too).
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:556
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:685
   def default_legacy_metadata(authorization_base); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:820
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:949
   def ensure_client_registered(as_metadata:); end
 
   # Per RFC 8414 Section 3.3, the AS metadata document's `issuer` value MUST be
@@ -2549,16 +2804,16 @@ class MCP::Client::OAuth::Flow
   # could mask a confused-deputy attempt.
   # https://www.rfc-editor.org/rfc/rfc8414#section-3.3
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:808
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:937
   def ensure_issuer_matches!(expected:, returned:); end
 
   # The legacy authorization base is an origin, which a document may render as `https://host/`;
   # both name the same server, and nothing else does.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:587
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:716
   def ensure_legacy_issuer_matches!(expected:, returned:); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:679
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:808
   def ensure_pkce_supported!(as_metadata); end
 
   # `Provider` tolerates tokens stored before the issuer was recorded (see `ensure_token_issuer!`).
@@ -2567,13 +2822,13 @@ class MCP::Client::OAuth::Flow
   # authorization server discovery names now. Refusing it sends the transport back through the grant,
   # which does ask.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:972
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1101
   def ensure_refresh_token_issuer_recorded!; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:979
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1108
   def ensure_refreshable_client_information!(client_info, as_metadata:); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:764
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:893
   def ensure_routable_destination!(url, label:, server_url:); end
 
   # Requires a URL the *server* chose to sit on the origin the *caller* chose.
@@ -2590,17 +2845,17 @@ class MCP::Client::OAuth::Flow
   # internal hosts that are named rather than addressed.
   # https://www.rfc-editor.org/rfc/rfc9728#section-7.7
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:710
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:839
   def ensure_same_origin!(url, label:, server_url:); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:773
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:902
   def ensure_secure_endpoints!(as_metadata, server_url:); end
 
   # Per the MCP authorization spec's Communication Security requirement,
   # OAuth endpoints MUST use HTTPS unless the host is a loopback address.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#communication-security
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:690
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:819
   def ensure_secure_url!(url, label:); end
 
   # Refuses to present a refresh token to an authorization server other than the one that issued it.
@@ -2615,16 +2870,16 @@ class MCP::Client::OAuth::Flow
   # The caller answers a refusal by running the full authorization flow, which is where the embedding application
   # is asked about the new authorization server.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:957
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1086
   def ensure_token_issuer!(as_metadata:); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1222
-  def exchange_authorization_code(as_metadata:, client_info:, code:, code_verifier:, resource:); end
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1489
+  def exchange_authorization_code(as_metadata:, client_info:, code:, code_verifier:, resource:, redirect_uri: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1234
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1501
   def exchange_refresh_token(as_metadata:, client_info:, refresh_token:, resource:); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:580
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:709
   def fetch_authorization_server_metadata(issuer_url:); end
 
   # Walks candidate metadata URLs and returns the parsed body of the first 2xx response that is a JSON object;
@@ -2640,10 +2895,10 @@ class MCP::Client::OAuth::Flow
   # a server's access log, and with exception text bounded, since the message lands in every log destination
   # the error passes through.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:632
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:761
   def fetch_metadata_json(urls, label:); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:471
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:600
   def fetch_protected_resource_metadata(server_url:, resource_metadata_url:); end
 
   # Reads `authorization_servers` from a PRM document and returns
@@ -2653,19 +2908,19 @@ class MCP::Client::OAuth::Flow
   # both the full flow and the refresh flow share the same defensive
   # parse instead of each one duplicating a Hash-and-Array check.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:599
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:728
   def first_authorization_server(prm); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1432
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1699
   def http_client; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1383
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1650
   def http_get(url); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1402
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1669
   def http_post_form(url, form, headers: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1391
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1658
   def http_post_json(url, body); end
 
   # Locates the authorization server for `server_url` and returns `[prm, authorization_server]`.
@@ -2683,8 +2938,11 @@ class MCP::Client::OAuth::Flow
   # A body over the response cap is refused outright and never reaches the fallback either.
   # https://modelcontextprotocol.io/specification/2025-03-26/basic/authorization#fallbacks-for-servers-without-metadata-discovery
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:493
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:622
   def locate_authorization_server(server_url:, resource_metadata_url:); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1294
+  def non_empty_string?(value); end
 
   # Applies the SDK's `offline_access` policy to the resolved scope. The policy has two halves:
   #
@@ -2701,11 +2959,22 @@ class MCP::Client::OAuth::Flow
   #   the authorization request even though the AS will not honour it. Stripping here keeps the SDK's
   #   own request consistent with the AS's advertisement.
   #
-  # Returns `nil` when the result is empty so `build_authorization_url` omits the `scope` parameter entirely.
+  # Returns `nil` when empty so the URL builder adds no flow-owned scope parameter; a prefilled scope
+  # can still survive and is checked by the authorization-request validator.
   # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2207
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1133
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1347
   def normalize_offline_access_scope(scope, as_metadata:); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1261
+  def pending_authorization_expired?(pending); end
+
+  # The registration the authorization began with. A stored registration is used only while it still carries
+  # that `client_id` and is bound to the recorded authorization server; a Client ID Metadata Document URL,
+  # which is never stored, is used again while the recorded metadata advertises support for it.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1268
+  def pending_client_information(pending, as_metadata:); end
 
   # Submits a form-encoded token request using the authentication method
   # stored in `client_information`. The method determines whether client
@@ -2714,20 +2983,20 @@ class MCP::Client::OAuth::Flow
   # which therefore win, and are refused before the request is sent when they name
   # a reserved parameter or are not a Hash of Strings.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1250
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1517
   def post_to_token_endpoint(as_metadata:, client_info:, form:); end
 
   # Per RFC 6749 Section 6, the refresh response MAY omit `refresh_token`, in
   # which case the previous one stays valid. Preserve it explicitly so
   # downstream refresh attempts still work.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:465
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:594
   def preserve_refresh_token(new_tokens, previous_refresh_token); end
 
   # `ensure_secure_url!` runs first at every call site and already rejects a URL that fails to parse,
   # so the rescue here is a backstop rather than a leniency.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:785
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:914
   def private_network_url?(url); end
 
   # The OAuth flow the provider drives. Dispatching on the provider's
@@ -2737,33 +3006,36 @@ class MCP::Client::OAuth::Flow
   # predates this method is treated as the interactive authorization-code
   # flow it was the only option for.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1164
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1400
   def provider_authorization_flow; end
 
   # The Client ID Metadata Document URL, when the provider has one. Only `Provider` exposes the reader
   # (CIMD replaces Dynamic Client Registration on the authorization-code flow), while `refresh!` serves
   # every provider that holds a `refresh_token`, so the read is duck-typed like `authorization_flow`.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1189
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1425
   def provider_client_id_metadata_document_url; end
 
   # `nil` for a provider that predates the hook or leaves it unset.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1444
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1711
   def provider_http_client_customizer; end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1228
+  def provider_pending_authorization_max_age; end
 
   # Parameters the provider adds to every token request it makes (RFC 6749 Section 8.2 leaves room for them;
   # Auth0's `audience` is the usual one). Duck-typed like `authorization_flow`, so a provider without the method,
   # or one returning `nil`, adds nothing.
   # A bad value raises `InvalidTokenRequestParamsError`, as the provider constructors do.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1174
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1410
   def provider_token_request_params; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:454
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:583
   def read_token(key); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:923
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1052
   def rebind_client_information(info, issuer:); end
 
   # Returns the client metadata to submit on Dynamic Client Registration.
@@ -2773,25 +3045,22 @@ class MCP::Client::OAuth::Flow
   # the registered `redirect_uris`; an explicit value always wins.
   # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/837
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:886
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1015
   def registration_client_metadata; end
 
   # A candidate URL as it goes into a failure string: redacted, and cut so a URL the server chose cannot
   # grow the message without limit.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1367
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1634
   def reported_url(url); end
 
-  # Per MCP 2025-11-25 Authorization and the TS/Python SDKs, scope resolution
-  # prefers the `WWW-Authenticate` challenge first, then `scopes_supported`
-  # from the Protected Resource Metadata, and falls back to a provider-supplied
-  # scope only if both are absent. The provider-supplied scope must not pre-empt
-  # a server-advertised one.
+  # MCP scope selection prefers the challenge, then PRM `scopes_supported`, then the provider's fallback.
+  # Authorization-code clients may narrow only the PRM default, before `offline_access` augmentation.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1104
-  def resolve_scope(scope:, prm:); end
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1313
+  def resolve_scope(scope:, prm:, select_prm_scope: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1450
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1717
   def response_body_string(response); end
 
   # Wraps `Discovery.canonicalize_url` so that any URI parsing failure
@@ -2799,15 +3068,23 @@ class MCP::Client::OAuth::Flow
   # endpoints, ...) surfaces as `AuthorizationError` instead of leaking
   # a raw `URI::InvalidURIError` / `ArgumentError`.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1041
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1170
   def safe_canonicalize_url(url, label:); end
 
   # Strips userinfo and query before a URL reaches an exception message, the same precaution `MCP::Client::HTTP` takes
   # when it reports a URL: these values come off the network and can carry credentials that would otherwise land in
   # every log destination the error passes through.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:794
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:923
   def sanitized_url(url); end
+
+  # Records what `finish!` needs to redeem the code exactly as this authorization began: the PKCE verifier, the MCP server,
+  # the `resource` and `redirect_uri` sent, the client identity used, and the authorization server metadata already validated.
+  # The client secret is not copied: `finish!` reads the registration from storage and requires the same `client_id`.
+  # Every value is JSON-compatible, so storage can serialize the entry as-is.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1238
+  def save_pending_authorization(state:, code_verifier:, server_url:, resource:, client_id:, as_metadata:); end
 
   # Per SEP-2352, stored client credentials are bound to the authorization server that issued them;
   # refuse to replay another AS's credentials at this token endpoint. `HTTP#attempt_refresh` rescues
@@ -2820,15 +3097,20 @@ class MCP::Client::OAuth::Flow
   # Stored in the token hash so it travels through any `storage` a caller supplied, without widening
   # the storage interface that custom implementations have to satisfy.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:939
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1068
   def save_tokens_issued_by(tokens, as_metadata:); end
+
+  # Selects a subset of the PRM default without changing challenges, provider fallback, or refresh policy.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1366
+  def select_prm_scopes(scopes); end
 
   # Returns `scheme://host[:port]` of `server_url`, the legacy 2025-03-26 authorization base URL for servers without PRM.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:567
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:696
   def server_origin!(server_url); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1145
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1359
   def server_supports_offline_access?(as_metadata); end
 
   # Constant-time comparison for the OAuth `state` parameter to prevent timing-based discovery
@@ -2838,7 +3120,7 @@ class MCP::Client::OAuth::Flow
   # The hand-rolled XOR-sum walks every byte of the equal-length operands, so the running time
   # does not leak the position of the first mismatching byte.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1090
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1219
   def states_match?(returned, expected); end
 
   # Returns the stored `client_information` when it may be used against the authorization server
@@ -2855,15 +3137,18 @@ class MCP::Client::OAuth::Flow
   #
   # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2352
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:907
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1036
   def stored_client_information_for(issuer:); end
 
   # Surface only RFC 6749 §5.2 diagnostic fields, never the raw response,
   # which may contain tokens or other credentials. Classify the original
   # code so sanitization cannot turn malformed input into invalid_grant.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1337
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1604
   def token_endpoint_error(response); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1253
+  def valid_pending_authorization?(pending); end
 
   # Validates the RFC 9207 `iss` authorization response parameter against the issuer of the authorization server
   # the flow is talking to, per SEP-2468 (mix-up attack mitigation in multi-IdP setups):
@@ -2882,10 +3167,10 @@ class MCP::Client::OAuth::Flow
   # - https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2468
   # - https://www.rfc-editor.org/rfc/rfc9207
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1063
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1192
   def validate_authorization_response_issuer!(as_metadata:, iss:, iss_provided:); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1151
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:1387
   def wants_refresh_token?; end
 
   class << self
@@ -2906,39 +3191,60 @@ class MCP::Client::OAuth::Flow
     # which would silently move `BoundedBody`'s cap onto compressed bytes and let a small body expand past it
     # after the check.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:180
+    # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:204
     def build_http_client(customizer = T.unsafe(nil)); end
 
     # Returns why `params` cannot ride a token request as `token_request_params`, or `nil` when it can.
     # Shared by the provider constructors and the flow, which both refuse the value with `InvalidTokenRequestParamsError`,
     # so the same problem reads the same wherever it surfaces.
     #
-    # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:148
+    # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:172
     def token_request_params_problem(params); end
   end
 end
 
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:39
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:42
 class MCP::Client::OAuth::Flow::AuthorizationError < ::StandardError
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:42
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:45
   def initialize(message = T.unsafe(nil), http_status: T.unsafe(nil), error: T.unsafe(nil), error_description: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:40
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:43
   def error; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:40
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:43
   def error_description; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:40
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:43
   def http_status; end
+end
+
+# Raised by `MCP::Client::HTTP` when a provider without a `callback_handler` has sent the user to the authorization server:
+# the request cannot be retried until the application finishes the authorization with `finish!` in the request that
+# receives the redirect. `authorization_url` is the URL handed to `redirect_handler`; it is kept out of the message,
+# which may reach logs, because it carries the `state` that `finish!` looks the pending authorization up by.
+# Deliberately outside `AuthorizationError`, which `MCP::Client::HTTP` treats on a failed refresh as a reason to run
+# the interactive flow: this is the interactive flow waiting on the user, not a failure.
+#
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:95
+class MCP::Client::OAuth::Flow::AuthorizationPendingError < ::StandardError
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:98
+  def initialize(message = T.unsafe(nil), authorization_url: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:96
+  def authorization_url; end
 end
 
 # Raised when `authorization_request_validator` returns a falsy value. Separate from its parent
 # so that a caller can tell a refusal by its own policy from a network, discovery,
 # or authorization server metadata failure by rescuing a class rather than by matching the message text.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:60
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:63
 class MCP::Client::OAuth::Flow::AuthorizationRefusedError < ::MCP::Client::OAuth::Flow::AuthorizationError; end
+
+# A `state` the SDK generates is 43 characters; a callback carrying a much longer one is refused before storage is asked.
+#
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:105
+MCP::Client::OAuth::Flow::CALLBACK_STATE_MAX_LENGTH = T.let(T.unsafe(nil), Integer)
 
 # Raised by `RequestedOriginGuard` when middleware added through the provider's `http_client_customizer`
 # would send a request to an origin other than the one the flow validated, or has dropped the record of
@@ -2946,7 +3252,7 @@ class MCP::Client::OAuth::Flow::AuthorizationRefusedError < ::MCP::Client::OAuth
 # and deliberately outside `AuthorizationError`, which discovery treats as "nothing published"
 # and `MCP::Client::HTTP` treats on a failed refresh as a reason to run the interactive flow.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:84
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:87
 class MCP::Client::OAuth::Flow::DestinationMismatchError < ::ArgumentError; end
 
 # Raised specifically when the token endpoint rejects a grant with
@@ -2955,7 +3261,7 @@ class MCP::Client::OAuth::Flow::DestinationMismatchError < ::ArgumentError; end
 # transient failures (network, 5xx, other RFC 6749 error codes) that
 # should leave the refresh token intact.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:55
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:58
 class MCP::Client::OAuth::Flow::InvalidGrantError < ::MCP::Client::OAuth::Flow::AuthorizationError; end
 
 # Raised for a `token_request_params` value the SDK refuses: a reserved key, a Hash comparing keys by identity,
@@ -2963,7 +3269,7 @@ class MCP::Client::OAuth::Flow::InvalidGrantError < ::MCP::Client::OAuth::Flow::
 # not a failed authorization, and deliberately outside `AuthorizationError`, which `MCP::Client::HTTP` treats on
 # a failed refresh as a reason to run the interactive flow.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:77
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:80
 class MCP::Client::OAuth::Flow::InvalidTokenRequestParamsError < ::ArgumentError; end
 
 # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:19
@@ -2976,7 +3282,7 @@ MCP::Client::OAuth::Flow::METADATA_URL_MAX_LENGTH = T.let(T.unsafe(nil), Integer
 # (a `4xx` other than `429`, a redirect that was not followed, or a body that is not a JSON object).
 # The only discovery failure that may select the legacy 2025-03-26 path.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:65
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:68
 class MCP::Client::OAuth::Flow::MetadataNotPublishedError < ::MCP::Client::OAuth::Flow::AuthorizationError; end
 
 # Raised by metadata discovery when the answer says nothing about what is published: the request failed to
@@ -2984,13 +3290,13 @@ class MCP::Client::OAuth::Flow::MetadataNotPublishedError < ::MCP::Client::OAuth
 # the flow to a different authorization server because of a transient failure, so it is surfaced instead,
 # as the TypeScript SDK does for network errors outside browsers and the Python SDK does for both.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:71
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:74
 class MCP::Client::OAuth::Flow::MetadataUnreachableError < ::MCP::Client::OAuth::Flow::AuthorizationError; end
 
 # Token request parameters the flow sets itself. Its values win over a provider's `token_request_params`,
 # so a provider naming one of these is refused rather than left believing its value was sent.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:24
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:27
 MCP::Client::OAuth::Flow::RESERVED_TOKEN_REQUEST_PARAMS = T.let(T.unsafe(nil), Array)
 
 # Faraday middleware registered last on that connection, so it sees `env.url` after any customizer-added
@@ -3002,12 +3308,12 @@ MCP::Client::OAuth::Flow::RESERVED_TOKEN_REQUEST_PARAMS = T.let(T.unsafe(nil), A
 # The origin boundary resembles the one the Python SDK keeps for its own auth requests, which follows
 # a redirect itself only within the origin; this flow follows none.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:117
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:141
 class MCP::Client::OAuth::Flow::RequestedOriginGuard
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:118
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:142
   def initialize(app); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:122
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:146
   def call(env); end
 end
 
@@ -3022,23 +3328,31 @@ end
 # a `3xx` with the same environment, or with its `dup`, which shares the record, cannot replace it with
 # the redirected URL.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:96
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:120
 class MCP::Client::OAuth::Flow::RequestedURLStamp
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:99
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:123
   def initialize(app); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:103
+  # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:127
   def call(env); end
 end
 
-# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:97
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:121
 MCP::Client::OAuth::Flow::RequestedURLStamp::KEY = T.let(T.unsafe(nil), Symbol)
+
+# RFC 6749 scope-token: visible ASCII except space, double quote, and backslash.
+#
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:23
+MCP::Client::OAuth::Flow::SCOPE_TOKEN_FORMAT = T.let(T.unsafe(nil), Regexp)
 
 # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:18
 MCP::Client::OAuth::Flow::TOKEN_ENDPOINT_ERROR_DESCRIPTION_MAX_LENGTH = T.let(T.unsafe(nil), Integer)
 
 # pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:17
 MCP::Client::OAuth::Flow::TOKEN_ENDPOINT_ERROR_MAX_LENGTH = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/client/oauth/flow.rb:107
+MCP::Client::OAuth::Flow::UNKNOWN_PENDING_AUTHORIZATION_MESSAGE = T.let(T.unsafe(nil), String)
 
 # RFC 8693 token exchange against an enterprise identity provider, turning an IdP-issued ID token into
 # an Identity Assertion Authorization Grant (ID-JAG) per the MCP Enterprise Managed Authorization extension (SEP-990).
@@ -3105,6 +3419,17 @@ MCP::Client::OAuth::IDJAGTokenExchange::ID_TOKEN_TYPE = T.let(T.unsafe(nil), Str
 #   binding the credentials to the authorization server that issued them (SEP-2352);
 #   custom storages should treat the hash as opaque and persist it as-is.
 #
+# A provider without a `callback_handler` also keeps each pending authorization here, keyed by its `state`,
+# between the request that sends the user to the authorization server and the request that receives
+# the redirect (`save_pending_authorization(state, pending)`, `pending_authorization(state)`,
+# `delete_pending_authorization(state)`). A pending authorization holds the PKCE verifier, so custom storages
+# should treat it as a secret and persist it as-is. `Flow#finish!` touches only the entry its callback's `state`
+# names, so an authorization the user never finished stays until the storage drops it: this class drops entries
+# older than `pending_authorization_max_age` the next time one is saved, and a custom storage should expire them,
+# with a TTL of that age. `delete_pending_authorization` must remove the entry and return it in one atomic step
+# (`Hash#delete` under a mutex here; `GETDEL` in Redis, `DELETE ... RETURNING` in SQL), returning `nil` when
+# there was none: the flow redeems the code only when it gets the entry back.
+#
 # This class keeps everything in process memory, so the credentials live
 # only for the lifetime of the Ruby process. Applications that need
 # persistence across restarts should supply a custom object responding to
@@ -3113,29 +3438,72 @@ MCP::Client::OAuth::IDJAGTokenExchange::ID_TOKEN_TYPE = T.let(T.unsafe(nil), Str
 # `Provider.new(storage: ...)`. The shape mirrors Python SDK's
 # `TokenStorage` Protocol; TypeScript's `OAuthClientProvider` rolls
 # the same responsibilities into a single object.
+# A web application may receive the redirect in another process, so pending authorizations
+# need shared storage.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:27
+# pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:40
 class MCP::Client::OAuth::InMemoryStorage
-  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:30
-  def initialize; end
+  # @param pending_authorization_max_age [Integer] seconds after which a pending authorization that was
+  #   never finished is dropped from this storage, at its next save. `Provider.new` passes its own
+  #   `pending_authorization_max_age` when it builds the default storage, so the two ages agree; a storage built
+  #   by hand defaults to `Provider::DEFAULT_PENDING_AUTHORIZATION_MAX_AGE`.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:47
+  def initialize(pending_authorization_max_age: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:28
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:41
   def client_information; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:28
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:41
   def client_information=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:39
+  # The mutex is what makes the removal and the return one step on every Ruby implementation: `Hash#delete`
+  # alone is atomic only where a global interpreter lock serializes it, and `Flow#finish!` relies on exactly
+  # one of two callbacks racing on the same `state` getting the entry back.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:86
+  def delete_pending_authorization(state); end
+
+  # Every hash this storage holds may carry a secret (an access token, a client secret, a PKCE verifier),
+  # and `inspect` is what error reporters and consoles print an object with, so it shows only whether each is present.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:92
+  def inspect; end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:79
+  def pending_authorization(state); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:63
   def save_client_information(info); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:35
+  # Drops every pending authorization older than `pending_authorization_max_age` before saving the new one.
+  # The flow refuses such an entry when it is looked up, but only a callback carrying its `state` looks it up,
+  # and an authorization the user abandoned never gets one; every `401` a provider without a `callback_handler` meets
+  # starts another, so without this the entries, each holding the verifier and the authorization server metadata,
+  # would accumulate for the life of the process.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:72
+  def save_pending_authorization(state, pending); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:59
   def save_tokens(tokens); end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:28
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:41
   def tokens; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:28
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:41
   def tokens=(_arg0); end
+
+  private
+
+  # An entry's age is read from the Integer `created_at` the flow records when it saves the entry; an entry without one,
+  # which the flow never writes, is left alone.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:102
+  def drop_expired_pending_authorizations; end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/in_memory_storage.rb:112
+  def present_or_nil(value); end
 end
 
 # Builds RFC 7523 Section 2.2 JWT client assertions for the `private_key_jwt`
@@ -3263,6 +3631,8 @@ end
 #   request. Must be one of `redirect_uris` in `client_metadata`.
 # - `redirect_handler` - Callable invoked with the fully-built authorization
 #   URL (a `URI`). Implementations typically open the user's browser.
+#
+# Optional keyword arguments:
 # - `callback_handler` - Callable invoked after `redirect_handler`. Returns
 #   `[code, state]` or `[code, state, iss]`, where `code` is the authorization code,
 #   `state` is the `state` parameter received on the redirect URI, and `iss` is
@@ -3271,16 +3641,27 @@ end
 #   must match the authorization server's issuer, and a nil `iss` is
 #   rejected when the AS advertises `authorization_response_iss_parameter_supported`.
 #   The 2-element form skips the check for backward compatibility.
-#
-# Optional keyword arguments:
+#   Omit it when the redirect arrives in a later request, as it does in a web application:
+#   the flow then stops after `redirect_handler` with a pending authorization saved in `storage`,
+#   and the request that receives the redirect finishes it with `Flow#finish!`.
+# - `pending_authorization_max_age` - Seconds a pending authorization stays redeemable, counted from the moment
+#   `run!` saves it, when `callback_handler` is omitted. Defaults to `DEFAULT_PENDING_AUTHORIZATION_MAX_AGE`.
 # - `scope`   - String of space-separated scopes to request when the server's
 #   `WWW-Authenticate` does not specify one.
+# - `scope_selector` - Callable receiving a read-only Array of PRM `scopes_supported` tokens when
+#   those defaults are selected without a challenged scope. Return an Array containing a subset;
+#   `[]` requests none of the PRM defaults. Challenged scopes and provider fallback bypass it.
+#   The existing `offline_access` policy runs afterward; endpoint query parameters are unchanged.
 # - `storage` - Object responding to `tokens`, `save_tokens(tokens)`,
 #   `client_information`, and `save_client_information(info)`. Defaults to
 #   an `InMemoryStorage`. Persisted `client_information` is stamped with
 #   an `"issuer"` member binding it to the authorization server that
 #   issued it (SEP-2352); when the authorization server changes, the SDK discards
 #   the stale registration and tokens and re-registers.
+#   Without `callback_handler`, it must also respond to `save_pending_authorization(state, pending)`,
+#   `pending_authorization(state)`, and `delete_pending_authorization(state)`; the last must remove the entry
+#   and return it atomically, returning `nil` when there was none, and the storage should expire entries
+#   older than `pending_authorization_max_age`, as `InMemoryStorage` does.
 # - `client_id_metadata_document_url` - URL where the client publishes its Client ID Metadata Document
 #   (`draft-ietf-oauth-client-id-metadata-document-00` and the MCP authorization specification).
 #   When the authorization server advertises `client_id_metadata_document_supported: true`,
@@ -3299,47 +3680,74 @@ end
 # - `http_client_customizer` - Callable invoked with the `Faraday::Connection` the flow builds for
 #   its own requests; see `StorageBackedProvider#http_client_customizer`.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:58
+# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:71
 class MCP::Client::OAuth::Provider
   include ::MCP::Client::OAuth::StorageBackedProvider
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:89
-  def initialize(client_metadata:, redirect_uri:, redirect_handler:, callback_handler:, scope: T.unsafe(nil), storage: T.unsafe(nil), client_id_metadata_document_url: T.unsafe(nil), authorization_request_validator: T.unsafe(nil), token_request_params: T.unsafe(nil), http_client_customizer: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:122
+  def initialize(client_metadata:, redirect_uri:, redirect_handler:, callback_handler: T.unsafe(nil), scope: T.unsafe(nil), scope_selector: T.unsafe(nil), storage: T.unsafe(nil), client_id_metadata_document_url: T.unsafe(nil), authorization_request_validator: T.unsafe(nil), token_request_params: T.unsafe(nil), http_client_customizer: T.unsafe(nil), pending_authorization_max_age: T.unsafe(nil)); end
 
   # Identifies the OAuth flow this provider drives.
   # `Flow` dispatches on this rather than inspecting `client_metadata[:grant_types]`,
   # which is protocol metadata for the authorization server, not an SDK control signal.
   #
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:138
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:195
   def authorization_flow; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:81
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
   def callback_handler; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:81
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
   def client_id_metadata_document_url; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:81
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
   def client_metadata; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:81
+  # Returns the entry the storage removed, or `nil`. `Flow#finish!` redeems the code only when it gets
+  # the entry back, so of two callbacks racing on the same `state`, only one can.
+  #
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:209
+  def delete_pending_authorization(state); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:203
+  def pending_authorization(state); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
+  def pending_authorization_max_age; end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
   def redirect_handler; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:81
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
   def redirect_uri; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:81
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:199
+  def save_pending_authorization(state, pending); end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
   def scope; end
 
-  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:81
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
+  def scope_selector; end
+
+  # pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:112
   def storage; end
 end
+
+# Seconds a pending authorization stays redeemable, counted from the moment `run!` saves it, when the provider has
+# no `callback_handler`; long enough for a user to sign in and consent at the authorization server. It is also
+# the age past which `InMemoryStorage` drops an authorization that was never finished, at its next save, so that
+# an abandoned one does not keep its PKCE verifier in memory for the life of the process; a custom storage should
+# expire entries at the same age.
+#
+# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:104
+MCP::Client::OAuth::Provider::DEFAULT_PENDING_AUTHORIZATION_MAX_AGE = T.let(T.unsafe(nil), Integer)
 
 # Raised when `Provider#initialize` is called with a `redirect_uri` that
 # is neither HTTPS nor a loopback `http://` URL, per the MCP
 # authorization spec's Communication Security requirement.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:64
+# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:77
 class MCP::Client::OAuth::Provider::InsecureRedirectURIError < ::ArgumentError; end
 
 # Raised when `client_id_metadata_document_url` is provided but does not meet
@@ -3349,8 +3757,18 @@ class MCP::Client::OAuth::Provider::InsecureRedirectURIError < ::ArgumentError; 
 # so the same Communication Security guarantee that protects the redirect URI
 # applies and the value must unambiguously identify the document.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:79
+# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:92
 class MCP::Client::OAuth::Provider::InvalidClientIDMetadataDocumentURLError < ::ArgumentError; end
+
+# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:106
+MCP::Client::OAuth::Provider::PENDING_AUTHORIZATION_STORAGE_METHODS = T.let(T.unsafe(nil), Array)
+
+# Raised when `Provider#initialize` is called without `callback_handler` and with a `storage`
+# that cannot hold a pending authorization between the request that sends the user to the authorization server
+# and the request that receives the redirect.
+#
+# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:97
+class MCP::Client::OAuth::Provider::PendingAuthorizationStorageError < ::ArgumentError; end
 
 # Raised when the `redirect_uri` argument is not listed in
 # `client_metadata[:redirect_uris]` / `["redirect_uris"]`. Registering
@@ -3358,7 +3776,7 @@ class MCP::Client::OAuth::Provider::InvalidClientIDMetadataDocumentURLError < ::
 # one with the authorization request would be rejected by the AS at
 # runtime; failing at construction surfaces the bug earlier.
 #
-# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:71
+# pkg:gem/mcp#lib/mcp/client/oauth/provider.rb:84
 class MCP::Client::OAuth::Provider::UnregisteredRedirectURIError < ::ArgumentError; end
 
 # Shared token/credential persistence for the OAuth provider classes
@@ -3440,42 +3858,42 @@ end
 # another cursor. Use the single-page `list_*` methods to walk such a collection with
 # a policy of your own.
 #
-# pkg:gem/mcp#lib/mcp/client.rb:64
+# pkg:gem/mcp#lib/mcp/client.rb:66
 class MCP::Client::PaginationLimitError < ::StandardError; end
 
-# pkg:gem/mcp#lib/mcp/client.rb:31
+# pkg:gem/mcp#lib/mcp/client.rb:33
 class MCP::Client::RequestHandlerError < ::StandardError
-  # pkg:gem/mcp#lib/mcp/client.rb:34
+  # pkg:gem/mcp#lib/mcp/client.rb:36
   def initialize(message, request, error_type: T.unsafe(nil), original_error: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:32
+  # pkg:gem/mcp#lib/mcp/client.rb:34
   def error_type; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:32
+  # pkg:gem/mcp#lib/mcp/client.rb:34
   def original_error; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:32
+  # pkg:gem/mcp#lib/mcp/client.rb:34
   def request; end
 end
 
-# pkg:gem/mcp#lib/mcp/client.rb:115
+# pkg:gem/mcp#lib/mcp/client.rb:117
 MCP::Client::STATE_ONLY_BACKOFF_CAP_SECONDS = T.let(T.unsafe(nil), Float)
 
 # Backoff for `requestState`-only (load shedding) legs: exponential from 50ms to
 # a 250ms cap, matching the Python SDK (the TypeScript SDK uses a fixed 250ms).
 #
-# pkg:gem/mcp#lib/mcp/client.rb:114
+# pkg:gem/mcp#lib/mcp/client.rb:116
 MCP::Client::STATE_ONLY_BACKOFF_INITIAL_SECONDS = T.let(T.unsafe(nil), Float)
 
-# pkg:gem/mcp#lib/mcp/client.rb:21
+# pkg:gem/mcp#lib/mcp/client.rb:23
 class MCP::Client::ServerError < ::StandardError
-  # pkg:gem/mcp#lib/mcp/client.rb:24
+  # pkg:gem/mcp#lib/mcp/client.rb:26
   def initialize(message, code:, data: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:22
+  # pkg:gem/mcp#lib/mcp/client.rb:24
   def code; end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:22
+  # pkg:gem/mcp#lib/mcp/client.rb:24
   def data; end
 end
 
@@ -3485,12 +3903,12 @@ end
 # the sampling spec answers a rejected request with code `-1`.
 # https://modelcontextprotocol.io/specification/2025-11-25/client/sampling
 #
-# pkg:gem/mcp#lib/mcp/client.rb:47
+# pkg:gem/mcp#lib/mcp/client.rb:49
 class MCP::Client::ServerRequestError < ::StandardError
-  # pkg:gem/mcp#lib/mcp/client.rb:50
+  # pkg:gem/mcp#lib/mcp/client.rb:52
   def initialize(message, code:); end
 
-  # pkg:gem/mcp#lib/mcp/client.rb:48
+  # pkg:gem/mcp#lib/mcp/client.rb:50
   def code; end
 end
 
@@ -3499,10 +3917,278 @@ end
 # backward compatibility with callers that rescue the generic error. Per spec,
 # clients MUST start a new session with a fresh `initialize` request in response.
 #
-# pkg:gem/mcp#lib/mcp/client.rb:90
+# pkg:gem/mcp#lib/mcp/client.rb:92
 class MCP::Client::SessionExpiredError < ::MCP::Client::RequestHandlerError
-  # pkg:gem/mcp#lib/mcp/client.rb:91
+  # pkg:gem/mcp#lib/mcp/client.rb:93
   def initialize(message, request, original_error: T.unsafe(nil)); end
+end
+
+# A `skills/list` or `skills/get` result the server returned is not a conformant skill entry
+# (wrong shape, a malformed digest, a resource outside the skill root, a duplicate URI within one page,
+# or a `skills/get` result for another URI). Nothing is remembered from such a result.
+#
+# pkg:gem/mcp#lib/mcp/client/skill_errors.rb:12
+class MCP::Client::SkillEntryError < ::MCP::Client::SkillError; end
+
+# Base class of the errors the Skills extension (SEP-2640) raises on the client side, so a host can
+# rescue all of them at once. Messages carry request and skill URIs only, never content.
+#
+# pkg:gem/mcp#lib/mcp/client/skill_errors.rb:7
+class MCP::Client::SkillError < ::StandardError; end
+
+# A Skills call was refused before it was sent, or its completion was discarded because the connection
+# changed. `reason` is one of `:not_advertised`, `:connection_changed`, `:latched`, `:unknown_skill`,
+# `:dynamic`, `:not_in_manifest`, or `:skill_md_unverified`; later releases may add reasons, so treat
+# an unknown one as a refusal too. Nothing is latched by a refusal.
+#
+# pkg:gem/mcp#lib/mcp/client/skill_errors.rb:34
+class MCP::Client::SkillReadRefusedError < ::MCP::Client::SkillError
+  # pkg:gem/mcp#lib/mcp/client/skill_errors.rb:37
+  def initialize(message, reason:, uri: T.unsafe(nil), skill_uri: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/client/skill_errors.rb:35
+  def reason; end
+
+  # pkg:gem/mcp#lib/mcp/client/skill_errors.rb:35
+  def skill_uri; end
+
+  # pkg:gem/mcp#lib/mcp/client/skill_errors.rb:35
+  def uri; end
+end
+
+# A skill file read and verified by `read_skill_resource`: `bytes` is the verified content as a frozen
+# binary-encoded String (the decoded `blob`, or the bytes of the `text`), `mime_type` is the server's
+# unverified display metadata (never a reason to pick an interpreter), `contents` is the raw frozen
+# `contents` Array, `skill` is the entry object the content was checked against, and `verified` is true:
+# the digest, size, and (for a `SKILL.md`) frontmatter matched. Every value is independent of the objects
+# it was built from, so mutating a source cannot change the result.
+#
+# pkg:gem/mcp#lib/mcp/client/skills.rb:31
+class MCP::Client::SkillReadResult < ::Struct
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:32
+  def initialize(**kwargs); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def bytes; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def bytes=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def contents; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def contents=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def mime_type; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def mime_type=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def skill; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def skill=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def uri; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def uri=(_); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def verified; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+  def verified=(_); end
+
+  class << self
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+    def [](*_arg0); end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+    def inspect; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+    def keyword_init?; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+    def members; end
+
+    # pkg:gem/mcp#lib/mcp/client/skills.rb:31
+    def new(*_arg0); end
+  end
+end
+
+# The content a `resources/read` returned does not match the skill's manifest: `reason` is one of
+# `:contents` (not exactly one item for the requested URI with exactly one of `text` or `blob`,
+# an undecodable `blob`, or an item nested too deeply to copy), `:size`, `:digest`, `:parse` (the `SKILL.md`
+# frontmatter cannot be read), or `:frontmatter` (it differs from the entry). The skill is latched for
+# the life of the connection.
+#
+# pkg:gem/mcp#lib/mcp/client/skill_errors.rb:19
+class MCP::Client::SkillVerificationError < ::MCP::Client::SkillError
+  # pkg:gem/mcp#lib/mcp/client/skill_errors.rb:22
+  def initialize(message, uri:, skill_uri:, reason:); end
+
+  # pkg:gem/mcp#lib/mcp/client/skill_errors.rb:20
+  def reason; end
+
+  # pkg:gem/mcp#lib/mcp/client/skill_errors.rb:20
+  def skill_uri; end
+
+  # pkg:gem/mcp#lib/mcp/client/skill_errors.rb:20
+  def uri; end
+end
+
+# Client side of the Skills extension (SEP-2640), mixed into `MCP::Client`: `list_skills`, `get_skill`,
+# `read_skill_resource`, and `skills_capability`.
+#
+# Every call is admitted only after a handshake of the current connection advertised both the extension and
+# `resources`, as the SEP asks of clients. Entries the server returned are remembered per client instance,
+# bound to the connection: `connect` starts a new generation and forgets them. `read_skill_resource` checks
+# the content against the entry it resolved (size, SHA-256, and the frontmatter of a `SKILL.md`), withholds
+# content that does not match, and latches the skill so that no later read of it is sent on this connection,
+# which is what keeps a host from loading part of a tampered skill. `read_resource` stays the raw,
+# unverified way to fetch a skill file; `MCP::Skill.verify_resource` and `MCP::Skill.verify_frontmatter`
+# exist for hosts that go that way and then own the latching and ordering obligations themselves.
+#
+# pkg:gem/mcp#lib/mcp/client/skills.rb:49
+module MCP::Client::Skills
+  # Fetches the entry of one skill by the URI of its `SKILL.md`, listed or not.
+  #
+  # @raise [SkillReadRefusedError] `:not_advertised` or `:connection_changed`, as for `list_skills`.
+  # @raise [SkillEntryError] When the result is not a conformant entry for exactly `uri`.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:85
+  def get_skill(uri:, meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
+
+  # Fetches one page of the skills the server serves.
+  #
+  # @raise [SkillReadRefusedError] `:not_advertised` before any request is sent, `:connection_changed` when
+  #   `connect` ran while the request was in flight (the page is discarded).
+  # @raise [SkillEntryError] When the page is not a conformant `skills/list` result.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:55
+  def list_skills(cursor: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
+
+  # Reads one file of a skill through `resources/read` and verifies it against the skill's entry before
+  # returning it. The entry is `skill:` when given (for this read only), else the most specific remembered
+  # skill that contains `uri`, never an enclosing one: when an enclosing skill lists `uri` as well the read is
+  # refused as `:ambiguous`, since only the host knows which skill it is acting on, and a `SKILL.md` URI
+  # resolves only to its own entry. A supporting file is read only after the skill's `SKILL.md` verified on
+  # this instance.
+  #
+  # @raise [SkillReadRefusedError] Before anything is sent: `:not_advertised`, `:latched`, `:unknown_skill` (also
+  #   for a URI longer than 8 KiB or deeper than 128 segments, an SDK limit), `:ambiguous` (an enclosing
+  #   remembered skill lists `uri` too; pass `skill:` for the skill being acted on), `:dynamic` (no digests; use
+  #   `read_resource` with `MCP::Skill.verify_frontmatter`), `:not_in_manifest`, `:skill_md_unverified`; on
+  #   completion, `:connection_changed` or `:latched`.
+  # @raise [SkillVerificationError] When the content does not match; the skill is latched for the connection.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:115
+  def read_skill_resource(uri:, skill: T.unsafe(nil), meta: T.unsafe(nil), cancellation: T.unsafe(nil)); end
+
+  # The Skills settings the current connection's handshake advertised, as a frozen Hash, or nil when
+  # a Skills call would be refused with `:not_advertised`: not ready, not connected, or not advertised.
+  # nil never means "read skill files raw instead".
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:145
+  def skills_capability; end
+
+  private
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:151
+  def check_skill_uri!(uri); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:158
+  def parse_skill_entry(entry); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:219
+  def skill_verification_failure(reason, uri, entry, detail); end
+
+  # Pure verification, run outside the state lock: exactly one content item for `uri` with exactly one of
+  # `text` or `blob`, the size before decoding, the digest, and for the skill's own `SKILL.md` the frontmatter.
+  # Returns `[:ok, bytes, mime_type, contents]` or `[:failed, error]`.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:167
+  def verify_skill_contents(entry, resource_entry, uri, response); end
+end
+
+# Per-instance Skills state, bound to the connection. Every public method takes the one Mutex and none of
+# them calls another inside it (Ruby's Mutex is not reentrant); hashing, decoding, and parsing happen
+# outside, in the client methods above. No lock is ever held across I/O.
+#
+# pkg:gem/mcp#lib/mcp/client/skills.rb:229
+class MCP::Client::Skills::State
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:230
+  def initialize; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:286
+  def admit(connected:); end
+
+  # Resolves and checks a read before it is sent; returns the generation, the entry, and its resource entry.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:300
+  def admit_read(uri, candidates, explicit, connected:); end
+
+  # A new connection is about to be established: forget everything and return the new generation.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:241
+  def begin_handshake; end
+
+  # Settles a read: discards a stale or newly latched completion, latches the skill on a failure, and
+  # grants the entry object verified status after its own `SKILL.md` verified (an automatic read only
+  # while the object is still current; an explicit read for the object the caller supplied).
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:335
+  def complete_read(generation, uri, candidates, entry, explicit:, outcome:); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:293
+  def ensure_current!(generation); end
+
+  # The handshake that started `generation` completed with `result`, the wire Hash `transport.connect`
+  # returned; records a frozen copy of its capabilities, unless a newer handshake started meanwhile.
+  # Capabilities nested too deeply to copy are recorded as none, so `connect` succeeds as it does without
+  # Skills and every Skills call is refused.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:257
+  def handshake_completed(generation, result); end
+
+  # The handshake that started `generation` raised; a stale failure changes nothing.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:273
+  def handshake_failed(generation); end
+
+  # Remembers entries a catalog call returned; a replaced entry object loses its verified status.
+  #
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:320
+  def install(generation, skills); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:282
+  def ready?; end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:354
+  def skills_capability(connected:); end
+
+  private
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:364
+  def admit_or_refuse!(connected); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:370
+  def admitted?(connected); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:417
+  def read_key(hash, key); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:424
+  def refuse!(reason, uri, skill_uri, detail); end
+
+  # pkg:gem/mcp#lib/mcp/client/skills.rb:377
+  def resolve_entry(uri, candidates, explicit); end
 end
 
 # pkg:gem/mcp#lib/mcp/client/stdio.rb:16
@@ -3595,8 +4281,11 @@ class MCP::Client::Stdio
   # the read loop, so a keepalive cannot stall unanswered while a response is awaited;
   # between requests nothing reads stdout, and a queued ping is answered on the next read.
   #
-  # pkg:gem/mcp#lib/mcp/client/stdio.rb:469
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:474
   def answer_ping(parsed); end
+
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:483
+  def answerable_ping?(parsed); end
 
   # Probes `server/discover` and adopts the modern lifecycle when the server serves
   # a mutually supported modern version; otherwise falls back to the legacy handshake.
@@ -3616,10 +4305,13 @@ class MCP::Client::Stdio
   # pkg:gem/mcp#lib/mcp/client/stdio.rb:296
   def connect_modern(client_info:, protocol_version:, capabilities:); end
 
-  # pkg:gem/mcp#lib/mcp/client/stdio.rb:482
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:493
   def ensure_running!; end
 
-  # pkg:gem/mcp#lib/mcp/client/stdio.rb:478
+  # An id the pong could not write back is skipped too: a String that is not valid UTF-8, or a number
+  # such as `1e400`, which the parser reads as an infinite Float that JSON cannot represent.
+  #
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:489
   def json_rpc_id?(id); end
 
   # pkg:gem/mcp#lib/mcp/client/stdio.rb:348
@@ -3628,8 +4320,14 @@ class MCP::Client::Stdio
   # pkg:gem/mcp#lib/mcp/client/stdio.rb:369
   def probe_discover; end
 
-  # pkg:gem/mcp#lib/mcp/client/stdio.rb:528
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:547
   def raise_connection_error!(method, params); end
+
+  # The line framing is intact, so the transport stays usable; the received value is left out of
+  # the message because it can be any JSON value.
+  #
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:557
+  def raise_invalid_response!(method, params); end
 
   # Reads one newline-delimited frame from the server's stdout, bounded by `@max_line_bytes`.
   # Returns the line (including its trailing newline) or `nil` at EOF. Raises when the limit
@@ -3637,7 +4335,7 @@ class MCP::Client::Stdio
   # A short final frame without a trailing newline (EOF) is still returned, since its length
   # stays under the limit.
   #
-  # pkg:gem/mcp#lib/mcp/client/stdio.rb:508
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:519
   def read_line(method, params); end
 
   # pkg:gem/mcp#lib/mcp/client/stdio.rb:426
@@ -3648,7 +4346,15 @@ class MCP::Client::Stdio
   # pkg:gem/mcp#lib/mcp/client/stdio.rb:401
   def stamp_modern(request); end
 
-  # pkg:gem/mcp#lib/mcp/client/stdio.rb:492
+  # Strips a frame as bytes. The server's stdout is read as UTF-8, and `String#strip` raises for a UTF-8 string
+  # holding an invalid byte at either end on every supported Ruby, and anywhere in it from Ruby 3.2 on, which would
+  # surface as that exception instead of the client's own error. As bytes, the frame reaches the parser, which
+  # refuses what is not JSON with the client's parse failure.
+  #
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:543
+  def strip_frame(line); end
+
+  # pkg:gem/mcp#lib/mcp/client/stdio.rb:503
   def wait_for_readable!(method, params); end
 
   # Bounds the probe read when the caller configured no `read_timeout`, and only for the probe:
@@ -3691,32 +4397,47 @@ MCP::Client::Stdio::MAX_LINE_BYTES = T.let(T.unsafe(nil), Integer)
 # pkg:gem/mcp#lib/mcp/client/stdio.rb:22
 MCP::Client::Stdio::STDERR_READ_SIZE = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/mcp#lib/mcp/client/tool.rb:5
+# A tool as `tools/list` described it. Every member is kept as the server sent it, so what an extension
+# puts under `_meta` (MCP Apps names a tool's app under `_meta.ui`) reaches the host unchanged.
+#
+# pkg:gem/mcp#lib/mcp/client/tool.rb:7
 class MCP::Client::Tool
-  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
-  def initialize(name:, description:, input_schema:, output_schema: T.unsafe(nil), annotations: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:10
+  def initialize(name:, description:, input_schema:, output_schema: T.unsafe(nil), annotations: T.unsafe(nil), title: T.unsafe(nil), icons: T.unsafe(nil), execution: T.unsafe(nil), meta: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/client/tool.rb:6
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
   def annotations; end
 
-  # pkg:gem/mcp#lib/mcp/client/tool.rb:6
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
   def description; end
 
-  # pkg:gem/mcp#lib/mcp/client/tool.rb:6
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
+  def execution; end
+
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
+  def icons; end
+
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
   def input_schema; end
 
-  # pkg:gem/mcp#lib/mcp/client/tool.rb:6
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
+  def meta; end
+
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
   def name; end
 
-  # pkg:gem/mcp#lib/mcp/client/tool.rb:6
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
   def output_schema; end
+
+  # pkg:gem/mcp#lib/mcp/client/tool.rb:8
+  def title; end
 end
 
 # Raised when a server response fails client-side validation, e.g., a success response
 # whose `result` field is missing or has the wrong type. This is distinct from a
 # server-returned JSON-RPC error, which is raised as `ServerError`.
 #
-# pkg:gem/mcp#lib/mcp/client.rb:59
+# pkg:gem/mcp#lib/mcp/client.rb:61
 class MCP::Client::ValidationError < ::StandardError; end
 
 # pkg:gem/mcp#lib/mcp/configuration.rb:4
@@ -4080,33 +4801,56 @@ MCP::ErrorCodes::UNSUPPORTED_PROTOCOL_VERSION = T.let(T.unsafe(nil), Integer)
 # is not, and the specification allows an HTTP/HTTPS URL or a `data:` URI), and a size may be any `String`
 # (the specification expects `WxH` or `"any"`).
 #
-# pkg:gem/mcp#lib/mcp/icon.rb:12
+# Wherever an `Icon` is accepted (`Server.new(icons:)` and the `icons` of a tool, prompt, resource, or resource template),
+# a Hash is accepted too and converted through `Icon.from`, so it is checked the same way.
+#
+# pkg:gem/mcp#lib/mcp/icon.rb:15
 class MCP::Icon
-  # pkg:gem/mcp#lib/mcp/icon.rb:17
+  # pkg:gem/mcp#lib/mcp/icon.rb:78
   def initialize(src:, mime_type: T.unsafe(nil), sizes: T.unsafe(nil), theme: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/icon.rb:15
+  # pkg:gem/mcp#lib/mcp/icon.rb:76
   def mime_type; end
 
-  # pkg:gem/mcp#lib/mcp/icon.rb:15
+  # pkg:gem/mcp#lib/mcp/icon.rb:76
   def sizes; end
 
-  # pkg:gem/mcp#lib/mcp/icon.rb:15
+  # pkg:gem/mcp#lib/mcp/icon.rb:76
   def src; end
 
-  # pkg:gem/mcp#lib/mcp/icon.rb:15
+  # pkg:gem/mcp#lib/mcp/icon.rb:76
   def theme; end
 
-  # pkg:gem/mcp#lib/mcp/icon.rb:40
+  # pkg:gem/mcp#lib/mcp/icon.rb:101
   def to_h; end
 
   private
 
-  # pkg:gem/mcp#lib/mcp/icon.rb:46
+  # pkg:gem/mcp#lib/mcp/icon.rb:107
   def sizes_problem(sizes); end
+
+  class << self
+    # Returns `value` when it is already an `Icon`, builds one from a Hash, and refuses anything else.
+    #
+    # pkg:gem/mcp#lib/mcp/icon.rb:31
+    def from(value); end
+
+    # Converts the `icons` argument of a server, tool, prompt, resource, or resource template: `nil` stays `nil`,
+    # each element of an Array goes through `from` into a frozen Array, and anything else is refused.
+    # The frozen Array keeps a later `<<` on a reader from adding an element these checks never saw.
+    #
+    # pkg:gem/mcp#lib/mcp/icon.rb:59
+    def from_list(value); end
+  end
 end
 
-# pkg:gem/mcp#lib/mcp/icon.rb:13
+# The keys `from` accepts in a Hash: the keyword names of `new` and the wire name `mimeType`,
+# as Symbols or Strings.
+#
+# pkg:gem/mcp#lib/mcp/icon.rb:20
+MCP::Icon::HASH_KEYWORDS = T.let(T.unsafe(nil), Hash)
+
+# pkg:gem/mcp#lib/mcp/icon.rb:16
 MCP::Icon::SUPPORTED_THEMES = T.let(T.unsafe(nil), Array)
 
 # pkg:gem/mcp#lib/mcp/instrumentation.rb:4
@@ -4136,15 +4880,15 @@ MCP::LoggingMessageNotification::LOG_LEVEL_SEVERITY = T.let(T.unsafe(nil), Hash)
 # pkg:gem/mcp#lib/mcp/methods.rb:4
 module MCP::Methods
   class << self
-    # pkg:gem/mcp#lib/mcp/methods.rb:77
+    # pkg:gem/mcp#lib/mcp/methods.rb:82
     def ensure_capability!(method, capabilities); end
 
-    # pkg:gem/mcp#lib/mcp/methods.rb:73
+    # pkg:gem/mcp#lib/mcp/methods.rb:78
     def notification?(method); end
 
     private
 
-    # pkg:gem/mcp#lib/mcp/methods.rb:115
+    # pkg:gem/mcp#lib/mcp/methods.rb:120
     def require_capability!(method, capabilities, *keys); end
   end
 end
@@ -4152,7 +4896,7 @@ end
 # pkg:gem/mcp#lib/mcp/methods.rb:17
 MCP::Methods::COMPLETION_COMPLETE = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:44
+# pkg:gem/mcp#lib/mcp/methods.rb:49
 MCP::Methods::ELICITATION_CREATE = T.let(T.unsafe(nil), String)
 
 # pkg:gem/mcp#lib/mcp/methods.rb:5
@@ -4168,57 +4912,57 @@ MCP::Methods::LOGGING_SET_LEVEL = T.let(T.unsafe(nil), String)
 # or subscribe on. A modern-era request naming one of these answers with `-32601`
 # Method not found (HTTP 404 on Streamable HTTP).
 #
-# pkg:gem/mcp#lib/mcp/methods.rb:34
+# pkg:gem/mcp#lib/mcp/methods.rb:39
 MCP::Methods::MODERN_REMOVED_METHODS = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:61
+# pkg:gem/mcp#lib/mcp/methods.rb:66
 class MCP::Methods::MissingRequiredCapabilityError < ::StandardError
-  # pkg:gem/mcp#lib/mcp/methods.rb:65
+  # pkg:gem/mcp#lib/mcp/methods.rb:70
   def initialize(method, capability); end
 
-  # pkg:gem/mcp#lib/mcp/methods.rb:63
+  # pkg:gem/mcp#lib/mcp/methods.rb:68
   def capability; end
 
-  # pkg:gem/mcp#lib/mcp/methods.rb:62
+  # pkg:gem/mcp#lib/mcp/methods.rb:67
   def method; end
 end
 
-# pkg:gem/mcp#lib/mcp/methods.rb:55
+# pkg:gem/mcp#lib/mcp/methods.rb:60
 MCP::Methods::NOTIFICATIONS_CANCELLED = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:56
+# pkg:gem/mcp#lib/mcp/methods.rb:61
 MCP::Methods::NOTIFICATIONS_ELICITATION_COMPLETE = T.let(T.unsafe(nil), String)
 
 # Notification methods
 #
-# pkg:gem/mcp#lib/mcp/methods.rb:47
+# pkg:gem/mcp#lib/mcp/methods.rb:52
 MCP::Methods::NOTIFICATIONS_INITIALIZED = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:53
+# pkg:gem/mcp#lib/mcp/methods.rb:58
 MCP::Methods::NOTIFICATIONS_MESSAGE = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:54
+# pkg:gem/mcp#lib/mcp/methods.rb:59
 MCP::Methods::NOTIFICATIONS_PROGRESS = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:49
+# pkg:gem/mcp#lib/mcp/methods.rb:54
 MCP::Methods::NOTIFICATIONS_PROMPTS_LIST_CHANGED = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:50
+# pkg:gem/mcp#lib/mcp/methods.rb:55
 MCP::Methods::NOTIFICATIONS_RESOURCES_LIST_CHANGED = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:51
+# pkg:gem/mcp#lib/mcp/methods.rb:56
 MCP::Methods::NOTIFICATIONS_RESOURCES_UPDATED = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:52
+# pkg:gem/mcp#lib/mcp/methods.rb:57
 MCP::Methods::NOTIFICATIONS_ROOTS_LIST_CHANGED = T.let(T.unsafe(nil), String)
 
 # First message on a `subscriptions/listen` stream (SEP-2575): reports the subset
 # of requested notification types the server agreed to honor.
 #
-# pkg:gem/mcp#lib/mcp/methods.rb:59
+# pkg:gem/mcp#lib/mcp/methods.rb:64
 MCP::Methods::NOTIFICATIONS_SUBSCRIPTIONS_ACKNOWLEDGED = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:48
+# pkg:gem/mcp#lib/mcp/methods.rb:53
 MCP::Methods::NOTIFICATIONS_TOOLS_LIST_CHANGED = T.let(T.unsafe(nil), String)
 
 # pkg:gem/mcp#lib/mcp/methods.rb:6
@@ -4245,16 +4989,25 @@ MCP::Methods::RESOURCES_TEMPLATES_LIST = T.let(T.unsafe(nil), String)
 # pkg:gem/mcp#lib/mcp/methods.rb:23
 MCP::Methods::RESOURCES_UNSUBSCRIBE = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:42
+# pkg:gem/mcp#lib/mcp/methods.rb:47
 MCP::Methods::ROOTS_LIST = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:43
+# pkg:gem/mcp#lib/mcp/methods.rb:48
 MCP::Methods::SAMPLING_CREATE_MESSAGE = T.let(T.unsafe(nil), String)
 
 # Sessionless capability discovery (MCP 2026-07-28 draft, SEP-2575).
 #
 # pkg:gem/mcp#lib/mcp/methods.rb:9
 MCP::Methods::SERVER_DISCOVER = T.let(T.unsafe(nil), String)
+
+# pkg:gem/mcp#lib/mcp/methods.rb:28
+MCP::Methods::SKILLS_GET = T.let(T.unsafe(nil), String)
+
+# Skills extension (SEP-2640): registered only when a server configures skills,
+# so an unconfigured server answers `-32601` rather than a capability error.
+#
+# pkg:gem/mcp#lib/mcp/methods.rb:27
+MCP::Methods::SKILLS_LIST = T.let(T.unsafe(nil), String)
 
 # Long-lived notification subscription stream (MCP 2026-07-28, SEP-2575),
 # replacing the legacy HTTP GET listening stream. Served at the transport layer
@@ -4263,10 +5016,10 @@ MCP::Methods::SERVER_DISCOVER = T.let(T.unsafe(nil), String)
 # pkg:gem/mcp#lib/mcp/methods.rb:13
 MCP::Methods::SUBSCRIPTIONS_LISTEN = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:25
+# pkg:gem/mcp#lib/mcp/methods.rb:30
 MCP::Methods::TOOLS_CALL = T.let(T.unsafe(nil), String)
 
-# pkg:gem/mcp#lib/mcp/methods.rb:26
+# pkg:gem/mcp#lib/mcp/methods.rb:31
 MCP::Methods::TOOLS_LIST = T.let(T.unsafe(nil), String)
 
 # pkg:gem/mcp#lib/mcp/progress.rb:4
@@ -4831,28 +5584,32 @@ class MCP::Server
   include ::MCP::Instrumentation
   include ::MCP::Server::Pagination
 
-  # pkg:gem/mcp#lib/mcp/server.rb:187
-  def initialize(description: T.unsafe(nil), icons: T.unsafe(nil), name: T.unsafe(nil), title: T.unsafe(nil), version: T.unsafe(nil), website_url: T.unsafe(nil), instructions: T.unsafe(nil), tools: T.unsafe(nil), prompts: T.unsafe(nil), resources: T.unsafe(nil), resource_templates: T.unsafe(nil), server_context: T.unsafe(nil), configuration: T.unsafe(nil), capabilities: T.unsafe(nil), page_size: T.unsafe(nil), ttl_ms: T.unsafe(nil), cache_scope: T.unsafe(nil), request_state_security: T.unsafe(nil), input_required_legacy_shim: T.unsafe(nil), transport: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:208
+  def initialize(description: T.unsafe(nil), icons: T.unsafe(nil), name: T.unsafe(nil), title: T.unsafe(nil), version: T.unsafe(nil), website_url: T.unsafe(nil), instructions: T.unsafe(nil), tools: T.unsafe(nil), prompts: T.unsafe(nil), resources: T.unsafe(nil), resource_templates: T.unsafe(nil), skills: T.unsafe(nil), server_context: T.unsafe(nil), configuration: T.unsafe(nil), capabilities: T.unsafe(nil), page_size: T.unsafe(nil), ttl_ms: T.unsafe(nil), cache_scope: T.unsafe(nil), request_state_security: T.unsafe(nil), input_required_legacy_shim: T.unsafe(nil), transport: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:489
+  # pkg:gem/mcp#lib/mcp/server.rb:603
   def build_sampling_params(capabilities, messages:, max_tokens:, system_prompt: T.unsafe(nil), model_preferences: T.unsafe(nil), include_context: T.unsafe(nil), temperature: T.unsafe(nil), stop_sequences: T.unsafe(nil), metadata: T.unsafe(nil), tools: T.unsafe(nil), tool_choice: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:185
+  # pkg:gem/mcp#lib/mcp/server.rb:189
   def cache_scope; end
 
   # SEP-2549 cache hint: whether shared intermediaries may cache the result ("public")
   # or only the requesting client ("private").
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:371
+  # pkg:gem/mcp#lib/mcp/server.rb:413
   def cache_scope=(cache_scope); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:189
   def capabilities; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
-  def capabilities=(_arg0); end
+  # Replaces the capabilities (a Hash or an `MCP::Server::Capabilities` builder). The Skills extension rules
+  # are checked before the value is taken, as at construction: the extension may be declared only when skills
+  # are configured, `resources` must be declared alongside it, and `directoryRead` is not served.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:202
+  def capabilities=(value); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:185
+  # pkg:gem/mcp#lib/mcp/server.rb:189
   def client_capabilities; end
 
   # Sets a custom handler for `completion/complete` requests.
@@ -4861,34 +5618,34 @@ class MCP::Server
   # @yield [params] The request params containing `:ref`, `:argument`, and optionally `:context`.
   # @yieldreturn [Hash] A hash with `:completion` key containing `:values`, optional `:total`, and `:hasMore`.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:461
+  # pkg:gem/mcp#lib/mcp/server.rb:545
   def completion_handler(&block); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def configuration; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def configuration=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:342
+  # pkg:gem/mcp#lib/mcp/server.rb:384
   def define_custom_method(method_name:, &block); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:307
+  # pkg:gem/mcp#lib/mcp/server.rb:347
   def define_prompt(name: T.unsafe(nil), title: T.unsafe(nil), description: T.unsafe(nil), arguments: T.unsafe(nil), &block); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:314
+  # pkg:gem/mcp#lib/mcp/server.rb:354
   def define_resource(uri: T.unsafe(nil), name: T.unsafe(nil), title: T.unsafe(nil), description: T.unsafe(nil), icons: T.unsafe(nil), mime_type: T.unsafe(nil), annotations: T.unsafe(nil), size: T.unsafe(nil), meta: T.unsafe(nil), &block); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:326
+  # pkg:gem/mcp#lib/mcp/server.rb:367
   def define_resource_template(uri_template: T.unsafe(nil), name: T.unsafe(nil), title: T.unsafe(nil), description: T.unsafe(nil), icons: T.unsafe(nil), mime_type: T.unsafe(nil), annotations: T.unsafe(nil), meta: T.unsafe(nil), &block); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:297
+  # pkg:gem/mcp#lib/mcp/server.rb:337
   def define_tool(name: T.unsafe(nil), title: T.unsafe(nil), description: T.unsafe(nil), input_schema: T.unsafe(nil), output_schema: T.unsafe(nil), annotations: T.unsafe(nil), meta: T.unsafe(nil), &block); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def description; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def description=(_arg0); end
 
   # Processes a parsed JSON-RPC request and returns the response as a Hash.
@@ -4897,10 +5654,13 @@ class MCP::Server
   # @param session [ServerSession, nil] Per-connection session. Passed by
   #   `ServerSession#handle` for session-scoped notification delivery.
   #   When `nil`, progress and logging notifications from tool handlers are silently skipped.
+  # @param auth_info [Server::OAuth::AccessToken, nil] The verified access token
+  #   for the current request, passed by the transport layer and exposed to
+  #   handlers as `server_context.auth_info`.
   # @return [Hash, nil] The JSON-RPC response, or `nil` for notifications.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:278
-  def handle(request, session: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:315
+  def handle(request, session: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
   # Processes a JSON-RPC request string and returns the response as a JSON string.
   #
@@ -4908,76 +5668,80 @@ class MCP::Server
   # @param session [ServerSession, nil] Per-connection session. Passed by
   #   `ServerSession#handle_json` for session-scoped notification delivery.
   #   When `nil`, progress and logging notifications from tool handlers are silently skipped.
+  # @param auth_info [Server::OAuth::AccessToken, nil] The verified access token
+  #   for the current request, as in `handle`.
   # @return [String, nil] The JSON-RPC response as JSON, or `nil` for notifications.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:291
-  def handle_json(request, session: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:330
+  def handle_json(request, session: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:189
   def icons; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
-  def icons=(_arg0); end
+  # Replaces the icons advertised in `serverInfo`; a Hash is converted through `Icon.from`.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:195
+  def icons=(value); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def instructions; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def instructions=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def logging_message_notification; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def logging_message_notification=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def name; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def name=(_arg0); end
 
   # @deprecated MCP Logging (`logging/setLevel` and `notifications/message`)
   #   is deprecated as of MCP protocol version 2026-07-28 (SEP-2577).
   #   Use stderr or OpenTelemetry instead.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:406
+  # pkg:gem/mcp#lib/mcp/server.rb:448
   def notify_log_message(data:, level:, logger: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:387
+  # pkg:gem/mcp#lib/mcp/server.rb:429
   def notify_prompts_list_changed; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:395
+  # pkg:gem/mcp#lib/mcp/server.rb:437
   def notify_resources_list_changed; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:379
+  # pkg:gem/mcp#lib/mcp/server.rb:421
   def notify_tools_list_changed; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:185
+  # pkg:gem/mcp#lib/mcp/server.rb:189
   def page_size; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:350
+  # pkg:gem/mcp#lib/mcp/server.rb:392
   def page_size=(page_size); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def prompts; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def prompts=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:185
+  # pkg:gem/mcp#lib/mcp/server.rb:189
   def request_state_security; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def resource_templates; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def resource_templates=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:185
+  # pkg:gem/mcp#lib/mcp/server.rb:189
   def resources; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:337
+  # pkg:gem/mcp#lib/mcp/server.rb:378
   def resources=(resources); end
 
   # Sets a custom handler for `resources/list` requests, letting the visible list depend on request context such as
@@ -4993,7 +5757,7 @@ class MCP::Server
   # @yield [params, server_context:] The request params, and an `MCP::ServerContext` when declared.
   # @yieldreturn [Array<MCP::Resource>] The resources to paginate.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:442
+  # pkg:gem/mcp#lib/mcp/server.rb:484
   def resources_list_handler(&block); end
 
   # Sets a custom handler for `resources/read` requests.
@@ -5003,7 +5767,7 @@ class MCP::Server
   # @yield [params] The request params containing `:uri`.
   # @yieldreturn [Array<Hash>, Hash] Resource contents.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:452
+  # pkg:gem/mcp#lib/mcp/server.rb:494
   def resources_read_handler(&block); end
 
   # Sets a custom handler for `resources/subscribe` requests.
@@ -5015,7 +5779,7 @@ class MCP::Server
   # @yield [params] The request params containing `:uri`.
   # @yieldreturn [Hash, nil] Optionally `{ _meta: { ... } }`; any other shape yields an empty result.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:473
+  # pkg:gem/mcp#lib/mcp/server.rb:557
   def resources_subscribe_handler(&block); end
 
   # Sets a custom handler for `resources/unsubscribe` requests.
@@ -5027,7 +5791,7 @@ class MCP::Server
   # @yield [params] The request params containing `:uri`.
   # @yieldreturn [Hash, nil] Optionally `{ _meta: { ... } }`; any other shape yields an empty result.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:485
+  # pkg:gem/mcp#lib/mcp/server.rb:569
   def resources_unsubscribe_handler(&block); end
 
   # Sets a handler for `notifications/roots/list_changed` notifications.
@@ -5039,53 +5803,99 @@ class MCP::Server
   #   version 2026-07-28 (SEP-2577). Use tool parameters, resource URIs,
   #   server configuration, or environment variables instead.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:426
+  # pkg:gem/mcp#lib/mcp/server.rb:468
   def roots_list_changed_handler(&block); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def server_context; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def server_context=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # The skills registered with `skills:` as a frozen Array (an empty one when only `skills_handlers` configured
+  # the extension), or nil when the server serves no skills.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:192
+  def skills; end
+
+  # Serves the Skills extension (SEP-2640) from per-request handlers instead of the `skills:` registry, for
+  # catalogs that depend on the caller. Both handlers are required because a server declaring the extension
+  # MUST answer `skills/get` for every skill it serves, listed or not.
+  #
+  # `list` receives the request params (and `server_context:` when it declares the keyword) and returns
+  # the whole collection of `MCP::Skill` in a stable order; the server paginates it. `get` returns the `MCP::Skill`
+  # for `params[:uri]`, or nil for `-32602`. A result that is not what these contracts describe is answered
+  # with `-32603`.
+  #
+  # A server serves skills from the `skills:` registry or from handlers, never both: a registered skill,
+  # its `SKILL.md` entry in `resources/list`, and its files are served to every caller, which a catalog that
+  # hides a skill from some callers must not inherit, so handlers are refused while the registry holds skills.
+  # With handlers the application serves the files itself and applies the same rule there, for example from
+  # `resources_read_handler` with `MCP::Skill.read_file(skills_for(server_context), params[:uri])`.
+  # A skill nested in the directory of another is served through the enclosing skill as well, whose manifest
+  # lists its files, so hiding it from a caller means withholding the enclosing skill too.
+  # What the handlers answer is never stamped `cacheScope: "public"`: where the `cache_scope` of the server
+  # would make it so, the result says `"private"`.
+  # Every check runs before anything is assigned, so a failure leaves the previous configuration in place.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:517
+  def skills_handlers(list:, get:); end
+
+  # Returns the distinct members of `uris` that the `resources_subscribe_handler` accepts, calling it once per URI
+  # with `{ uri: }`, plus `_meta` when given. `subscriptions/listen` takes the place of `resources/subscribe`
+  # in the 2026-07-28 lifecycle, so the handler keeps deciding which resources a client may follow there too.
+  # A URI the handler raises for is reported and left out, as the spec lets the acknowledgement honor a subset of
+  # what was requested; any return value accepts the URI and is otherwise discarded. The `server_context` has no session,
+  # related request id, or cancellation. Public only so that `StreamableHTTPTransport` can call it.
+  #
+  # @api private
+  # @param uris [Array<String>] The `resourceSubscriptions` of a `subscriptions/listen` request.
+  # @param meta [Hash, nil] The `_meta` of that request.
+  # @param envelope [MCP::RequestEnvelope, nil] The envelope of that request.
+  # @param auth_info [MCP::Server::OAuth::AccessToken, nil] The token that authenticated that request.
+  # @return [Array<String>]
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:586
+  def subscribable_resource_uris(uris, meta: T.unsafe(nil), envelope: T.unsafe(nil), auth_info: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def title; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def title=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def tools; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def tools=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def transport; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def transport=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:185
+  # pkg:gem/mcp#lib/mcp/server.rb:189
   def ttl_ms; end
 
   # SEP-2549 cache hint: freshness lifetime in milliseconds for list and read results
   # (max-age semantics; 0 means do not cache). Emission is opt-in: when both `ttl_ms`
   # and `cache_scope` are nil, results are serialized exactly as before.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:361
+  # pkg:gem/mcp#lib/mcp/server.rb:403
   def ttl_ms=(ttl_ms); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def version; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def version=(_arg0); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def website_url; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:184
+  # pkg:gem/mcp#lib/mcp/server.rb:188
   def website_url=(_arg0); end
 
   private
@@ -5097,7 +5907,7 @@ class MCP::Server
   # happen to be named `server_context` are excluded because the call site passes `server_context:` as a keyword,
   # and a positional slot would receive the `{server_context: ctx}` Hash instead.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1569
+  # pkg:gem/mcp#lib/mcp/server.rb:2003
   def accepts_server_context?(method_object); end
 
   # Adds the SEP-2549 cache hints (`ttlMs`, `cacheScope`) to a result. Emission is opt-in: nothing is added
@@ -5107,50 +5917,65 @@ class MCP::Server
   # Values already in the result win, enabling per-result overrides.
   # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2549
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1431
+  # pkg:gem/mcp#lib/mcp/server.rb:1861
   def apply_cache_metadata(result); end
+
+  # A handler answers per caller and, returning skills, has no result of its own to carry a scope in,
+  # so what it answered is never marked for shared caches, whatever scope the server was configured with.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1604
+  def apply_skills_cache_metadata(result, handler); end
 
   # Builds the `resources/read` result. The documented handler contract is "return value becomes `contents`";
   # a Hash with a `:contents` key is also accepted as a full result so a handler can override the server-level
   # `ttlMs`/`cacheScope` cache hints per result (SEP-2549).
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1415
+  # pkg:gem/mcp#lib/mcp/server.rb:1845
   def build_read_resource_result(handler_result); end
 
   # Builds an `MCP::ServerContext` used to give a handler access to session-scoped helpers
   # (progress, cancellation, nested server-to-client requests).
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1504
-  def build_server_context(request:, session:, related_request_id:, cancellation:, envelope: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:1937
+  def build_server_context(request:, session:, related_request_id:, cancellation:, envelope: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1602
+  # pkg:gem/mcp#lib/mcp/server.rb:2037
   def call_prompt_template_with_args(prompt, args, server_context); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1380
+  # pkg:gem/mcp#lib/mcp/server.rb:1810
   def call_resource_contents(resource, server_context); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1388
+  # pkg:gem/mcp#lib/mcp/server.rb:1818
   def call_template_contents(template, params, server_context); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1222
-  def call_tool(request, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:1397
+  def call_tool(request, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1577
-  def call_tool_with_args(tool, arguments, context, progress_token: T.unsafe(nil), session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), retry_fields: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:2011
+  def call_tool_with_args(tool, arguments, context, progress_token: T.unsafe(nil), session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), auth_info: T.unsafe(nil), retry_fields: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1007
+  # pkg:gem/mcp#lib/mcp/server.rb:1167
   def canonical_json(value); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1401
+  # pkg:gem/mcp#lib/mcp/server.rb:1750
+  def capability_member(caps, name); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1831
   def class_based_resources_registered?; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1438
-  def complete(params, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:1868
+  def complete(params, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1200
+  # pkg:gem/mcp#lib/mcp/server.rb:1375
   def configure_logging_level(request, session: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1042
+  # The `extensions` declarations under both key spellings merged into one Hash (empty when there are none),
+  # so a Skills declaration is found whichever spelling holds it and the other extensions survive the rewrite.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1757
+  def declared_extensions(caps); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1202
   def default_capabilities; end
 
   # Handles `server/discover` (MCP 2026-07-28, SEP-2575): sessionless capability discovery.
@@ -5167,14 +5992,14 @@ class MCP::Server
   # spec (PR #3002), unfiltered because discovery happens before version negotiation.
   # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1170
+  # pkg:gem/mcp#lib/mcp/server.rb:1330
   def discover(_request); end
 
   # Capabilities as advertised by `server/discover`. In the modern lifecycle, `listChanged` and `subscribe` flags
   # promise delivery over `subscriptions/listen` streams, so they are stripped when the transport does not serve that RPC
   # (e.g. stdio), matching the Python SDK's era-aware capability derivation.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1188
+  # pkg:gem/mcp#lib/mcp/server.rb:1348
   def discover_capabilities; end
 
   # Opt-in `server_context:` dispatch for block-based handlers registered via `resources_read_handler`,
@@ -5182,20 +6007,41 @@ class MCP::Server
   # Existing handlers that only accept `params` are called unchanged; handlers that declare a `server_context:`
   # keyword receive an `MCP::ServerContext` wrapping the raw server context with cancellation plumbing.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1471
-  def dispatch_optional_context_handler(handler, params, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:1903
+  def dispatch_optional_context_handler(handler, params, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1529
+  # The capabilities a client sees in `initialize` and `server/discover`, and that dispatch gates on. The Skills
+  # entry is computed from the configured state rather than read from the stored Hash, which the public reader
+  # exposes for in-place mutation: when skills are configured the extension is advertised with `directoryRead`
+  # removed (nothing serves it) and `resources` is ensured, when they are not it is absent. Only the nested
+  # structures being modified are copied; the stored Hash is left as it is.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1693
+  def effective_capabilities; end
+
+  # A file of a directory-backed skill is served ahead of any resource with the same URI, so registering such
+  # a resource would be silently shadowed; it is refused before anything is committed.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1671
+  def ensure_no_skill_file_collision!(uris); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1963
   def error_tool_response(text); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1298
-  def get_prompt(request, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:1476
+  def get_prompt(request, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1031
+  # `skills/get` (SEP-2640): answers for every skill the server serves, listed or not. The URI shape is checked
+  # before any handler runs; a `get` handler's result must be the skill for exactly that URI.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1562
+  def get_skill(request, server_context: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1191
   def handle_cancelled_notification(params, session: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:598
-  def handle_request(request, method, session: T.unsafe(nil), related_request_id: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:713
+  def handle_request(request, method, session: T.unsafe(nil), related_request_id: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
   # Stricter than `accepts_server_context?`: requires `server_context` to appear as a named keyword parameter
   # (`:key` optional, `:keyreq` required). Positional parameters named `server_context` (`:req` / `:opt`) are NOT
@@ -5208,27 +6054,42 @@ class MCP::Server
   # Tool handlers intentionally allow `**kwargs` opt-in via `accepts_server_context?` because they are invoked
   # via `tool.call(**args, server_context: …)` without a positional argument.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1494
+  # pkg:gem/mcp#lib/mcp/server.rb:1927
   def handler_declares_server_context?(handler); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1525
+  # Capabilities as advertised by `initialize`. A transport that delivers no notifications to its sessions
+  # (stateless Streamable HTTP) cannot keep the promise the `listChanged` and `subscribe` flags make, so they are
+  # left out, as `server/discover` leaves them out when `subscriptions/listen` is not served.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1358
+  def handshake_capabilities; end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1959
   def index_resources_by_uri(resources); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1062
+  # pkg:gem/mcp#lib/mcp/server.rb:1222
   def init(params, session: T.unsafe(nil)); end
+
+  # The wire sees one fixed message; what was wrong goes to the exception reporter only.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1620
+  def invalid_skills_result(request, problem); end
 
   # Calls the `resources_list_handler` block, forwarding `server_context:` only when the block opts in
   # by declaring the keyword (the same rule `dispatch_optional_context_handler` applies).
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1345
+  # pkg:gem/mcp#lib/mcp/server.rb:1535
   def invoke_resources_list_handler(request, server_context); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1611
+  def invoke_skills_handler(handler, request, server_context); end
 
   # The params an embedded entry sends on its legacy leg. Entries are forwarded verbatim with
   # one exception: the 2025-11-25 wire requires `elicitationId` on URL-mode elicitation requests,
   # a field the 2026-07-28 in-band shape dropped (correlation rides `requestState` there),
   # so a missing one is synthesized for the leg, matching the TypeScript SDK's shim.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:936
+  # pkg:gem/mcp#lib/mcp/server.rb:1096
   def legacy_leg_params(entry); end
 
   # Lifts the SEP-2575 per-request `_meta` envelope for modern requests. Only a request whose `_meta` carries
@@ -5239,19 +6100,24 @@ class MCP::Server
   # and the triple becomes required for every other request; on a legacy session, a modern envelope is rejected as
   # an invalid request because a connection can never change eras.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:802
+  # pkg:gem/mcp#lib/mcp/server.rb:962
   def lift_request_envelope(params, method:, session:); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1292
+  # pkg:gem/mcp#lib/mcp/server.rb:1470
   def list_prompts(request); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1406
+  # pkg:gem/mcp#lib/mcp/server.rb:1836
   def list_resource_templates(request); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1331
+  # pkg:gem/mcp#lib/mcp/server.rb:1510
   def list_resources(request, server_context: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1216
+  # `skills/list` (SEP-2640): the registry, or the `list` handler's collection, paginated like `resources/list`.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1544
+  def list_skills(request, server_context: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1391
   def list_tools(request); end
 
   # Whether this request belongs to the modern lifecycle, used to refuse the RPCs SEP-2575 removed from it.
@@ -5264,53 +6130,78 @@ class MCP::Server
   # A legacy-locked session is deliberately excluded: `lift_request_envelope` answers a modern envelope there
   # with the lifecycle violation, which names the cause better than Method not found.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:787
+  # pkg:gem/mcp#lib/mcp/server.rb:927
   def modern_request?(request, session); end
 
   # Digest of the originating arguments, binding a sealed state to retries of
   # the same call with the same inputs. Keys are stringified and sorted recursively
   # so symbol/string parses of identical JSON digest identically.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1002
+  # pkg:gem/mcp#lib/mcp/server.rb:1162
   def mrtr_arguments_digest(params); end
 
   # Extracts the SEP-2322 retry fields a client sends when re-issuing a request:
   # `inputResponses` (answers keyed like the earlier `inputRequests`) and the echoed opaque `requestState`.
   # They are params-top-level siblings of `name`/`arguments`/ `uri`, not `_meta` entries.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1022
+  # pkg:gem/mcp#lib/mcp/server.rb:1182
   def mrtr_retry_fields(params); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:993
+  # pkg:gem/mcp#lib/mcp/server.rb:1153
   def mrtr_target(params); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1656
+  # pkg:gem/mcp#lib/mcp/server.rb:1679
+  def normalize_capabilities(value); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:2094
   def normalize_completion_result(result); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1396
+  # pkg:gem/mcp#lib/mcp/server.rb:1826
   def normalize_resource_contents(result); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1648
+  def normalize_skills!(skills); end
 
   # Default `resources/read` handler: routes to class-based resources and resource templates.
   # Fully replaced when `resources_read_handler` is set. When no class-based resource or template is registered,
   # unknown URIs keep the historical no-op `[]` response instead of raising.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1356
+  # pkg:gem/mcp#lib/mcp/server.rb:1769
   def read_resource(request, server_context: T.unsafe(nil)); end
 
   # Invokes `resources/read` via the registered handler. If the handler block opts in to `server_context:`,
   # pass an `MCP::ServerContext` so the handler can observe cancellation via `server_context.cancelled?` or
   # `server_context.raise_if_cancelled!`.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1456
-  def read_resource_contents(request, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server.rb:1887
+  def read_resource_contents(request, session: T.unsafe(nil), related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
   # Re-runs the handler of one of the three MRTR-capable methods for
   # the legacy shim. Legacy wire, so no envelope is threaded.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:947
+  # pkg:gem/mcp#lib/mcp/server.rb:1107
   def redispatch_mrtr_method(method, params, session:, related_request_id:, cancellation:); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1521
+  # `_meta` is an object on every request (`MetaObject`); a String, Array, or number there carries no envelope,
+  # no progress token, and no trace context, and the TypeScript and Python servers refuse it as invalid params on
+  # both lifecycles. Refused before the envelope is read and before any handler can meet it in `server_context`.
+  # `null` reads as absent, as it does for the Python server.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:939
+  def refuse_non_object_meta!(params); end
+
+  # The error data of a Skills refusal: the request URI when it is a String, read as UTF-8 with its invalid bytes
+  # replaced, so that the response can be generated whatever bytes the request held; nothing for another value,
+  # which could hold such bytes anywhere, so the data falls back to the message. The messages quote the URI with
+  # `dump` for the same reason, and so that the exception reporter gets one printable line.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:2118
+  def refused_uri_data(uri); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1655
+  def register_skills_handlers!; end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1955
   def report_exception(exception, server_context = T.unsafe(nil)); end
 
   # Dual-era authoring shim (SEP-2322): a handler on the legacy wire returned an `input_required` result,
@@ -5321,10 +6212,10 @@ class MCP::Server
   # contract the modern client driver follows. The `requestState` round-trips in-process as the raw value
   # the handler wrote; `RequestStateSecurity` sealing is wire hardening and does not apply.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:882
+  # pkg:gem/mcp#lib/mcp/server.rb:1042
   def run_legacy_input_required_shim(result, method:, params:, session:, related_request_id:, cancellation:); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:587
+  # pkg:gem/mcp#lib/mcp/server.rb:702
   def schema_contains_ref?(schema); end
 
   # Central gate and serializer for SEP-2322 `input_required` results, run once in the dispatch lambda for
@@ -5334,7 +6225,7 @@ class MCP::Server
   # (or embed requests for) capabilities the client did not declare, and reports every missing capability at
   # once so the client sees the full set.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:841
+  # pkg:gem/mcp#lib/mcp/server.rb:1001
   def serialize_input_required_result(result, envelope:, request:, method:); end
 
   # Per SEP-2106, `structuredContent` may be any JSON value, not only an object.
@@ -5342,14 +6233,33 @@ class MCP::Server
   # so when a tool returns non-object structured content without explicitly
   # providing `content`, mirror the value into serialized JSON text.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1551
+  # pkg:gem/mcp#lib/mcp/server.rb:1985
   def serialize_structured_content_fallback(result, content_provided: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1612
-  def server_context_with_meta(request); end
+  # pkg:gem/mcp#lib/mcp/server.rb:2047
+  def server_context_with_meta(request, auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1051
+  # pkg:gem/mcp#lib/mcp/server.rb:1211
   def server_info; end
+
+  # The `SKILL.md` of every registered skill as a resource entry, with `name` and `description` taken from
+  # the frontmatter and `text/markdown`, as the Skills extension asks of a `SKILL.md` resource; a resource
+  # the application registered at that URI takes its place.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1525
+  def skill_manifest_resources; end
+
+  # Every key of an `extensions` Hash that spells the Skills extension identifier, as a String or a Symbol.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1762
+  def skills_extension_keys(extensions); end
+
+  # Describes the first problem in a set of skills served together, or returns nil: every element
+  # an `MCP::Skill` and URIs unique. A skill may list any file under its own root, a nested skill's files
+  # included, because the specification wants the enclosing manifest complete.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1633
+  def skills_problem(skills); end
 
   # The `resources/subscribe` and `resources/unsubscribe` result is an empty object except for the optional `_meta`
   # every result may carry: the TypeScript SDK validates it against `EmptyResultSchema.strict()`,
@@ -5357,33 +6267,45 @@ class MCP::Server
   # anything else keeps the empty `{}` result it had before, so returning a subscription identifier or
   # other advisory data means nesting it under `_meta`.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:1131
+  # pkg:gem/mcp#lib/mcp/server.rb:1291
   def subscription_result(handler_result); end
 
   # Replaces a sealed client-echoed `requestState` with its verified plaintext before dispatch,
   # so handlers always read the state they wrote. A tampered, expired, or cross-request token is
   # rejected as invalid params, matching the Python SDK's "Invalid or expired requestState" behavior.
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:968
+  # pkg:gem/mcp#lib/mcp/server.rb:1128
   def unseal_request_state(params, method:); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:530
+  # pkg:gem/mcp#lib/mcp/server.rb:644
   def validate!; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1625
+  # pkg:gem/mcp#lib/mcp/server.rb:2063
   def validate_completion_params!(params); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1138
+  # pkg:gem/mcp#lib/mcp/server.rb:1298
   def validate_initialize_params!(params); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1120
+  # pkg:gem/mcp#lib/mcp/server.rb:1280
   def validate_resource_subscription_params!(params); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:1539
+  # The Skills extension rules for an explicitly supplied capabilities Hash (SEP-2640): the extension is declared
+  # only when skills are configured, its settings are a Hash without `directoryRead`, and `resources` is declared
+  # alongside it. Both key spellings are read, because JSON serialization erases the difference between
+  # `:extensions` and `"extensions"` or between a Symbol and a String extension identifier.
+  # Checked at construction, on `capabilities=`, and when handlers are installed.
+  #
+  # pkg:gem/mcp#lib/mcp/server.rb:1726
+  def validate_skills_capabilities!(caps, configured: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1973
   def validate_tool_call_result!(tool, result); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:581
+  # pkg:gem/mcp#lib/mcp/server.rb:696
   def validate_tool_name!; end
+
+  # pkg:gem/mcp#lib/mcp/server.rb:1365
+  def without_notification_flags(capabilities); end
 end
 
 # Methods whose results are cacheable per SEP-2549.
@@ -5391,12 +6313,12 @@ end
 # so unset hints get the spec defaults there; on stable protocol versions emission stays opt-in
 # via `apply_cache_metadata`.
 #
-# pkg:gem/mcp#lib/mcp/server.rb:176
+# pkg:gem/mcp#lib/mcp/server.rb:177
 MCP::Server::CACHEABLE_RESULT_METHODS = T.let(T.unsafe(nil), Array)
 
 # Allowed values for the SEP-2549 `cacheScope` cache hint.
 #
-# pkg:gem/mcp#lib/mcp/server.rb:170
+# pkg:gem/mcp#lib/mcp/server.rb:171
 MCP::Server::CACHE_SCOPES = T.let(T.unsafe(nil), Array)
 
 # pkg:gem/mcp#lib/mcp/server/capabilities.rb:5
@@ -5449,10 +6371,10 @@ class MCP::Server::Capabilities
   def to_h; end
 end
 
-# pkg:gem/mcp#lib/mcp/server.rb:37
+# pkg:gem/mcp#lib/mcp/server.rb:38
 MCP::Server::DEFAULT_COMPLETION_RESULT = T.let(T.unsafe(nil), Hash)
 
-# pkg:gem/mcp#lib/mcp/server.rb:32
+# pkg:gem/mcp#lib/mcp/server.rb:33
 MCP::Server::DEFAULT_VERSION = T.let(T.unsafe(nil), String)
 
 # A multi round-trip `input_required` result (SEP-2322, MCP 2026-07-28).
@@ -5531,27 +6453,27 @@ MCP::Server::InputRequiredResult::EMBEDDABLE_METHODS = T.let(T.unsafe(nil), Arra
 
 # Fulfilment rounds the legacy shim runs before giving up, matching the TypeScript SDK's legacy shim default (`maxRounds: 8`).
 #
-# pkg:gem/mcp#lib/mcp/server.rb:873
+# pkg:gem/mcp#lib/mcp/server.rb:1033
 MCP::Server::LEGACY_INPUT_REQUIRED_MAX_ROUNDS = T.let(T.unsafe(nil), Integer)
 
 # Servers return an array of completion values ranked by relevance, with maximum 100 items per response.
 # https://modelcontextprotocol.io/specification/2025-11-25/server/utilities/completion#completion-results
 #
-# pkg:gem/mcp#lib/mcp/server.rb:41
+# pkg:gem/mcp#lib/mcp/server.rb:42
 MCP::Server::MAX_COMPLETION_VALUES = T.let(T.unsafe(nil), Integer)
 
 # Methods whose results may be `input_required` and whose retried requests carry
 # `inputResponses`/`requestState` (SEP-2322).
 #
-# pkg:gem/mcp#lib/mcp/server.rb:870
+# pkg:gem/mcp#lib/mcp/server.rb:1030
 MCP::Server::MRTR_METHODS = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/mcp#lib/mcp/server.rb:152
+# pkg:gem/mcp#lib/mcp/server.rb:153
 class MCP::Server::MethodAlreadyDefinedError < ::StandardError
-  # pkg:gem/mcp#lib/mcp/server.rb:155
+  # pkg:gem/mcp#lib/mcp/server.rb:156
   def initialize(method_name); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:153
+  # pkg:gem/mcp#lib/mcp/server.rb:154
   def method_name; end
 end
 
@@ -5562,11 +6484,711 @@ end
 #
 # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575
 #
-# pkg:gem/mcp#lib/mcp/server.rb:93
+# pkg:gem/mcp#lib/mcp/server.rb:94
 class MCP::Server::MissingRequiredClientCapabilityError < ::MCP::Server::RequestHandlerError
-  # pkg:gem/mcp#lib/mcp/server.rb:94
+  # pkg:gem/mcp#lib/mcp/server.rb:95
   def initialize(required_capabilities, request = T.unsafe(nil)); end
 end
+
+# OAuth 2.1 resource-server support per the MCP authorization specification: bearer token verification,
+# Protected Resource Metadata (RFC 9728) serving, and RFC 6750 `WWW-Authenticate` challenges.
+# The MCP server never acts as an authorization server; token issuance belongs to an external provider.
+# https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:5
+module MCP::Server::OAuth; end
+
+# The result of a successful token verification: the resource-server-side view of an access token.
+# Instances are produced by a `TokenVerifier` and reach tool/prompt/resource handlers as `server_context.auth_info`.
+#
+# The field set is the union of what the official SDKs converged on (Python `AccessToken` and TypeScript `AuthInfo`):
+#
+# - `token` - the raw bearer token as presented by the client
+# - `client_id` - the OAuth client the token was issued to
+# - `scopes` - granted scopes as an array of strings
+# - `expires_at` - expiry as an Integer unix timestamp, or nil when the token does not expire
+# - `subject` - the end user (`sub` claim), when known
+# - `issuer` - the authorization server that issued the token (`iss` claim)
+# - `audience` - the raw `aud` value (String or Array), when known
+# - `resource` - the canonical RFC 8707 resource identifier the verifier matched the token against,
+#   useful for tenancy checks inside handlers
+# - `claims` - the full claim/introspection-response Hash for anything not covered by the named fields
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:21
+class MCP::Server::OAuth::AccessToken
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:24
+  def initialize(token:, client_id: T.unsafe(nil), scopes: T.unsafe(nil), expires_at: T.unsafe(nil), subject: T.unsafe(nil), issuer: T.unsafe(nil), audience: T.unsafe(nil), resource: T.unsafe(nil), claims: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def audience; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def claims; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def client_id; end
+
+  # Per RFC 7519 Section 4.1.4, a token must not be accepted on or after its expiry time.
+  # Tokens without an expiry never count as expired here; verifiers that require an expiry must enforce that themselves
+  # (`JWTVerifier` does, the TypeScript SDK rejects such tokens outright, and Python accepts them like this class —
+  # the divergence is deliberate: opaque-token verifiers may have no expiry to report even though the authorization server enforces one).
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:41
+  def expired?(now: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def expires_at; end
+
+  # Mirrors `to_h`: the default `inspect` would print `@token`, leaking the credential into exception reports and debug output.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:65
+  def inspect; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def issuer; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def resource; end
+
+  # Whether the token grants `scope`: exact membership by default. When the authenticator attached its `scope_matcher:`
+  # (see `with_scope_matcher`), that callable decides instead, so a hierarchical scope scheme is honored the same way
+  # at the endpoint gate and inside handlers via `require_scopes!`.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:50
+  def scope?(scope); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def scopes; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def subject; end
+
+  # Omits `token` so the result is safe to log without leaking the credential.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:70
+  def to_h; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:22
+  def token; end
+
+  # A copy of this token whose `scope?` consults `matcher`, a `(required_scope, granted_scopes) -> Boolean` callable.
+  # The receiver is left untouched; a nil matcher returns the receiver itself.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:58
+  def with_scope_matcher(matcher); end
+
+  protected
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/access_token.rb:85
+  def scope_matcher=(_arg0); end
+end
+
+# The verification core shared by `Middleware` and the streamable HTTP transport's built-in enforcement:
+# extracts the bearer token from a Rack env, runs it through the verifier, checks scopes, and maps each failure
+# to the RFC 6750 challenge response it deserves.
+#
+# - `token_verifier` - anything responding to `verify(token)`; see `TokenVerifier` for the contract.
+#   Built-ins: `JWTVerifier`, `IntrospectionVerifier`.
+# - `required_scopes` - scopes the token must include, all of them; a shortfall produces 403 `insufficient_scope` (step-up).
+# - `resource_metadata` - a `ProtectedResourceMetadata`; its well-known URL and `scopes_supported` feed the challenges.
+#   Pass `resource_metadata_url:` instead to point at a document served elsewhere.
+# - `scope_matcher` - optional callable `(required_scope, granted_scopes) -> Boolean` for deployments
+#   whose scopes form a hierarchy; the MCP authorization specification requires a broader scope to satisfy
+#   the narrower scopes it implies, which exact membership (the default) cannot express. The matcher also rides
+#   on the returned `AccessToken`, so `require_scopes!` and `scope?` inside handlers apply the same semantics.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:23
+class MCP::Server::OAuth::Authenticator
+  # pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:36
+  def initialize(token_verifier:, required_scopes: T.unsafe(nil), resource_metadata: T.unsafe(nil), resource_metadata_url: T.unsafe(nil), scope_matcher: T.unsafe(nil)); end
+
+  # @param env [Hash] the Rack env
+  # @return [AccessToken]
+  # @raise [MissingTokenError, InvalidRequestError, InvalidTokenError, InsufficientScopeError]
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:47
+  def authenticate(env); end
+
+  # Maps an `OAuth::Error` raised by `authenticate` (or by a handler's `require_scopes!`) to the Rack response carrying
+  # the matching challenge. An `Error` outside the four built-in classes, such as one a custom verifier defines,
+  # is a token rejection and answers 401 like an invalid token; anything else is a programming error.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:61
+  def challenge_response(error); end
+
+  private
+
+  # A verifier result that is not an `AccessToken` (a duck-typed object from a custom verifier) keeps its own `scope?`;
+  # the endpoint gate below still applies the matcher to it directly.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:121
+  def attach_scope_matcher(access_token); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:109
+  def check_scopes!(access_token); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:86
+  def extract_bearer_token(env); end
+
+  # The scope hint the spec recommends including in challenges: the scopes of the failing operation when known,
+  # the scopes this authenticator enforces otherwise, or the resource's advertised scopes as a fallback.
+  # `offline_access` is never advertised: refresh token issuance is not a resource requirement per
+  # the MCP authorization specification.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:139
+  def scope_hint(operation_scopes = T.unsafe(nil)); end
+
+  # A verifier result without a `scopes` reader (a duck-typed object offering only `scope?`) keeps its own judgement,
+  # since the matcher needs the granted list to reason about a hierarchy.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:129
+  def scope_satisfied?(scope, access_token); end
+end
+
+# RFC 6750 Section 2.1: the scheme and the token are separated by spaces (`1*SP`), never by other whitespace.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:25
+MCP::Server::OAuth::Authenticator::BEARER_PATTERN = T.let(T.unsafe(nil), Regexp)
+
+# Whether the header names the Bearer scheme at all, well-formed or not. `Bearer` followed by anything other
+# than a space names no Bearer credentials, the way the Python and TypeScript servers read it.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:28
+MCP::Server::OAuth::Authenticator::BEARER_SCHEME_PATTERN = T.let(T.unsafe(nil), Regexp)
+
+# Upper bound on the presented token, applied before any verification so oversized garbage neither reaches
+# cryptographic parsing nor gets forwarded to an introspection endpoint. Real-world access tokens stay far below this;
+# web servers cap the whole header section around 16 KiB.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/authenticator.rb:34
+MCP::Server::OAuth::Authenticator::MAX_TOKEN_BYTES = T.let(T.unsafe(nil), Integer)
+
+# Stateless builders for RFC 6750 Bearer challenges and the Rack error responses that carry them.
+# `Authenticator` uses these for every rejection; they are also public so custom integrations can emit
+# spec-shaped 401/403 responses without pulling in the middleware.
+#
+# The header output is the exact counterpart of `MCP::Client::OAuth::Discovery.parse_www_authenticate`:
+# everything built here parses back into the same parameters on the client side.
+# https://www.rfc-editor.org/rfc/rfc6750#section-3
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:15
+module MCP::Server::OAuth::Challenge
+  class << self
+    # Returns a `WWW-Authenticate` header value such as
+    # `Bearer error="invalid_token", error_description="...", scope="a b", resource_metadata="https://..."`.
+    # Parameters are quoted-string encoded per RFC 7235; nil parameters are omitted.
+    #
+    # pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:23
+    def build(error: T.unsafe(nil), error_description: T.unsafe(nil), scope: T.unsafe(nil), resource_metadata: T.unsafe(nil)); end
+
+    # 403 with `error="insufficient_scope"`: the token is valid but lacks a scope the current operation requires.
+    # Clients treat this as a step-up signal and re-authorize with the scopes advertised in `scope`.
+    #
+    # pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:54
+    def insufficient_scope_response(error_description: T.unsafe(nil), scope: T.unsafe(nil), resource_metadata: T.unsafe(nil)); end
+
+    # 400 with `error="invalid_request"`: the request itself is malformed (e.g. a `Bearer` header without exactly one token).
+    #
+    # pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:65
+    def invalid_request_response(error_description: T.unsafe(nil), resource_metadata: T.unsafe(nil)); end
+
+    # 401 with `error="invalid_token"`: the presented token is expired, revoked, or otherwise invalid.
+    # https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+    #
+    # pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:35
+    def invalid_token_response(error_description: T.unsafe(nil), scope: T.unsafe(nil), resource_metadata: T.unsafe(nil)); end
+
+    # 401 without an error code: RFC 6750 Section 3.1 says the challenge answering a request that
+    # carried no authentication information at all should not include an error code or other error information.
+    # A request that tried another scheme counts as one (the same section).
+    #
+    # pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:48
+    def missing_token_response(scope: T.unsafe(nil), resource_metadata: T.unsafe(nil)); end
+
+    private
+
+    # pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:76
+    def challenge_response(status, error: T.unsafe(nil), error_description: T.unsafe(nil), scope: T.unsafe(nil), resource_metadata: T.unsafe(nil)); end
+
+    # Encodes a parameter value as an RFC 7230 quoted-string interior: `\` and `"` become quoted-pairs.
+    # Control characters are replaced with spaces because they cannot appear in a header value at all;
+    # leaving CR/LF in would let attacker-influenced text (e.g. an error message quoting a bad token)
+    # split the response header, and other control characters make strict servers reject the response outright.
+    # Invalid byte sequences are replaced first: a custom verifier's message need not be valid UTF-8,
+    # and `gsub` raising on it would escape the rescue that builds the challenge, turning the 401 into a 500.
+    #
+    # pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:100
+    def quote(value); end
+
+    # Normalizes a value to valid UTF-8. `scrub` alone only repairs strings tagged UTF-8:
+    # Rack hands header values to a custom verifier as ASCII-8BIT, where every byte counts as valid,
+    # so a message assembled from them would still make `to_json` raise.
+    #
+    # pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:107
+    def utf8(value); end
+  end
+end
+
+# pkg:gem/mcp#lib/mcp/server/oauth/challenge.rb:16
+MCP::Server::OAuth::Challenge::CONTENT_TYPE_JSON = T.let(T.unsafe(nil), Hash)
+
+# The Rack env key under which the transport's built-in enforcement and `Middleware` store
+# the verified `AccessToken`. The streamable HTTP transport reads this key and threads the value through
+# to handlers as `server_context.auth_info`. Custom integrations that verify tokens themselves can set
+# the same key to opt in to that propagation.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth.rb:16
+MCP::Server::OAuth::ENV_KEY = T.let(T.unsafe(nil), String)
+
+# Error hierarchy for the OAuth 2.1 resource-server role. Each error carries the RFC 6750 Section 3.1
+# registered error code that `Challenge` places in the `WWW-Authenticate` response header.
+# https://www.rfc-editor.org/rfc/rfc6750#section-3.1
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:9
+class MCP::Server::OAuth::Error < ::StandardError
+  # `error_code` defaults to the code a token rejection carries, so a custom verifier can subclass this
+  # and `raise MyError, "..."` without knowing about the keyword. `Authenticator#challenge_response`
+  # answers any such error with 401 `invalid_token`, which is what the default names; without a default,
+  # the missing keyword would raise `ArgumentError` inside `verify` and surface as HTTP 500 instead.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:16
+  def initialize(message = T.unsafe(nil), error_code: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:10
+  def error_code; end
+end
+
+# The token is valid but lacks a scope the resource requires. Maps to HTTP 403, whose `WWW-Authenticate` challenge signals
+# step-up authorization (the scope challenge handling of the MCP authorization specification) to the client.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:48
+class MCP::Server::OAuth::InsufficientScopeError < ::MCP::Server::OAuth::Error
+  # pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:51
+  def initialize(message = T.unsafe(nil), required_scopes: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:49
+  def required_scopes; end
+end
+
+# Verifies access tokens by asking the authorization server via OAuth 2.0 Token Introspection (RFC 7662).
+# Works with opaque tokens and needs no extra dependencies.
+#
+#   verifier = MCP::Server::OAuth::IntrospectionVerifier.new(
+#     introspection_endpoint: "https://as.example.com/oauth/introspect",
+#     client_id: "mcp-resource-server",
+#     client_secret: ENV["INTROSPECTION_CLIENT_SECRET"],
+#     resource_metadata: metadata, # the ProtectedResourceMetadata this server publishes; its `resource` is the expected `aud`
+#   )
+#
+# Every `verify` call hits the endpoint; responses are intentionally not cached so token revocation takes
+# effect within the authorization server's own latency, not ours.
+#
+# `audience` is required: the introspection response's `aud` (or `resource`) must cover it,
+# which is the RFC 8707 audience check the MCP authorization specification demands of every resource server.
+# It keeps a token issued for another resource from being replayed here. An authorization server that cannot
+# audience-bind its tokens needs a custom verifier, and the deployment should understand what it is giving up.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/introspection_verifier.rb:29
+class MCP::Server::OAuth::IntrospectionVerifier < ::MCP::Server::OAuth::TokenVerifier
+  # pkg:gem/mcp#lib/mcp/server/oauth/introspection_verifier.rb:38
+  def initialize(introspection_endpoint:, resource_metadata:, client_id: T.unsafe(nil), client_secret: T.unsafe(nil), client_auth_method: T.unsafe(nil), open_timeout: T.unsafe(nil), read_timeout: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/introspection_verifier.rb:75
+  def verify(token); end
+
+  private
+
+  # RFC 6749 Section 2.3.1: the client id and secret are form-urlencoded before being joined and base64-encoded,
+  # so a `:` or another reserved character in either survives the round trip; `Net::HTTP#basic_auth` skips that step.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/introspection_verifier.rb:136
+  def basic_credentials; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/introspection_verifier.rb:92
+  def introspect(token); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/introspection_verifier.rb:142
+  def validate_audience!(claims); end
+end
+
+# Named after the RFC 7591 `token_endpoint_auth_method` values, the same vocabulary the client side uses.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/introspection_verifier.rb:35
+MCP::Server::OAuth::IntrospectionVerifier::CLIENT_AUTH_METHODS = T.let(T.unsafe(nil), Array)
+
+# Raised when the introspection endpoint is unreachable or misbehaves. Deliberately not an `OAuth::Error`:
+# an unavailable authorization server is an internal failure (HTTP 500), not a problem with the client's token.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/introspection_verifier.rb:32
+class MCP::Server::OAuth::IntrospectionVerifier::IntrospectionError < ::StandardError; end
+
+# The request is malformed (e.g. an `Authorization` header that does not carry a Bearer token). Maps to HTTP 400.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:23
+class MCP::Server::OAuth::InvalidRequestError < ::MCP::Server::OAuth::Error
+  # pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:24
+  def initialize(message = T.unsafe(nil)); end
+end
+
+# The access token is missing, expired, revoked, or otherwise invalid.
+# Maps to HTTP 401. `TokenVerifier` implementations raise this to reject a token.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:31
+class MCP::Server::OAuth::InvalidTokenError < ::MCP::Server::OAuth::Error
+  # pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:32
+  def initialize(message = T.unsafe(nil)); end
+end
+
+# Verifies JWT access tokens locally: signature (via a JWKS endpoint, a static JWKS document, or a single key), `iss`, `aud`, `exp`, and `nbf`.
+#
+#
+#   verifier = MCP::Server::OAuth::JWTVerifier.new(
+#     resource_metadata: metadata, # the ProtectedResourceMetadata this server publishes
+#     jwks_uri: "https://as.example.com/.well-known/jwks.json",
+#   )
+#
+# `aud` is checked against the document's `resource`, the canonical resource URL spec-conformant authorization servers
+# put into `aud` via the RFC 8707 `resource` parameter, and `iss` against the document's authorization server, of which
+# there must be exactly one: this verifier holds one key set, so it verifies the tokens of one issuer.
+#
+# `alg: none` is refused whatever `algorithms:` says, and HMAC and asymmetric algorithms cannot share one allowlist, which defeats HS256 key-confusion attacks:
+# a token symmetrically signed with the public key bytes never meets an HMAC verifier holding that key. The default allowlist contains only asymmetric algorithms.
+# Pass `algorithms: ["HS256"]` together with `key: shared_secret` only when the authorization server genuinely issues HMAC-signed tokens, and understand
+# that anyone holding the secret can mint tokens.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:35
+class MCP::Server::OAuth::JWTVerifier < ::MCP::Server::OAuth::TokenVerifier
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:53
+  def initialize(resource_metadata:, jwks_uri: T.unsafe(nil), jwks: T.unsafe(nil), key: T.unsafe(nil), algorithms: T.unsafe(nil), leeway: T.unsafe(nil), jwks_cache_ttl: T.unsafe(nil), jwks_max_stale: T.unsafe(nil), open_timeout: T.unsafe(nil), read_timeout: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:92
+  def verify(token); end
+
+  private
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:114
+  def decode(token); end
+
+  # The `jwt` gem's JWKS handling expects symbol keys; user-supplied static documents commonly arrive as parsed JSON with string keys.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:324
+  def deep_symbolize(jwks); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:266
+  def fetch_jwks; end
+
+  # Loader for the `jwt` gem's `jwks:` option. The gem invokes it once per decode and again with `kid_not_found: true` when
+  # the token's `kid` is not in the returned set, which is the signal that the authorization server may have rotated its keys.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:183
+  def jwk_loader; end
+
+  # Refreshes the JWKS cache without performing network I/O under a lock other verifications wait on: only cache-state reads
+  # and swaps are synchronized, one thread fetches at a time, and the remaining threads keep verifying against the previous key
+  # set in the meantime. A failed refresh also falls back to that set, so a flaky JWKS endpoint degrades to slightly stale keys
+  # instead of taking verification down, but only for `jwks_max_stale` seconds past the TTL: beyond that the failure surfaces,
+  # so a key set the authorization server retired cannot stay trusted indefinitely. A failed unknown-`kid` refetch starts
+  # the cooldown all the same, or the endpoint would be retried on every such token while it is down.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:195
+  def load_jwks(options); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:319
+  def monotonic_now; end
+
+  # An unknown `kid` refetches immediately (the usual key-rotation case) but at most once per cooldown window, so forged tokens with
+  # random `kid`s cannot turn every request into a JWKS fetch. Outside of a `kid` miss, the cache is refreshed only when the TTL lapses.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:247
+  def refetch_required?(options); end
+
+  # Whether a key set fetched at `fetched_at` has outlived its TTL by more than `jwks_max_stale`, the point past which
+  # a refresh failure is no longer bridged with the stale keys.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:262
+  def stale_beyond_bound?(fetched_at); end
+
+  # `none` is never acceptable, and HMAC must not share an allowlist with asymmetric algorithms: an attacker who picks `alg`
+  # would otherwise sign with the public key bytes as the HMAC secret. A String key can only be an HMAC secret,
+  # so it is refused for asymmetric algorithms at construction rather than failing every verification later, and a `JWT::JWK`
+  # is refused outright because the decode path would reject every token signed by it.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:157
+  def validate_algorithms!(algorithms, key); end
+
+  # The jwt gem calls `to_i` on `exp` and `nbf` while verifying, so a claim of the wrong type raises inside the gem
+  # instead of failing the token. The unverified payload is inspected first: a claim that is neither a finite number
+  # nor a digit string makes the token invalid, the same answer `expiry_from_claims` gives an introspection response.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:141
+  def validate_time_claims!(token); end
+end
+
+# pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:40
+MCP::Server::OAuth::JWTVerifier::DEFAULT_ALGORITHMS = T.let(T.unsafe(nil), Array)
+
+# pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:42
+MCP::Server::OAuth::JWTVerifier::HMAC_ALGORITHM_PATTERN = T.let(T.unsafe(nil), Regexp)
+
+# Raised when the JWKS endpoint cannot be fetched or parsed. Deliberately not an `OAuth::Error`:
+# an unreachable key set is an internal failure (HTTP 500), not a problem with the client's token.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:38
+class MCP::Server::OAuth::JWTVerifier::JWKSFetchError < ::StandardError; end
+
+# Minimum seconds between JWKS refetches triggered by an unknown `kid`, so a stream of forged tokens cannot hammer the JWKS endpoint.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:46
+MCP::Server::OAuth::JWTVerifier::JWKS_REFETCH_COOLDOWN = T.let(T.unsafe(nil), Integer)
+
+# The RFC 7519 NumericDate claims the jwt gem compares with the clock under the `verify_expiration` and
+# `verify_not_before` options passed in `decode`; `iat` joins the list only if its verification is ever enabled.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/jwt_verifier.rb:50
+MCP::Server::OAuth::JWTVerifier::NUMERIC_DATE_CLAIMS = T.let(T.unsafe(nil), Array)
+
+# Rack middleware that enforces bearer authentication for everything it wraps, per RFC 6750 and the MCP authorization specification:
+#
+#   use MCP::Server::OAuth::Middleware,
+#     token_verifier: verifier,
+#     required_scopes: ["mcp:tools"],
+#     resource_metadata: metadata
+#   run transport
+#
+# See `Authenticator` for the option semantics; this class only adapts it to the Rack middleware calling convention.
+# The streamable HTTP transport embeds the same authenticator via its `token_verifier:` option, so use this middleware when composition
+# at the Rack layer is preferable (for example to share one authenticator across several apps).
+#
+# Tokens are accepted from the `Authorization` header only, never from a query string. On success the verified `AccessToken` is stored in
+# `env[MCP::Server::OAuth::ENV_KEY]`, where the streamable HTTP transport picks it up and exposes it to handlers as `server_context.auth_info`.
+#
+# Because the middleware wraps the whole app, POST, GET (SSE), and DELETE requests are protected uniformly. Mount the metadata document outside
+# the protected scope: it is how unauthenticated clients bootstrap. When a browser-based client is involved, run the CORS middleware before
+# this one; otherwise its preflight OPTIONS request dies here with a 401 that the browser will not let the client see.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/middleware.rb:28
+class MCP::Server::OAuth::Middleware
+  # pkg:gem/mcp#lib/mcp/server/oauth/middleware.rb:29
+  def initialize(app, token_verifier:, required_scopes: T.unsafe(nil), resource_metadata: T.unsafe(nil), resource_metadata_url: T.unsafe(nil), scope_matcher: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/middleware.rb:40
+  def call(env); end
+end
+
+# The request carried no credentials at all. A subclass of `InvalidTokenError` so existing rescue clauses keep working,
+# but distinguished because RFC 6750 Section 3.1 says the challenge answering a credential-less request should not include
+# an error code.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:40
+class MCP::Server::OAuth::MissingTokenError < ::MCP::Server::OAuth::InvalidTokenError
+  # pkg:gem/mcp#lib/mcp/server/oauth/errors.rb:41
+  def initialize(message = T.unsafe(nil)); end
+end
+
+# OAuth 2.0 Protected Resource Metadata (RFC 9728) for an MCP server.
+# The MCP authorization spec requires servers to publish this document so clients can discover which authorization servers can
+# issue tokens for the resource.
+#
+# - `resource` - the canonical resource identifier: the URL clients connect to, without a fragment. Clients send this back to
+#   the authorization server as the RFC 8707 `resource` parameter.
+# - `authorization_servers` - issuer URLs of the authorization servers that protect this resource (at least one).
+# - `scopes_supported` - an Array of the scope strings clients may request (also the default scope hint in `WWW-Authenticate` challenges);
+#   `offline_access` is dropped, and a result with nothing left omits the member.
+# - `bearer_methods_supported` - defaults to `["header"]`: the SDK accepts bearer tokens only in the `Authorization` header,
+#   never in a query string.
+# - `extra` - additional RFC 9728 fields (e.g. `jwks_uri`, `resource_signing_alg_values_supported`, `resource_policy_uri`) merged into
+#   the document as given; the members above cannot be overridden through it.
+#
+# https://www.rfc-editor.org/rfc/rfc9728
+# https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/authorization-server-discovery
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:26
+class MCP::Server::OAuth::ProtectedResourceMetadata
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:38
+  def initialize(resource:, authorization_servers:, scopes_supported: T.unsafe(nil), resource_name: T.unsafe(nil), resource_documentation: T.unsafe(nil), bearer_methods_supported: T.unsafe(nil), extra: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:36
+  def authorization_servers; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:36
+  def bearer_methods_supported; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:36
+  def extra; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:36
+  def resource; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:36
+  def resource_documentation; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:36
+  def resource_name; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:36
+  def scopes_supported; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:64
+  def to_h; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:75
+  def to_json(*args); end
+
+  # The path-inserted well-known path per RFC 9728 Section 3: a resource of `https://example.com/mcp` is described at
+  # `/.well-known/oauth-protected-resource/mcp`, and a resource at the origin root is described at `/.well-known/oauth-protected-resource`.
+  # The path math intentionally matches what `MCP::Client::OAuth::Discovery.protected_resource_metadata_urls` probes.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:82
+  def well_known_path; end
+
+  # The absolute URL of the metadata document. Pass this to `Middleware` (or `Challenge`) as `resource_metadata_url` so 401/403 challenges point
+  # clients at the document.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:91
+  def well_known_url; end
+
+  private
+
+  # The MCP authorization specification tells protected resources not to advertise `offline_access`: refresh token issuance
+  # is the authorization server's business, not a resource requirement. `Authenticator` already drops it from the `scope` parameter of
+  # a `WWW-Authenticate` challenge, so dropping it here keeps the document and the challenges saying the same thing.
+  # https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+  # Nothing left to advertise drops the member from the document instead of emitting `[]`, which RFC 9728 tells servers to omit,
+  # and a non-Array is refused because a bare String would be ambiguous between one scope and a list.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:105
+  def advertisable_scopes(scopes_supported); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:114
+  def parse_resource_uri(resource); end
+end
+
+# pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:29
+MCP::Server::OAuth::ProtectedResourceMetadata::DEFAULT_BEARER_METHODS_SUPPORTED = T.let(T.unsafe(nil), Array)
+
+# The members `initialize` validates. `extra` may not name them, or the merge in `to_h` would undo the validation.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:33
+MCP::Server::OAuth::ProtectedResourceMetadata::VALIDATED_MEMBERS = T.let(T.unsafe(nil), Array)
+
+# pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata.rb:27
+MCP::Server::OAuth::ProtectedResourceMetadata::WELL_KNOWN_PATH_PREFIX = T.let(T.unsafe(nil), String)
+
+# Rack middleware that serves a Protected Resource Metadata document (RFC 9728) at its well-known path,
+# with the CORS headers browser-based MCP clients need, and passes every other request down the stack.
+# The Rack shape of the Python SDK's `create_protected_resource_routes` and the TypeScript SDK's `mcpAuthMetadataRouter`.
+#
+# Use it at the top of the stack: the well-known path lives at the origin root, not under the MCP endpoint
+# (`/.well-known/oauth-protected-resource/mcp` for a resource at `/mcp`), so inside a `map` block it would never see that path.
+# The metadata is how unauthenticated clients bootstrap, so it belongs above any bearer enforcement.
+#
+#   metadata = MCP::Server::OAuth::ProtectedResourceMetadata.new(...)
+#   use MCP::Server::OAuth::ProtectedResourceMetadataMiddleware, metadata
+#   map("/mcp") { run(transport) }
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata_middleware.rb:19
+class MCP::Server::OAuth::ProtectedResourceMetadataMiddleware
+  # @param app [#call] the rest of the Rack stack
+  # @param metadata [ProtectedResourceMetadata] the document to serve, which also names the path it is served at
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata_middleware.rb:25
+  def initialize(app, metadata); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata_middleware.rb:36
+  def call(env); end
+
+  private
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata_middleware.rb:55
+  def metadata_response(head: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata_middleware.rb:75
+  def method_not_allowed_response; end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata_middleware.rb:65
+  def preflight_response; end
+end
+
+# pkg:gem/mcp#lib/mcp/server/oauth/protected_resource_metadata_middleware.rb:20
+MCP::Server::OAuth::ProtectedResourceMetadataMiddleware::ALLOWED_METHODS = T.let(T.unsafe(nil), String)
+
+# The single integration point of the resource-server role: token in, `AccessToken` out. `Authenticator` accepts any object
+# that responds to `verify(token)`, so subclassing is optional; this base class documents the contract and shares the claim mapping
+# used by the built-in verifiers.
+#
+# Implementations MUST raise `InvalidTokenError` when the token is invalid, and that includes an expired token: expiry enforcement
+# is part of this contract, not something the caller re-checks (the built-in verifiers honor their configured clock leeway when doing so).
+# Returning nil is also treated as a rejection by `Authenticator`, with a generic message. Any other exception is treated as
+# an internal error (HTTP 500), not as a client failure.
+#
+# Error messages are echoed into the `WWW-Authenticate` response header, so they must never contain token material or other secrets.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:19
+class MCP::Server::OAuth::TokenVerifier
+  # @param token [String] the raw bearer token from the `Authorization` header
+  # @return [AccessToken]
+  # @raise [InvalidTokenError] when the token is invalid, expired, or not meant for this resource
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:27
+  def verify(token); end
+
+  private
+
+  # Maps a string-keyed claims Hash (JWT payload or RFC 7662 introspection response; the relevant claim names are identical) to an `AccessToken`.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:79
+  def access_token_from_claims(token, claims, resource: T.unsafe(nil)); end
+
+  # `exp` is a numeric timestamp in a JWT payload and in an introspection response alike, but a lenient authorization server may emit it as
+  # a numeric string. Any other shape is rejected as an invalid token: passed through, it would make `AccessToken#expired?` raise on comparison
+  # and turn a malformed upstream response into an internal error.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:103
+  def expiry_from_claims(claims); end
+
+  # The expected `iss` comes from the document as well: its authorization servers are issuer identifiers (RFC 9728),
+  # and a JWT verifier holds one key set, so it verifies the tokens of exactly one of them. A document naming several
+  # would advertise an authorization server whose tokens this verifier rejects, so it is refused outright.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:53
+  def issuer_from(resource_metadata); end
+
+  # A document standing in for `ProtectedResourceMetadata` must still hand over the shapes that class guarantees,
+  # so a wrong one fails here with a named member rather than deeper in with a `NoMethodError`.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:65
+  def metadata_member(resource_metadata, name); end
+
+  # Guards an expected `iss` or `aud` value at construction. The built-in verifiers compare tokens against these values,
+  # and a nil or empty expectation would silently turn the comparison off (the jwt gem skips a check whose expected value is nil),
+  # so a misconfiguration such as an unset environment variable fails loudly instead.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:36
+  def require_expected_claim!(name, value); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:121
+  def require_non_negative_number!(name, value); end
+
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:127
+  def require_positive_number!(name, value); end
+
+  # The expected `aud` is the RFC 9728 document's `resource`: the canonical URL tokens are issued for, and the one this server publishes,
+  # so the verifier cannot drift from it.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:46
+  def resource_from(resource_metadata); end
+
+  # RFC 8693 style `scope` is a space-delimited string, but some authorization servers emit an array of scope strings instead.
+  #
+  # pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:94
+  def scopes_from_claims(claims); end
+end
+
+# Upper bound for response bodies read from authorization-server endpoints (JWKS, introspection). Matches the bound the client-side
+# OAuth support applies to authorization-server responses; the documents involved are orders of magnitude smaller.
+#
+# pkg:gem/mcp#lib/mcp/server/oauth/token_verifier.rb:22
+MCP::Server::OAuth::TokenVerifier::MAX_UPSTREAM_RESPONSE_BYTES = T.let(T.unsafe(nil), Integer)
 
 # pkg:gem/mcp#lib/mcp/server/pagination.rb:5
 module MCP::Server::Pagination
@@ -5611,21 +7233,21 @@ class MCP::Server::PendingResponse
   def push(value); end
 end
 
-# pkg:gem/mcp#lib/mcp/server.rb:43
+# pkg:gem/mcp#lib/mcp/server.rb:44
 class MCP::Server::RequestHandlerError < ::StandardError
-  # pkg:gem/mcp#lib/mcp/server.rb:46
+  # pkg:gem/mcp#lib/mcp/server.rb:47
   def initialize(message, request, error_type: T.unsafe(nil), original_error: T.unsafe(nil), error_code: T.unsafe(nil), error_data: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:44
+  # pkg:gem/mcp#lib/mcp/server.rb:45
   def error_code; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:44
+  # pkg:gem/mcp#lib/mcp/server.rb:45
   def error_data; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:44
+  # pkg:gem/mcp#lib/mcp/server.rb:45
   def error_type; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:44
+  # pkg:gem/mcp#lib/mcp/server.rb:45
   def original_error; end
 end
 
@@ -5708,15 +7330,15 @@ MCP::Server::RequestStateSecurity::VERSION_PREFIX = T.let(T.unsafe(nil), String)
 #
 # https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#timeouts
 #
-# pkg:gem/mcp#lib/mcp/server.rb:142
+# pkg:gem/mcp#lib/mcp/server.rb:143
 class MCP::Server::RequestTimeoutError < ::MCP::Server::RequestHandlerError
-  # pkg:gem/mcp#lib/mcp/server.rb:145
+  # pkg:gem/mcp#lib/mcp/server.rb:146
   def initialize(message, request_id:, timeout:); end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:143
+  # pkg:gem/mcp#lib/mcp/server.rb:144
   def request_id; end
 
-  # pkg:gem/mcp#lib/mcp/server.rb:143
+  # pkg:gem/mcp#lib/mcp/server.rb:144
   def timeout; end
 end
 
@@ -5732,9 +7354,9 @@ end
 #
 # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2164
 #
-# pkg:gem/mcp#lib/mcp/server.rb:116
+# pkg:gem/mcp#lib/mcp/server.rb:117
 class MCP::Server::ResourceNotFoundError < ::MCP::Server::RequestHandlerError
-  # pkg:gem/mcp#lib/mcp/server.rb:117
+  # pkg:gem/mcp#lib/mcp/server.rb:118
   def initialize(uri, request = T.unsafe(nil)); end
 end
 
@@ -5746,13 +7368,19 @@ class MCP::Server::Transports::StdioTransport < ::MCP::Transport
   # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:19
   def initialize(server, max_line_bytes: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:63
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:79
   def close; end
+
+  # The error answering a frame whose handling failed. It carries the request id when the frame was
+  # a single request whose id can be written back, and no `id` otherwise, as for an id that could not be read.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:91
+  def internal_error_response(parsed); end
 
   # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:35
   def open; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:73
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:99
   def send_notification(method, params = T.unsafe(nil)); end
 
   # NOTE: This signature deliberately matches the abstract `Transport#send_request` contract
@@ -5763,10 +7391,10 @@ class MCP::Server::Transports::StdioTransport < ::MCP::Transport
   # cancellation has very limited value here regardless; servers that need cancellation propagation for nested
   # server-to-client requests should use `StreamableHTTPTransport`.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:94
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:120
   def send_request(method, params = T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:67
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:83
   def send_response(message); end
 
   private
@@ -5777,17 +7405,17 @@ class MCP::Server::Transports::StdioTransport < ::MCP::Transport
   # (an `initialize` after a modern lock, a modern envelope after a legacy lock, or a missing envelope after a modern lock)
   # are rejected in-band by `Server#lift_request_envelope`.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:170
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:205
   def dispatch_with_era(parsed); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:176
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:213
   def lock_modern_era_on_success(parsed, response); end
 
   # Parses a frame once so era classification can inspect its method and `_meta`.
   # Returns `nil` for frames that are not JSON objects; those fall back to
   # `ServerSession#handle_json` so protocol-level error responses stay identical.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:158
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:192
   def parse_line(line); end
 
   # Reads one newline-delimited frame, bounded by `@max_line_bytes`. Returns
@@ -5796,8 +7424,16 @@ class MCP::Server::Transports::StdioTransport < ::MCP::Transport
   # an unbounded frame. A short final frame without a trailing newline (EOF) is
   # still returned, since its length stays under the limit.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:142
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:168
   def read_line(io); end
+
+  # Strips a frame as bytes. `$stdin` is read as UTF-8, and `String#strip` raises for a UTF-8 string holding
+  # an invalid byte at either end on every supported Ruby, and anywhere in it from Ruby 3.2 on, so one such
+  # frame would end the read loop instead of being answered. As bytes, it reaches the parser, which refuses
+  # what is not JSON with a parse error.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:185
+  def strip_frame(line); end
 end
 
 # Default upper bound on a single newline-delimited frame. CRuby's `IO#gets`
@@ -5812,7 +7448,7 @@ MCP::Server::Transports::StdioTransport::MAX_LINE_BYTES = T.let(T.unsafe(nil), I
 # pkg:gem/mcp#lib/mcp/server/transports/stdio_transport.rb:10
 MCP::Server::Transports::StdioTransport::STATUS_INTERRUPTED = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:19
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:20
 class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # Creates a Streamable HTTP transport that can be mounted as a Rack app.
   #
@@ -5843,9 +7479,19 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   #   ownership is not enforced.
   # @param max_request_bytes [Integer] upper bound in bytes on a POST request body; larger
   #   requests are rejected with HTTP 413. Defaults to 4 MiB.
+  # @param max_initialize_request_bytes [Integer, nil] upper bound in bytes on the body of an `initialize`
+  #   request in stateful mode, whose `clientInfo` and `capabilities` the session keeps; a larger one is
+  #   rejected with HTTP 413 before any session is created. Defaults to `DEFAULT_MAX_INITIALIZE_REQUEST_BYTES`
+  #   (64 KiB), and `nil` disables this bound, leaving `max_request_bytes` as the only cap on the body; `params`
+  #   holding more than `MAX_INITIALIZE_PARAMS_VALUES` JSON values are rejected the same way either way.
+  #   Neither applies in stateless mode, which retains nothing.
   # @param max_listen_subscriptions [Integer, nil] cap on concurrent `subscriptions/listen`
   #   streams; a listen request past the cap is rejected with HTTP 503, and `nil` disables
   #   the cap.
+  # @param max_resource_subscription_bytes [Integer, nil] bound on the total byte length of the distinct
+  #   resource URIs one `subscriptions/listen` request names in `resourceSubscriptions`; a request over
+  #   the bound is rejected with HTTP 400 and JSON-RPC `-32602`.
+  #   Defaults to `DEFAULT_MAX_RESOURCE_SUBSCRIPTION_BYTES` (64 KiB), and `nil` disables the bound.
   # @param listen_keepalive_interval [Numeric, nil] seconds between SSE keepalive comment frames
   #   on a `subscriptions/listen` stream; the periodic write frees the stream's slot when the peer
   #   has gone away. Defaults to `DEFAULT_LISTEN_KEEPALIVE_INTERVAL` (15); pass `nil` to disable
@@ -5859,13 +7505,35 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # @param server_to_client_request_timeout [Numeric] seconds a server-to-client request waits for its
   #   response before the transport stops waiting and raises `MCP::Server::RequestTimeoutError`.
   #   Defaults to `DEFAULT_SERVER_TO_CLIENT_REQUEST_TIMEOUT` (600); individual calls override it with `timeout:`.
+  # @param token_verifier [#verify, nil] enables built-in OAuth 2.1 bearer enforcement: anything responding to
+  #   `verify(token) -> MCP::Server::OAuth::AccessToken | nil` (see `MCP::Server::OAuth::TokenVerifier` for
+  #   the contract and the built-in JWT/introspection implementations). Every POST, GET, and DELETE is verified
+  #   per HTTP request; SSE streams are verified when opened, matching the per-request model of the Python and
+  #   TypeScript SDKs. The verified token reaches handlers as `server_context.auth_info`. Without a verifier
+  #   the transport still honors a token placed in `env["mcp.auth_info"]` by `MCP::Server::OAuth::Middleware`
+  #   or a custom integration.
+  # @param required_scopes [Array<String>] scopes the token must include, all of them; a shortfall is
+  #   rejected with HTTP 403 `insufficient_scope` (step-up). Requires `token_verifier`.
+  # @param resource_metadata [MCP::Server::OAuth::ProtectedResourceMetadata, nil] the RFC 9728 document describing
+  #   this resource; its well-known URL and `scopes_supported` feed the `WWW-Authenticate` challenges.
+  #   The document itself is served above the transport by `MCP::Server::OAuth::ProtectedResourceMetadataMiddleware`.
+  #   Requires `token_verifier`.
+  # @param resource_metadata_url [String, nil] explicit challenge URL when the metadata document is served elsewhere;
+  #   wins over `resource_metadata.well_known_url`. Requires `token_verifier`.
+  # @param scope_matcher [#call, nil] optional `(required_scope, granted_scopes) -> Boolean` for hierarchical scope schemes;
+  #   defaults to exact membership. Requires `token_verifier`.
+  # @param max_stream_lifetime [Numeric, nil] seconds an authenticated SSE stream may stay open before it is closed
+  #   and the client must present its token again, `DEFAULT_MAX_STREAM_LIFETIME` (1800) by default. The token's own
+  #   expiry closes the stream earlier when it comes first; the cap is what bounds a stream whose token reports no
+  #   expiry. `nil` removes the cap, leaving such a stream open until either side disconnects. Streams opened without
+  #   a token are never capped.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:141
-  def initialize(server, stateless: T.unsafe(nil), enable_json_response: T.unsafe(nil), session_idle_timeout: T.unsafe(nil), max_sessions: T.unsafe(nil), allowed_origins: T.unsafe(nil), allowed_hosts: T.unsafe(nil), dns_rebinding_protection: T.unsafe(nil), session_request_validator: T.unsafe(nil), max_request_bytes: T.unsafe(nil), max_listen_subscriptions: T.unsafe(nil), listen_keepalive_interval: T.unsafe(nil), serve_subscriptions_listen: T.unsafe(nil), server_to_client_request_timeout: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:213
+  def initialize(server, stateless: T.unsafe(nil), enable_json_response: T.unsafe(nil), session_idle_timeout: T.unsafe(nil), max_sessions: T.unsafe(nil), allowed_origins: T.unsafe(nil), allowed_hosts: T.unsafe(nil), dns_rebinding_protection: T.unsafe(nil), session_request_validator: T.unsafe(nil), max_request_bytes: T.unsafe(nil), max_initialize_request_bytes: T.unsafe(nil), max_listen_subscriptions: T.unsafe(nil), max_resource_subscription_bytes: T.unsafe(nil), listen_keepalive_interval: T.unsafe(nil), serve_subscriptions_listen: T.unsafe(nil), server_to_client_request_timeout: T.unsafe(nil), token_verifier: T.unsafe(nil), required_scopes: T.unsafe(nil), resource_metadata: T.unsafe(nil), resource_metadata_url: T.unsafe(nil), scope_matcher: T.unsafe(nil), max_stream_lifetime: T.unsafe(nil)); end
 
   # Rack app interface. This transport can be mounted as a Rack app.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:268
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:397
   def call(env); end
 
   # Unblocks a `send_request` awaiting a response when the peer is being cancelled.
@@ -5878,32 +7546,55 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # if `:cancelled` arrives first, any later client response is silently dropped in `handle_response`
   # because the pending entry has been removed.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:629
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:811
   def cancel_pending_request(request_id, reason: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:331
+  # The reaper is asked to stop and joined before it is killed: `reap_expired_sessions` removes expired sessions
+  # under `@mutex` and closes their streams after releasing it, and a kill landing between the two would leave
+  # those streams open with no session left to find them by. Waking the reaper ends its wait at once, and the join
+  # lets a reap already past its removal finish its closes before the rest of the transport is torn down.
+  # The join is bounded, so a stream whose close never returns cannot hold the shutdown, and a reaper that died
+  # with a `StandardError` does not stop the teardown below: `join` re-raises the exception a thread died with,
+  # which is not this method's to raise. A reaper still alive after the wait is killed as before, leaving
+  # the streams of that reap it had not closed yet as they were.
+  # A `close` running on the reaper thread itself, reached from a stream's `close` or from the exception reporter
+  # during a reap, neither joins nor kills it: the join would fail on its own thread and the kill would end
+  # this teardown with the reap that called it. The reaper leaves its loop on `@closing` once that reap returns.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:482
   def close; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:480
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:659
   def close_streams(streams); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:413
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:585
   def deliver_broadcast_notification(notification); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:385
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:557
   def deliver_targeted_notification(notification, session_id, related_request_id); end
+
+  # Stateless mode has no session streams to deliver notifications on (`send_notification` reports non-delivery),
+  # so `Server#init` advertises no `listChanged`/`subscribe` flags there.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:411
+  def delivers_notifications?; end
 
   # Removes a stream that failed to accept a write. A request-scoped stream is dropped on its own;
   # a session-scoped (GET SSE) failure tears down the whole session. The `@sessions` mutation runs
   # under `@mutex`, and the affected streams are closed outside it.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:459
+  # Only the GET stream the session still holds takes the session down with it, judged under the same hold of
+  # the lock that removes the session: the failed write may have been picked for a stream that was detached since,
+  # because its token expired and the client reopened, and the stream opened in its place must stay. A failed
+  # stream the session no longer holds was closed by whichever path detached it, so there is nothing left to do.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:638
   def drop_broken_stream(session_id, stream, related_request_id); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:280
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:415
   def handle_request(request); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:347
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:512
   def send_notification(method, params = T.unsafe(nil), session_id: T.unsafe(nil), related_request_id: T.unsafe(nil)); end
 
   # Sends a server-to-client JSON-RPC request (e.g., `sampling/createMessage`) and blocks until
@@ -5918,7 +7609,7 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # so a client that never answers cannot park the calling thread for good. On expiry the peer is
   # sent `notifications/cancelled` and `MCP::Server::RequestTimeoutError` is raised.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:497
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:676
   def send_request(method, params = T.unsafe(nil), session_id: T.unsafe(nil), related_request_id: T.unsafe(nil), parent_cancellation: T.unsafe(nil), server_session: T.unsafe(nil), timeout: T.unsafe(nil)); end
 
   # Whether this transport serves the `subscriptions/listen` notification stream (SEP-2575).
@@ -5926,116 +7617,144 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # the `listChanged`/`subscribe` capability flags `Server#discover` advertises,
   # so the two always agree. Set via the `serve_subscriptions_listen:` constructor keyword.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:276
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:405
   def serves_subscriptions_listen?; end
 
   # Writes a notification to an SSE stream without holding `@mutex`. On a write error,
   # drops the broken stream and returns false; on success returns true.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:447
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:621
   def write_notification(stream, notification, session_id, related_request_id); end
 
   private
-
-  # Marks a listen subscription eligible for delivery once its acknowledgement write has completed.
-  # The entry may already be gone when the transport closed concurrently.
-  #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:970
-  def activate_listen_subscription(request_id); end
 
   # Returns the SSE stream available for server-to-client messages.
   # When `related_request_id` is given, returns only the POST response
   # stream for that request (no fallback to GET SSE). This prevents
   # request-scoped messages from leaking to the wrong stream.
-  # When `related_request_id` is nil, returns the GET SSE stream.
+  # When `related_request_id` is nil, returns the GET SSE stream, or nil once the token that opened it
+  # has expired: that stream is detached from the session and added to `streams_to_close` instead, so its
+  # deadline holds at the next write and not only at the keepalive tick. Called under `@mutex`; the caller
+  # closes the collected streams outside it.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1749
-  def active_stream(session, related_request_id: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2296
+  def active_stream(session, streams_to_close, related_request_id: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1924
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2520
   def already_initialized_response(request_id); end
+
+  # Built-in OAuth 2.1 bearer enforcement (active when `token_verifier:` is configured).
+  # Returns nil on success, storing the verified `AccessToken` in `env["mcp.auth_info"]` where the dispatch paths
+  # and `session_request_rejection` read it; returns the RFC 6750 challenge response on failure. OPTIONS is exempt:
+  # CORS preflights never carry credentials, and rejecting them here would fail CORS closed for browser clients
+  # while the transport still answers the preflight itself with 405 (an upstream CORS middleware normally intercepts it).
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2404
+  def authenticate_request(request); end
 
   # Reads a nested capability flag tolerating both symbol and string keys, since user-supplied capability hashes arrive
   # in either form. The flag that promises delivery (`listChanged` / `subscribe`) decides honoring, the same derivation
   # `Server#discover` uses for its era-aware capability stripping; the mere presence of the primitive's capability is not enough.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1040
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1391
   def capability_flag?(capabilities, name, flag); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1364
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1830
   def cleanup_and_collect_stream(session_id, streams_to_close); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1337
+  # Removes the session, closes its streams outside the lock, and returns the removed session, or nil when
+  # there was none to remove.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1801
   def cleanup_session(session_id); end
 
   # Removes a session from `@sessions` and returns it. Does not close the stream.
   # Callers must close the stream outside the mutex to avoid holding the lock during
   # potentially blocking I/O.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1351
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1817
   def cleanup_session_unsafe(session_id); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1377
+  # Detaches and closes the session's GET stream when it is still `stream`, leaving the session in place.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2636
+  def close_get_stream(session_id, stream); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1843
   def close_post_request_streams(session); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1371
+  # Closes a subscription's stream while excluding concurrent writes. The write mutex, taken here outside
+  # `@mutex`, makes the close wait for a write already past its `closed` check, so that write completes or fails
+  # before the stream is closed, and a write that takes the mutex afterwards sees `closed` and skips. Teardown
+  # gets the same ordering by setting `closed` under the write mutex itself.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1482
+  def close_removed_listen_stream(subscription); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1837
   def close_stream_safely(stream); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1964
-  def create_sse_body(session_id); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2557
+  def create_sse_body(session_id, auth_info = T.unsafe(nil)); end
 
   # Mirrors `MCP::Client::HTTP#encode_header_value`: a value wrapped as `=?base64?<base64>?=` decodes to
   # its original UTF-8 string; anything else is taken verbatim. Duplicated here because the client transport
   # requires faraday, which servers do not depend on.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1152
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1586
   def decode_header_value(value); end
 
   # Fans a notification out to every `subscriptions/listen` stream whose honored filter opted in to it,
   # stamping the correlating `subscriptionId` into `_meta`. Matching against the honored filter
   # (not the requested one) enforces the MUST NOT-send-unrequested-types rule.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1050
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1401
   def deliver_to_listen_subscriptions(method, params); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1493
+  # Removes the GET stream and its deadline from `session` under `@mutex` and returns the stream for closing
+  # outside the lock.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2649
+  def detach_get_stream(session); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2024
   def discover_request?(body); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1757
-  def dispatch_handle_json(body_string, server_session); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2306
+  def dispatch_handle_json(body_string, server_session, auth_info: T.unsafe(nil)); end
 
   # Dispatches a client-originated notification (e.g. `notifications/cancelled`,
   # `notifications/initialized`) through the server so it can update session state.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1544
-  def dispatch_notification(body_string, session_id); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2081
+  def dispatch_notification(body_string, session_id, auth_info: T.unsafe(nil)); end
 
   # Each stateless POST is self-contained (SEP-2567): handlers run against an ephemeral per-request `ServerSession`
   # so client info, logging level, and initialized state never leak onto the shared `Server` instance or across concurrent requests.
   # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2567
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1803
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2370
   def ephemeral_session; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1385
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1851
   def extract_session_id(request); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1892
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2488
   def forbidden_response(message = T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1792
-  def get_session_stream(session_id); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2626
+  def get_stream_token_expired?(session_id); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1651
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2195
   def handle_accepted; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1314
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1772
   def handle_delete(request); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1290
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1744
   def handle_get(request); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1582
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2119
   def handle_initialization(request, body_string, body); end
 
   # Serves one request of the stateless modern lifecycle (MCP 2026-07-28, SEP-2575):
@@ -6044,26 +7763,26 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # an `Mcp-Session-Id`. GET (the legacy listening stream, replaced by `subscriptions/listen`)
   # and DELETE (session termination) have no modern meaning.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:684
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:874
   def handle_modern(request, header_version, body_string: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1182
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1616
   def handle_post(request, body_string: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1663
-  def handle_regular_request(body_string, session_id, related_request_id: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2207
+  def handle_regular_request(body_string, session_id, related_request_id: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
   # Returns the POST response as an SSE stream so the server can send
   # JSON-RPC requests and notifications during request processing.
   # https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1703
-  def handle_request_with_sse_response(body_string, session_id, server_session, related_request_id: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2247
+  def handle_request_with_sse_response(body_string, session_id, server_session, related_request_id: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
   # Verifies that the response came from the expected session to prevent
   # cross-session response injection if request IDs are ever leaked.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1566
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2103
   def handle_response(body, session_id:); end
 
   # Serves `subscriptions/listen` (SEP-2575): opens a long-lived SSE stream whose first message is
@@ -6073,30 +7792,57 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # response; an abrupt disconnect sends nothing. A keepalive comment frame is written every
   # `listen_keepalive_interval` seconds so a dropped connection frees its slot.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:840
-  def handle_subscriptions_listen(body); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1040
+  def handle_subscriptions_listen(body, auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1140
+  # A header value as bytes. Rack servers hand header values over as ASCII-8BIT, where every byte is valid, but a framework
+  # or a test request can tag them UTF-8, and then `downcase`, `split`, and regexps raise on an invalid byte sequence
+  # before any rescue applies. Reading the value as bytes puts both on the same footing: a malformed value fails its comparison
+  # and gets the rejection that comparison produces, instead of failing the request.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2435
+  def header_bytes(request, name); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1574
   def header_mismatch_response(message, id); end
 
   # Per SEP-2575, the server MUST NOT send notification types the client has not requested,
   # and the acknowledgement only includes types the server actually supports
-  # (derived from its declared capabilities).
+  # (derived from its declared capabilities). Resource URIs are further narrowed to those
+  # the server's `resources_subscribe_handler` accepts; the field is omitted when none remain.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1022
-  def honored_filter(filter); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1348
+  def honored_filter(filter, meta: T.unsafe(nil), envelope: T.unsafe(nil), auth_info: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1489
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2020
   def initialize_request?(body); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1481
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1964
+  def initialize_too_large_response(request_id, reason); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2012
   def invalid_json_response; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1928
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2524
   def invalid_request_response(message, request_id: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1531
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1131
+  def json_encodable?(value); end
+
+  # The body leaves the `id` member out when there is no request id to echo, as the MCP schema allows
+  # only a string or an integer there.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2064
   def json_rpc_error_response(status:, code:, message:, data: T.unsafe(nil), id: T.unsafe(nil)); end
+
+  # Counts the JSON values in `value` (every object, array, object key, and scalar) and reports whether
+  # they exceed `limit`. The walk is iterative. Every value still queued is at least one more value,
+  # so `count + pending.size` never overstates the total, and a container is refused before its members are
+  # queued if they would take that sum past the limit; the walk therefore stops as soon as the limit is
+  # certain to be passed and never queues more than `limit` values, whatever the shape of the input.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1978
+  def json_values_exceed?(value, limit); end
 
   # Era sniff for a sessionless POST under a dual-era header version: only an `initialize` body
   # WITHOUT the modern `_meta` envelope is legacy-distinctive. An `initialize` carrying
@@ -6104,34 +7850,60 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # on the modern path and answers with -32601/404 (SEP-2575).
   # Unparsable or non-object bodies go to the modern path, whose error responses cover them.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1510
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2041
   def legacy_handshake_body?(body_string); end
+
+  # The `notifications/subscriptions/acknowledged` frame for a listen stream as JSON, or `nil` when
+  # the request id or the honored filter holds a string JSON cannot encode.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1118
+  def listen_acknowledgement_json(request_id, honored); end
+
+  # Seconds the listen keepalive thread waits before its next tick: the interval, or the time left until
+  # the stream's deadline when that comes first. The floor keeps a deadline a few microseconds away from
+  # turning into a zero-length wait.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1338
+  def listen_keepalive_wait(expires_at); end
 
   # The body registers the stream and returns, leaving the response open like
   # the legacy GET stream (`create_sse_body`).
   #
   # Registration and activation are split on purpose: the entry is inserted inactive
-  # (reserving the id and the cap slot atomically), the acknowledgement is written outside the lock,
+  # (reserving the cap slot atomically), the acknowledgement is written outside the registry lock,
   # and only then does the entry become eligible for delivery. A concurrent notification between
   # the insert and the acknowledgement write skips the inactive entry,
   # enforcing the SEP-2575 rule that no notification precedes the acknowledgement.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:932
-  def listen_sse_body(request_id, honored); end
+  # The acknowledgement write holds the stream's write mutex, which `teardown_listen_subscriptions` also takes
+  # before it marks an entry closed. The two therefore cannot interleave: the acknowledgement either lands
+  # before the result, or, if the transport closed first, is not written at all and the stream just closes,
+  # so no stream ever carries a result ahead of its acknowledgement.
+  #
+  # The entry is keyed by an identifier minted here, not by the request id: that id is unique only among
+  # the requesting client's own in-flight requests, and two clients that pick the same one must each get
+  # their stream, stamped with the id they sent.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1194
+  def listen_sse_body(request_id, honored, acknowledgement, auth_info = T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1003
-  def listen_subscription_active?(request_id); end
-
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:885
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1138
   def listen_subscriptions_full?; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1900
+  # Whether the session holds a GET stream whose deadline has not passed. A stream whose token expired may still
+  # be attached between its last delivery and its next keepalive tick; it is detached and closed here, so a client
+  # reopening the stream with a fresh token is not turned away until one of those noticed.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2344
+  def live_get_stream?(session_id); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2496
   def method_not_allowed_response; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1908
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2504
   def missing_session_id_response; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1169
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1603
   def modern_http_status(response); end
 
   # Each modern request is self-contained: handlers run against an ephemeral per-request `ServerSession` locked to
@@ -6139,22 +7911,28 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # keyed by session lookup degrades gracefully (delivery returns `false`) instead of broadcasting to unrelated legacy sessions
   # via the `session_id.nil?` branch.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1165
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1599
   def modern_session; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1441
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1932
   def not_acceptable_response(required_types); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1538
+  # A notification carries no id member at all; a message with `"id": null` is a malformed request,
+  # which the server answers with Invalid Request instead of running it unanswered.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2075
   def notification?(body); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1423
+  # Empty list members (`application/json,,text/event-stream`), which RFC 9110 section 5.6.1.2 has
+  # a recipient parse and ignore, are skipped.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1916
   def parse_accept_header(header); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1473
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2003
   def parse_request_body(body_string); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1465
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1956
   def payload_too_large_response; end
 
   # Reads the request body with a hard byte cap so an unbounded POST cannot exhaust
@@ -6163,28 +7941,38 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # a missing or spoofed `Content-Length` (e.g. chunked transfer) is still caught.
   # Returns `nil` when the body exceeds the cap.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1454
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1945
   def read_bounded_body(request); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:651
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:841
   def reap_expired_sessions; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1100
-  def remove_listen_subscription(request_id); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1462
+  def remove_listen_subscription(subscription_key); end
 
   # Extracts the host name from a `Host` header value, stripping any port and IPv6 brackets
   # (`[::1]:8080` becomes `::1`, `127.0.0.1:8080` becomes `127.0.0.1`).
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1871
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2467
   def request_hostname(host); end
 
   # The POST counterpart of the GET conflict above. A request id already in flight cannot be given
   # a stream of its own, because the id is what routes request-scoped messages back.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1950
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2543
   def request_id_conflict_response; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1560
+  # Checks a listen filter's `resourceSubscriptions` against the schema, which types it as an optional array of strings,
+  # so a member that is present but `null` is refused like any other non-array; against `MAX_RESOURCE_SUBSCRIPTION_URIS`;
+  # and against `max_resource_subscription_bytes`, returning the problem to report or `nil`. Duplicates are dropped before
+  # the bounds are measured, since they are dropped before storage too. The checks run whether or not the server declares
+  # the `subscribe` capability: a request that violates the schema is invalid regardless of what would be honored,
+  # and the bounds are limits on the request itself, like `max_request_bytes`, not on what the server would retain from it.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1370
+  def resource_subscriptions_problem(filter); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2097
   def response?(body); end
 
   # Compares the `Origin` authority (host:port) against the request's own `Host`.
@@ -6192,22 +7980,29 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # but the `Origin`'s scheme is used to drop a redundant default port (`:80` for http, `:443` for https) from
   # both sides so `http://example.com` matches `Host: example.com:80`. Comparison is case-insensitive.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1881
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2477
   def same_origin?(origin, request); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2003
-  def send_keepalive_ping(session_id); end
-
-  # Resolves the stream under the lock, then writes outside it so a stalled reader cannot block
-  # every other subscription on `@mutex`. A write error propagates to end the keepalive loop.
+  # Pings `stream` only while the session still holds it, checked under the lock and written outside it so
+  # a stalled reader cannot block every other session on `@mutex`: a thread whose stream was detached during
+  # its sleep must not write to the one the client opened since, which has a keepalive thread of its own.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1009
-  def send_listen_keepalive_ping(request_id); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2657
+  def send_keepalive_ping(session_id, stream); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:674
+  # Resolves the entry under the registry lock, then writes outside it so a stalled reader cannot
+  # block every other subscription on `@mutex`. The write itself holds the stream's write mutex,
+  # like notification delivery and the closing result: the comment frame then cannot land between
+  # the bytes of a notification or after the closing result, and once teardown has marked
+  # the entry closed the ping is skipped. A write error propagates to end the keepalive loop.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1299
+  def send_listen_keepalive_ping(subscription_key); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:864
   def send_ping_to_stream(stream); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:668
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:858
   def send_to_stream(stream, data); end
 
   # Returns true iff a session exists and is not past its idle timeout. Expired sessions
@@ -6215,70 +8010,139 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # the reaper hasn't yet pruned. Does NOT update `last_active_at`; callers that are
   # rejecting a request must not extend the session's lifetime.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1811
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2378
   def session_active?(session_id); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1999
-  def session_active_with_stream?(session_id); end
-
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1940
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2533
   def session_already_connected_response; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1796
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2363
   def session_exists?(session_id); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2021
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2669
   def session_expired?(session); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1916
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2619
+  def session_holds_stream?(session_id, stream); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2512
   def session_not_found_response; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1958
-  def setup_sse_stream(session_id); end
+  # A session bound to a principal at `initialize` only accepts requests verified as the same `issuer`, `subject`,
+  # and `client_id` triple (client-credentials tokens without a `sub` bind on `client_id` alone; nil members compare equal).
+  # The issuer takes part so a subject and client id pair repeated across identity providers behind a custom verifier
+  # does not collide. A token whose subject and client id are both nil records no binding, because there is no identity to compare.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1892
+  def session_principal_matches?(session, request); end
+
+  # Session-ownership gate for requests against an existing session (the spec's session-binding guidance).
+  # The session ID alone is unguessable but not proof of ownership, so a stolen ID must not silently grant access.
+  # Three layers, each answering with the rejection response it returns. The built-in layers run before
+  # the custom validator so a permissive `session_request_validator` cannot bypass them, and the principal
+  # binding runs first of all, so that another principal gets the 404 whatever else its request carries:
+  #
+  # - Built-in principal binding (active when bearer authentication is in play): a session initialized under
+  #   one token identity refuses requests verified as a different one. The answer is the same 404 an unknown session gets,
+  #   so a guessed session ID is not confirmed to exist; it carries no `WWW-Authenticate` challenge either,
+  #   because the token itself is valid and re-authorization would not help.
+  # - Built-in Origin consistency (defense in depth, not authentication): if the session recorded an `Origin`
+  #   at `initialize` and this request carries a different one, reject with 403. Both must be present to compare,
+  #   so non-browser clients that send no `Origin` are unaffected.
+  # - The application-supplied `session_request_validator`, which can enforce ownership policy beyond the built-in layers;
+  #   a falsy return rejects with 403.
+  #
+  # Returns nil when the request may proceed.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1872
+  def session_request_rejection(request, session_id); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2551
+  def setup_sse_stream(session_id, auth_info = T.unsafe(nil)); end
 
   # A version with no modern meaning, whose header can only accompany legacy traffic.
   # A modern version's header (2026-07-28) can accompany either era's traffic - the handshake never negotiates it,
   # but requests of an established legacy session may stamp it - so that value needs further disambiguation.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1500
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2031
   def stable_only_version?(version); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1986
-  def start_keepalive_thread(session_id); end
+  # The thread acts on the stream it was started for and on no other: the session may have detached that
+  # stream at a delivery once its token expired and the client may have opened a new one since, which gets
+  # a keepalive thread of its own. The loop therefore ends as soon as the session no longer holds this stream,
+  # and a loop that did not run to its end (a failed ping, or any other abnormal exit) drops the stream through
+  # `drop_broken_stream`, which tears the session down only while it still holds that stream, as before.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2592
+  def start_keepalive_thread(session_id, stream); end
 
   # Periodically writes an SSE keepalive comment frame to a listen stream so a silently dropped
   # connection is detected and its slot freed, rather than held until the next fan-out write.
   # Mirrors the legacy GET stream's `start_keepalive_thread`; a comment frame (not a data frame)
   # cannot corrupt an interleaved notification's JSON.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:981
-  def start_listen_keepalive_thread(request_id); end
+  # The wait between pings is a condition variable wait under `@mutex`, not a plain sleep:
+  # the presence check and the wait happen under the same lock that removals signal from,
+  # so a removal cannot slip in between them and a thread waiting out its interval wakes
+  # at once when its entry goes, whichever path removed it. A thread already past the wait,
+  # in a ping, finishes that write first and then finds its entry gone.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1258
+  def start_listen_keepalive_thread(subscription_key, request_id); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:640
+  # The wait between reaps is a condition variable wait under `@mutex` rather than a sleep, so `close` can end it
+  # by signalling; a spurious wakeup only runs a reap early.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:824
   def start_reaper_thread; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1971
-  def store_stream_for_session(session_id, stream); end
+  # The expiry of the token that authenticated the GET is kept with the stream so the keepalive loop and
+  # the delivery paths can close the stream once that token expires.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2566
+  def store_stream_for_session(session_id, stream, auth_info = T.unsafe(nil)); end
+
+  # The deadline at which a stream authenticated by `auth_info` is closed: whichever comes first of the token's own
+  # expiry and `max_stream_lifetime:` seconds from now. Only the deadline is retained with the stream,
+  # never the `AccessToken` itself, which would park the raw bearer credential in `@sessions` or `@listen_subscriptions`
+  # for the life of the stream. The cap is what bounds a stream whose token reports no expiry (`exp` is optional in
+  # an RFC 7662 introspection response), so "a stream does not outlive its credential" holds even when the credential
+  # never says when it ends. A stream opened without a token is not capped: there is no credential to bound,
+  # and capping it would change a transport used without `token_verifier:`.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1317
+  def stream_token_expiry(auth_info); end
 
   # Graceful teardown (SEP-2575): each open listen stream receives its `SubscriptionsListenResult` response
-  # before the stream closes.
+  # before the stream closes. The results are written on a helper thread that is waited for at most `timeout`
+  # seconds in all, because a peer that stopped reading stalls the write of its result, or a delivery already
+  # holding the stream's write mutex, for as long as its socket buffers stay full. Once the time is up, every stream
+  # still open is closed from here: closing a Ruby IO ends a write stalled on it with an `IOError` the helper rescues,
+  # while a stream object of another kind may keep the helper blocked, which no longer holds `close`. Either way
+  # the stream goes without its result, like one whose acknowledgement was never written. The helper is left
+  # to finish on its own rather than killed, so a write mutex is never dropped in the middle of a write.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1106
-  def teardown_listen_subscriptions; end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1494
+  def teardown_listen_subscriptions(timeout: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:891
+  # Same rule as `AccessToken#expired?`: no expiry means the token never expires here.
+  #
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1331
+  def token_expiry_passed?(expires_at); end
+
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1144
   def too_many_listen_subscriptions_response(request_id); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1655
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2199
   def too_many_sessions_response; end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1410
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1901
   def validate_accept_header(request, required_types); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1765
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2314
   def validate_and_touch_session(session_id); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1429
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1920
   def validate_content_type(request); end
 
   # Per MCP 2025-11-25, servers MUST validate the `Origin` header and SHOULD bind only to localhost
@@ -6287,13 +8151,13 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # performs the check). The `Host` header is validated against the loopback defaults plus `allowed_hosts:`,
   # and the `Origin` header, when present, must be same-origin or in `allowed_origins:`.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1837
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2425
   def validate_dns_rebinding(request); end
 
   # Rejects a rebound `Host` (e.g. `evil.example.com` re-pointed at 127.0.0.1).
   # A request without a `Host` header (e.g. HTTP/1.0) is allowed; the rebinding vector this guards against always carries one.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1845
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2441
   def validate_host(request); end
 
   # Enforces the SEP-2575 header/body match rules (`-32020`, HTTP 400): the `MCP-Protocol-Version` header
@@ -6301,30 +8165,25 @@ class MCP::Server::Transports::StreamableHTTPTransport < ::MCP::Transport
   # the body when sent. Absent mirror headers are tolerated for interoperability while other SDK serving stacks
   # converge on enforcement.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:781
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:981
   def validate_modern_headers(request, body, header_version); end
 
   # A request without an `Origin` header (typical for non-browser MCP clients) is allowed. A browser cross-origin request is
   # rejected unless the origin is same-origin or explicitly allow-listed via `allowed_origins:`.
   #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1860
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2456
   def validate_origin(request); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1519
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:2050
   def validate_protocol_version_header(request); end
 
-  # Session-ownership gate for requests against an existing session (the spec's session-binding guidance).
-  # The session ID alone is unguessable but not proof of ownership, so a stolen ID must not silently grant access.
-  # Two layers, both returning `false` to trigger a 403:
+  # Marking the entry closed and writing the result under the stream's write mutex orders
+  # this against in-flight deliveries and against the acknowledgement write: each one either lands
+  # before the result or observes `closed` and skips, keeping the graceful result the stream's final message.
+  # The stream is left open for the caller to close.
   #
-  # - Built-in Origin consistency (defense in depth, not authentication): if the session recorded an `Origin`
-  #   at `initialize` and this request carries a different one, reject. Both must be present to compare,
-  #   so non-browser clients that send no `Origin` are unaffected.
-  # - The application-supplied `session_request_validator`, which can enforce true ownership when it has
-  #   an authenticated principal.
-  #
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1398
-  def validate_session_request(request, session_id); end
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1536
+  def write_listen_closing_result(subscription); end
 end
 
 # Interval in seconds between SSE keepalive comment frames on a `subscriptions/listen` stream.
@@ -6333,35 +8192,64 @@ end
 # The periodic write detects the dead peer and frees the slot. Matches the TypeScript SDK's
 # 15-second default; pass `listen_keepalive_interval: nil` when an upstream proxy pings the stream.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:94
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:122
 MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_LISTEN_KEEPALIVE_INTERVAL = T.let(T.unsafe(nil), Integer)
 
 # Loopback hosts always accepted by DNS rebinding protection. A locally bound MCP server (the canonical pattern) is
 # protected out of the box; non-loopback deployments widen the list via `allowed_hosts:`.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:241
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:370
 MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_LOOPBACK_HOSTS = T.let(T.unsafe(nil), Array)
+
+# Bound on the body of an `initialize` request in stateful mode. Its `clientInfo` and `capabilities` are
+# kept for the life of the session, so without a bound of its own each session could retain a whole
+# `max_request_bytes` body and the retained total would be `max_sessions` times that. An ordinary
+# `initialize` is under 2 KiB; 64 KiB leaves room for large `experimental` capabilities. Pass
+# `max_initialize_request_bytes: nil` to opt out. The TypeScript and Python SDKs keep the initialize
+# data whole with no bound of their own; this is the same kind of local safety limit as `max_request_bytes`.
+#
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:97
+MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_INITIALIZE_REQUEST_BYTES = T.let(T.unsafe(nil), Integer)
 
 # Cap on concurrent `subscriptions/listen` streams (SEP-2575). Each stream holds an open SSE connection
 # for its lifetime, so without a bound an unauthenticated client can retain unbounded connections,
 # like the session-flood case `DEFAULT_MAX_SESSIONS` guards. A listen request past the cap is rejected with HTTP 503;
 # pass `max_listen_subscriptions: nil` to opt out.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:49
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:50
 MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_LISTEN_SUBSCRIPTIONS = T.let(T.unsafe(nil), Integer)
 
-# Default upper bound on the JSON-RPC request body. `handle_post` reads the whole
-# body into memory and parses it, so without a cap a single unauthenticated POST
-# can allocate gigabytes and OOM the worker. 4 MiB comfortably
-# fits a typical JSON-RPC request (a 4 MiB JSON string decodes to ~3 MiB of base64
-# payload); raise `max_request_bytes:` for unusually large payloads. Matches the
-# TypeScript SDK's 4 MB default.
+# Default upper bound on the JSON-RPC request body. `handle_post` reads the whole body into memory and parses it,
+# so without a cap a single unauthenticated POST can allocate gigabytes and OOM the worker. 4 MiB comfortably fits
+# a typical JSON-RPC request (a 4 MiB JSON string decodes to ~3 MiB of base64 payload); raise `max_request_bytes:`
+# for unusually large payloads. Matches the TypeScript SDK's 4 MB default.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:76
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:89
 MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_REQUEST_BYTES = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:43
+# Bound on the bytes of resource URIs one `subscriptions/listen` request may name in `resourceSubscriptions`
+# (the sum of their byte lengths after duplicates are dropped). The URIs are held for the life of the stream,
+# so without a bound each stream could retain a request body's worth of URIs and the retained total would be
+# `max_listen_subscriptions` times `max_request_bytes`. 64 KiB names about a thousand ordinary URIs;
+# pass `max_resource_subscription_bytes: nil` to opt out. The specification sets no limit, nor do the TypeScript
+# and Python SDKs; this is the same kind of local safety limit as `max_request_bytes`.
+#
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:58
+MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_RESOURCE_SUBSCRIPTION_BYTES = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:44
 MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_SESSIONS = T.let(T.unsafe(nil), Integer)
+
+# How long an authenticated SSE stream may stay open before it is closed and the client has to present its token again.
+# Bearer enforcement is per HTTP request, and a stream is one request, so without this an open stream outlives
+# every later token check. The token's own expiry usually arrives first; the cap is what bounds a stream whose token reports
+# no expiry at all (`exp` is optional in an RFC 7662 introspection response). Neither the specification nor the reference SDKs
+# put a ceiling on a stream, so the value comes from this transport instead: it matches `DEFAULT_SESSION_IDLE_TIMEOUT`,
+# because a handshake session already ends after that long without a request, which would leave a longer cap inert,
+# and a sessionless `subscriptions/listen` stream has no other bound at all.
+#
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:134
+MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_STREAM_LIFETIME = T.let(T.unsafe(nil), Integer)
 
 # Default deadline in seconds for a server-to-client request (sampling, elicitation, `roots/list`, `ping`).
 # The spec asks implementations to bound every sent request so a peer that never answers cannot exhaust
@@ -6377,7 +8265,7 @@ MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_SESSIONS = T.let(T
 #
 # https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#timeouts
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:68
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:83
 MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_SERVER_TO_CLIENT_REQUEST_TIMEOUT = T.let(T.unsafe(nil), Integer)
 
 # Secure defaults for stateful mode. Without a finite idle timeout, sessions live until an explicit client DELETE,
@@ -6389,40 +8277,60 @@ MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_SERVER_TO_CLIENT_REQUE
 # an attacker's behalf, at the cost of refusing new sessions while genuinely full. Pass `session_idle_timeout: nil` to
 # opt out of expiry and `max_sessions: nil` to opt out of the cap.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:42
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:43
 MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_SESSION_IDLE_TIMEOUT = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:20
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:21
 class MCP::Server::Transports::StreamableHTTPTransport::InvalidJsonError < ::StandardError; end
+
+# The shortest wait the listen keepalive makes when a stream's deadline is nearer than the interval.
+#
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:125
+MCP::Server::Transports::StreamableHTTPTransport::LISTEN_DEADLINE_WAIT_FLOOR = T.let(T.unsafe(nil), Float)
 
 # Maps broadcast notification methods to the `SubscriptionFilter` field that opts in to them on
 # a `subscriptions/listen` stream (SEP-2575). `notifications/resources/updated` is matched by URI
 # against `resourceSubscriptions` instead.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:249
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:378
 MCP::Server::Transports::StreamableHTTPTransport::LISTEN_FILTER_FIELDS = T.let(T.unsafe(nil), Hash)
+
+# How long `close` waits in all for the closing results of the open `subscriptions/listen` streams
+# before closing the streams still open without one.
+#
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:366
+MCP::Server::Transports::StreamableHTTPTransport::LISTEN_TEARDOWN_TIMEOUT = T.let(T.unsafe(nil), Integer)
 
 # The Rack streaming body of a `subscriptions/listen` response. It responds to `call`
 # and deliberately not to `each`, so Rack keeps classifying it as a streaming body;
 # `first` exists only to turn the buffered-host mistake (e.g. `render(json: body.first)`
 # in the Rails controller pattern) from a bare `NoMethodError` into guidance naming the fix.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:904
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1157
 class MCP::Server::Transports::StreamableHTTPTransport::ListenStreamBody
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:905
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1158
   def initialize(&block); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:909
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1162
   def call(stream); end
 
-  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:913
+  # pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:1166
   def first; end
 end
+
+# Bound on the number of JSON values (objects, arrays, keys, and scalars) in the `params` of an `initialize`
+# request in stateful mode. A byte bound alone does not tightly bound the memory a session keeps: a body of
+# many small values parses into far more objects than its size suggests, so the parsed structure is bounded
+# as well. Like `MAX_JSON_NESTING`, it is a structural limit applied whatever `max_initialize_request_bytes`
+# is, including `nil`. An ordinary `initialize` holds a few dozen values.
+#
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:104
+MCP::Server::Transports::StreamableHTTPTransport::MAX_INITIALIZE_PARAMS_VALUES = T.let(T.unsafe(nil), Integer)
 
 # Conservative bound on JSON nesting depth, so a deeply nested body cannot exhaust
 # the stack or amplify parse cost (complements the byte cap).
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:80
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:108
 MCP::Server::Transports::StreamableHTTPTransport::MAX_JSON_NESTING = T.let(T.unsafe(nil), Integer)
 
 # Cap on the notifications buffered for one modern request (SEP-2575). The sink holds them
@@ -6431,31 +8339,44 @@ MCP::Server::Transports::StreamableHTTPTransport::MAX_JSON_NESTING = T.let(T.uns
 # Notifications past the cap are not delivered and the notify helpers report `false`,
 # the same non-delivery degradation they have on every other undeliverable path.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:87
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:115
 MCP::Server::Transports::StreamableHTTPTransport::MAX_MODERN_REQUEST_NOTIFICATIONS = T.let(T.unsafe(nil), Integer)
+
+# Bound on the number of distinct resource URIs one `subscriptions/listen` request may name. A byte bound does
+# not tightly bound the memory a stream keeps, since each retained URI carries a fixed per-object cost however
+# short it is, so the count is bounded as well. Like `MAX_JSON_NESTING`, it is a structural limit applied
+# whatever `max_resource_subscription_bytes` is, including `nil`.
+#
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:64
+MCP::Server::Transports::StreamableHTTPTransport::MAX_RESOURCE_SUBSCRIPTION_URIS = T.let(T.unsafe(nil), Integer)
 
 # JSON-RPC error codes that surface as HTTP 400 on the modern path. `-32601` maps to 404
 # (disambiguating an unknown method from a legacy HTTP+SSE 404) and everything else, including internal errors,
 # stays 200, matching the Python SDK's status ladder.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:258
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:387
 MCP::Server::Transports::StreamableHTTPTransport::MODERN_BAD_REQUEST_CODES = T.let(T.unsafe(nil), Array)
 
 # JSON-RPC methods whose target name is mirrored into the `Mcp-Name` header (SEP-2575).
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:244
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:373
 MCP::Server::Transports::StreamableHTTPTransport::NAME_BEARING_METHODS = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:235
+# Seconds `close` waits for a reap in progress to finish closing its streams before it kills the reaper.
+#
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:363
+MCP::Server::Transports::StreamableHTTPTransport::REAPER_JOIN_TIMEOUT = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:359
 MCP::Server::Transports::StreamableHTTPTransport::REQUIRED_GET_ACCEPT_TYPES = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:234
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:358
 MCP::Server::Transports::StreamableHTTPTransport::REQUIRED_POST_ACCEPT_TYPES_JSON = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:233
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:357
 MCP::Server::Transports::StreamableHTTPTransport::REQUIRED_POST_ACCEPT_TYPES_SSE = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:237
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:361
 MCP::Server::Transports::StreamableHTTPTransport::SESSION_REAP_INTERVAL = T.let(T.unsafe(nil), Integer)
 
 # `x-accel-buffering: no` tells reverse proxies (nginx and friends) not to buffer the response,
@@ -6464,26 +8385,26 @@ MCP::Server::Transports::StreamableHTTPTransport::SESSION_REAP_INTERVAL = T.let(
 # also swallows the keepalive frames a dropped peer would otherwise be detected by.
 # The TypeScript and Python SDKs send it on their SSE responses for the same reason.
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:27
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:28
 MCP::Server::Transports::StreamableHTTPTransport::SSE_HEADERS = T.let(T.unsafe(nil), Hash)
 
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:236
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:360
 MCP::Server::Transports::StreamableHTTPTransport::STREAM_WRITE_ERRORS = T.let(T.unsafe(nil), Array)
 
 # Distinguishes "argument omitted, apply the secure default" from an explicit `nil` (opt out of expiry).
 #
-# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:52
+# pkg:gem/mcp#lib/mcp/server/transports/streamable_http_transport.rb:67
 MCP::Server::Transports::StreamableHTTPTransport::UNSET_IDLE_TIMEOUT = T.let(T.unsafe(nil), Object)
 
-# pkg:gem/mcp#lib/mcp/server.rb:35
+# pkg:gem/mcp#lib/mcp/server.rb:36
 MCP::Server::UNSUPPORTED_PROPERTIES_UNTIL_2025_03_26 = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/mcp#lib/mcp/server.rb:34
+# pkg:gem/mcp#lib/mcp/server.rb:35
 MCP::Server::UNSUPPORTED_PROPERTIES_UNTIL_2025_06_18 = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/mcp#lib/mcp/server.rb:56
+# pkg:gem/mcp#lib/mcp/server.rb:57
 class MCP::Server::URLElicitationRequiredError < ::MCP::Server::RequestHandlerError
-  # pkg:gem/mcp#lib/mcp/server.rb:57
+  # pkg:gem/mcp#lib/mcp/server.rb:58
   def initialize(elicitations); end
 end
 
@@ -6493,12 +8414,12 @@ end
 #
 # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575
 #
-# pkg:gem/mcp#lib/mcp/server.rb:73
+# pkg:gem/mcp#lib/mcp/server.rb:74
 class MCP::Server::UnsupportedProtocolVersionError < ::MCP::Server::RequestHandlerError
   # No keyword parameters here: with one present, Ruby 2.7 would split a trailing symbol-keyed `request` Hash
   # into keywords and fail with "unknown keywords".
   #
-  # pkg:gem/mcp#lib/mcp/server.rb:76
+  # pkg:gem/mcp#lib/mcp/server.rb:77
   def initialize(requested, request = T.unsafe(nil)); end
 end
 
@@ -6506,30 +8427,41 @@ end
 # whose `result` field is missing or has the wrong type. This is distinct from a
 # client-returned JSON-RPC error.
 #
-# pkg:gem/mcp#lib/mcp/server.rb:164
+# pkg:gem/mcp#lib/mcp/server.rb:165
 class MCP::Server::ValidationError < ::StandardError; end
 
 # pkg:gem/mcp#lib/mcp/server_context.rb:4
 class MCP::ServerContext
-  # pkg:gem/mcp#lib/mcp/server_context.rb:18
-  def initialize(context, progress:, notification_target:, related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), input_responses: T.unsafe(nil), request_state: T.unsafe(nil)); end
+  # pkg:gem/mcp#lib/mcp/server_context.rb:22
+  def initialize(context, progress:, notification_target:, related_request_id: T.unsafe(nil), cancellation: T.unsafe(nil), envelope: T.unsafe(nil), input_responses: T.unsafe(nil), request_state: T.unsafe(nil), auth_info: T.unsafe(nil)); end
+
+  # The verified `MCP::Server::OAuth::AccessToken` for the current request, or nil when the request was not bearer-authenticated.
+  # This reader is the canonical accessor; when the underlying context is a Hash the same value is also reachable as `server_context[:auth_info]`.
+  #
+  # pkg:gem/mcp#lib/mcp/server_context.rb:20
+  def auth_info; end
+
+  # Whether the current request was bearer-authenticated.
+  #
+  # pkg:gem/mcp#lib/mcp/server_context.rb:97
+  def authenticated?; end
 
   # pkg:gem/mcp#lib/mcp/server_context.rb:5
   def cancellation; end
 
-  # pkg:gem/mcp#lib/mcp/server_context.rb:38
+  # pkg:gem/mcp#lib/mcp/server_context.rb:42
   def cancelled?; end
 
   # Client capabilities for the current request, with the same envelope-first resolution as {#client_info}.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:61
+  # pkg:gem/mcp#lib/mcp/server_context.rb:65
   def client_capabilities; end
 
   # Client identity for the current request. Modern requests carry it in the `_meta` envelope;
   # legacy sessions fall back to the state stored by `initialize`. The envelope always wins
   # because servers MUST NOT infer identity from prior requests.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:54
+  # pkg:gem/mcp#lib/mcp/server_context.rb:58
   def client_info; end
 
   # Delegates to the session so the request is scoped to the originating client.
@@ -6538,7 +8470,7 @@ class MCP::ServerContext
   # The originating request id is stamped as a non-overridable
   # `related_request_id`, as with `create_sampling_message` (SEP-2260).
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:197
+  # pkg:gem/mcp#lib/mcp/server_context.rb:221
   def create_form_elicitation(**kwargs); end
 
   # Delegates to the session so the request is scoped to the originating client.
@@ -6553,7 +8485,7 @@ class MCP::ServerContext
   #   MCP protocol version 2026-07-28 (SEP-2577). Use direct LLM provider
   #   APIs instead.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:182
+  # pkg:gem/mcp#lib/mcp/server_context.rb:206
   def create_sampling_message(**kwargs); end
 
   # Delegates to the session so the request is scoped to the originating client.
@@ -6561,7 +8493,7 @@ class MCP::ServerContext
   # The originating request id is stamped as a non-overridable `related_request_id`,
   # as with `create_sampling_message` (SEP-2260).
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:211
+  # pkg:gem/mcp#lib/mcp/server_context.rb:235
   def create_url_elicitation(**kwargs); end
 
   # The SEP-2575 per-request envelope (`MCP::RequestEnvelope`) when the request was classified as modern;
@@ -6572,7 +8504,7 @@ class MCP::ServerContext
 
   # Reads one entry of {#input_responses} by its `inputRequests` key, tolerating symbol or string keys.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:31
+  # pkg:gem/mcp#lib/mcp/server_context.rb:35
   def input_response(key); end
 
   # SEP-2322 multi round-trip retry fields, present when the client re-issued the request after
@@ -6593,7 +8525,7 @@ class MCP::ServerContext
   #   version 2026-07-28 (SEP-2577). Use tool parameters, resource URIs,
   #   server configuration, or environment variables instead.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:141
+  # pkg:gem/mcp#lib/mcp/server_context.rb:165
   def list_roots(timeout: T.unsafe(nil)); end
 
   # Forward arguments explicitly with `*args, **kwargs, &block` rather than the `...` forwarding syntax.
@@ -6602,17 +8534,17 @@ class MCP::ServerContext
   # raises a `SyntaxError` on Ruby 2.7.0 through 2.7.2 (it was added in Ruby 2.7.3). Explicit forwarding keeps
   # this method loadable on Ruby 2.7.0.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:237
+  # pkg:gem/mcp#lib/mcp/server_context.rb:261
   def method_missing(name, *args, **kwargs, &block); end
 
   # Whether the current request follows the stateless modern lifecycle (SEP-2575).
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:47
+  # pkg:gem/mcp#lib/mcp/server_context.rb:51
   def modern?; end
 
   # Delegates to the session so the notification is scoped to the originating client.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:222
+  # pkg:gem/mcp#lib/mcp/server_context.rb:246
   def notify_elicitation_complete(**kwargs); end
 
   # Sends a log message notification scoped to the originating session.
@@ -6624,14 +8556,14 @@ class MCP::ServerContext
   #   is deprecated as of MCP protocol version 2026-07-28 (SEP-2577).
   #   Use stderr or OpenTelemetry instead.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:110
+  # pkg:gem/mcp#lib/mcp/server_context.rb:134
   def notify_log_message(data:, level:, logger: T.unsafe(nil)); end
 
   # Sends a resource updated notification scoped to the originating session.
   #
   # @param uri [String] The URI of the updated resource.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:127
+  # pkg:gem/mcp#lib/mcp/server_context.rb:151
   def notify_resources_updated(uri:); end
 
   # Sends a `ping` request to the originating client to verify it is still responsive.
@@ -6649,16 +8581,16 @@ class MCP::ServerContext
   #
   # @see https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/ping
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:163
+  # pkg:gem/mcp#lib/mcp/server_context.rb:187
   def ping(timeout: T.unsafe(nil)); end
 
   # The protocol version the current request was made with. `nil` on legacy requests,
   # where the version is a session-level negotiation result rather than per-request data.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:69
+  # pkg:gem/mcp#lib/mcp/server_context.rb:73
   def protocol_version; end
 
-  # pkg:gem/mcp#lib/mcp/server_context.rb:42
+  # pkg:gem/mcp#lib/mcp/server_context.rb:46
   def raise_if_cancelled!; end
 
   # Reports progress for the current tool operation.
@@ -6668,7 +8600,7 @@ class MCP::ServerContext
   # @param total [Numeric, nil] Total expected value.
   # @param message [String, nil] Human-readable status message.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:98
+  # pkg:gem/mcp#lib/mcp/server_context.rb:122
   def report_progress(progress, total: T.unsafe(nil), message: T.unsafe(nil)); end
 
   # SEP-2322 multi round-trip retry fields, present when the client re-issued the request after
@@ -6684,12 +8616,22 @@ class MCP::ServerContext
   # e.g. `require_client_capability!(:elicitation, :form)`. Raises `Server::MissingRequiredClientCapabilityError`
   # (JSON-RPC error `-32021` with `data: { requiredCapabilities: ... }`) when the capability was not declared.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:76
+  # pkg:gem/mcp#lib/mcp/server_context.rb:80
   def require_client_capability!(*path); end
+
+  # Guards the current operation on OAuth scopes the token must carry, for authorization decisions finer-grained than
+  # the transport-wide `required_scopes`. Raises `Server::OAuth::InsufficientScopeError`, which surfaces as
+  # a JSON-RPC invalid-request error naming the missing scopes. HTTP-level 403 step-up challenges remain the job of
+  # the transport's `required_scopes` gate, matching how the Python and TypeScript SDKs split endpoint-level challenges
+  # from in-handler authorization. The transport's `scope_matcher:` applies here as well: the authenticator attaches it
+  # to the token it hands over, so a scope hierarchy is judged the same way at the gate and in handlers.
+  #
+  # pkg:gem/mcp#lib/mcp/server_context.rb:107
+  def require_scopes!(*scopes); end
 
   private
 
-  # pkg:gem/mcp#lib/mcp/server_context.rb:245
+  # pkg:gem/mcp#lib/mcp/server_context.rb:269
   def respond_to_missing?(name, include_private = T.unsafe(nil)); end
 
   # An omitted `timeout:` is not forwarded at all, so the delegated call keeps the shape it had
@@ -6697,7 +8639,7 @@ class MCP::ServerContext
   # (a custom object standing in for a session) keeps working until a caller actually asks for a timeout,
   # and the transport applies its own default in that case.
   #
-  # pkg:gem/mcp#lib/mcp/server_context.rb:255
+  # pkg:gem/mcp#lib/mcp/server_context.rb:279
   def timeout_kwarg(timeout); end
 end
 
@@ -6726,12 +8668,12 @@ class MCP::ServerSession
 
   # Returns per-session client capabilities, falling back to global.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:143
+  # pkg:gem/mcp#lib/mcp/server_session.rb:153
   def client_capabilities; end
 
   # Called by `Server#configure_logging_level`.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:138
+  # pkg:gem/mcp#lib/mcp/server_session.rb:148
   def configure_logging(logging_message_notification); end
 
   # Sends an `elicitation/create` request (form mode) scoped to this session.
@@ -6740,7 +8682,7 @@ class MCP::ServerSession
   # request; prefer `server_context.create_form_elicitation` inside a handler,
   # which stamps the association automatically.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:199
+  # pkg:gem/mcp#lib/mcp/server_session.rb:209
   def create_form_elicitation(message:, requested_schema:, related_request_id: T.unsafe(nil), timeout: T.unsafe(nil)); end
 
   # Sends a `sampling/createMessage` request scoped to this session.
@@ -6752,7 +8694,7 @@ class MCP::ServerSession
   #   MCP protocol version 2026-07-28 (SEP-2577). Use direct LLM provider
   #   APIs instead.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:182
+  # pkg:gem/mcp#lib/mcp/server_session.rb:192
   def create_sampling_message(related_request_id: T.unsafe(nil), timeout: T.unsafe(nil), **kwargs); end
 
   # Sends an `elicitation/create` request (URL mode) scoped to this session.
@@ -6761,7 +8703,7 @@ class MCP::ServerSession
   # request; prefer `server_context.create_url_elicitation` inside a handler,
   # which stamps the association automatically.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:221
+  # pkg:gem/mcp#lib/mcp/server_session.rb:231
   def create_url_elicitation(message:, url:, elicitation_id:, related_request_id: T.unsafe(nil), timeout: T.unsafe(nil)); end
 
   # Connection-era lock of the dual-era serving model (SEP-2575): `nil` until the first era-distinctive message succeeds,
@@ -6777,14 +8719,19 @@ class MCP::ServerSession
   # standalone request - and stays associated with the originating client request per SEP-2260.
   # Returns the client's result.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:243
+  # pkg:gem/mcp#lib/mcp/server_session.rb:253
   def fulfill_input_request(method, params, related_request_id:); end
 
-  # pkg:gem/mcp#lib/mcp/server_session.rb:123
-  def handle(request); end
-
+  # Accepts the request either as a positional Hash or as bare keyword arguments (`session.handle(jsonrpc: "2.0", ...)`),
+  # a calling style that predates this method having keyword parameters. `auth_info:` is honored only alongside a positional request:
+  # in the bare-keyword style every keyword belongs to the request body, and the body is attacker-authored JSON,
+  # so a captured `auth_info` keyword is folded back into the request rather than trusted as a verified credential.
+  #
   # pkg:gem/mcp#lib/mcp/server_session.rb:127
-  def handle_json(request_json); end
+  def handle(request = T.unsafe(nil), auth_info: T.unsafe(nil), **request_keywords); end
+
+  # pkg:gem/mcp#lib/mcp/server_session.rb:137
+  def handle_json(request_json, auth_info: T.unsafe(nil)); end
 
   # Whether `request_id` is currently in flight, so a transport can refuse a colliding request
   # before registering any state of its own for it.
@@ -6807,7 +8754,7 @@ class MCP::ServerSession
   #   version 2026-07-28 (SEP-2577). Use tool parameters, resource URIs,
   #   server configuration, or environment variables instead.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:156
+  # pkg:gem/mcp#lib/mcp/server_session.rb:166
   def list_roots(related_request_id: T.unsafe(nil), timeout: T.unsafe(nil)); end
 
   # One-shot era lock. Locking the already-locked era is a no-op; flipping an established era raises,
@@ -6831,7 +8778,7 @@ class MCP::ServerSession
 
   # Sends an elicitation complete notification scoped to this session.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:265
+  # pkg:gem/mcp#lib/mcp/server_session.rb:275
   def notify_elicitation_complete(elicitation_id:); end
 
   # Sends a log message notification to this session only.
@@ -6839,22 +8786,22 @@ class MCP::ServerSession
   #   is deprecated as of MCP protocol version 2026-07-28 (SEP-2577).
   #   Use stderr or OpenTelemetry instead.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:296
+  # pkg:gem/mcp#lib/mcp/server_session.rb:306
   def notify_log_message(data:, level:, logger: T.unsafe(nil), related_request_id: T.unsafe(nil)); end
 
   # Sends a progress notification to this session only.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:279
+  # pkg:gem/mcp#lib/mcp/server_session.rb:289
   def notify_progress(progress_token:, progress:, total: T.unsafe(nil), message: T.unsafe(nil), related_request_id: T.unsafe(nil)); end
 
   # Sends a resource updated notification to this session only.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:272
+  # pkg:gem/mcp#lib/mcp/server_session.rb:282
   def notify_resources_updated(uri:); end
 
   # Sends a `ping` request scoped to this session.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:167
+  # pkg:gem/mcp#lib/mcp/server_session.rb:177
   def ping(related_request_id: T.unsafe(nil), timeout: T.unsafe(nil)); end
 
   # pkg:gem/mcp#lib/mcp/server_session.rb:12
@@ -6875,7 +8822,7 @@ class MCP::ServerSession
   # (e.g. the parent's POST response stream on `StreamableHTTPTransport`) rather than
   # the GET SSE stream.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:252
+  # pkg:gem/mcp#lib/mcp/server_session.rb:262
   def send_peer_cancellation(nested_request_id:, related_request_id: T.unsafe(nil), reason: T.unsafe(nil)); end
 
   # pkg:gem/mcp#lib/mcp/server_session.rb:12
@@ -6883,7 +8830,7 @@ class MCP::ServerSession
 
   # Called by `Server#init` during the initialization handshake.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:132
+  # pkg:gem/mcp#lib/mcp/server_session.rb:142
   def store_client_info(client:, capabilities: T.unsafe(nil)); end
 
   # Removes an in-flight registration. Passing the `Cancellation` that `register_in_flight` returned removes
@@ -6899,7 +8846,7 @@ class MCP::ServerSession
   # working while preserving compatibility with custom transports that implement only the abstract
   # `(method, params = nil)` contract.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:359
+  # pkg:gem/mcp#lib/mcp/server_session.rb:369
   def forward_to_transport(transport_method, method, params, kwargs); end
 
   # Forwards `send_notification` to the transport with only the kwargs the transport's method signature
@@ -6907,7 +8854,7 @@ class MCP::ServerSession
   # contract continue to work unchanged; bundled transports that declare `session_id:` / `related_request_id:`
   # receive the session-scoped routing information.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:326
+  # pkg:gem/mcp#lib/mcp/server_session.rb:336
   def send_to_transport(method, params, related_request_id: T.unsafe(nil)); end
 
   # Forwards `send_request` to the transport with only the kwargs the transport's method signature
@@ -6917,10 +8864,10 @@ class MCP::ServerSession
   # When `related_request_id` names an in-flight request, its `Cancellation` token is looked up
   # so that cancelling the parent also cancels this nested server-to-client request.
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:341
+  # pkg:gem/mcp#lib/mcp/server_session.rb:351
   def send_to_transport_request(method, params, related_request_id: T.unsafe(nil), timeout: T.unsafe(nil)); end
 
-  # pkg:gem/mcp#lib/mcp/server_session.rb:318
+  # pkg:gem/mcp#lib/mcp/server_session.rb:328
   def validate_era!(era); end
 
   # Per SEP-2260, servers MUST send `roots/list`, `sampling/createMessage`, and `elicitation/create` only
@@ -6929,12 +8876,635 @@ class MCP::ServerSession
   # warn so callers migrate to the `server_context` helpers before this becomes an error.
   # https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2260
   #
-  # pkg:gem/mcp#lib/mcp/server_session.rb:381
+  # pkg:gem/mcp#lib/mcp/server_session.rb:391
   def warn_unassociated_request(method_name, related_request_id); end
 end
 
 # pkg:gem/mcp#lib/mcp/server_session.rb:10
 MCP::ServerSession::ERAS = T.let(T.unsafe(nil), Array)
+
+# A skill as the Skills extension describes it (SEP-2640, `io.modelcontextprotocol/skills`): a `skill://`
+# URI naming its `SKILL.md`, the frontmatter of that file kept verbatim, either the list of its files
+# with their digests and sizes or the String `"dynamic"` for content generated per request, and the `_meta`
+# of the entry when it has one, passed through under the JSON rules of the frontmatter with no key acted on
+# (keys of the extension itself use the `io.modelcontextprotocol.skills/` prefix).
+#
+# Every check runs at construction, as `MCP::Icon` does, so a manifest a host may reject fails on
+# the server at definition time: the URI grammar, the frontmatter (`name` and `description`, `name` equal to
+# the last segment of the skill path, JSON-representable values), and the resource entries (under
+# the skill root, unique, the skill's own `SKILL.md` among them). A skill defined locally is also held to
+# the unreserved URI character set, the Agent Skills rules for `name` and `description`, and the SEP limits
+# (512 entries, 16 MiB); entries a client receives from a server are checked structurally only, because
+# a host MUST accept skills up to the limits and MAY accept larger ones, and the Agent Skills guidance for
+# clients is to load a skill whose name breaks a rule anyway. The files of a nested skill, its `SKILL.md`
+# included, are supporting files of the enclosing skill and appear in both manifests, as the specification
+# requires of a complete manifest.
+#
+# Instances are frozen value objects. Equality is identity: the client binds verified state to the exact
+# entry object it checked.
+#
+# https://github.com/modelcontextprotocol/ext-skills/blob/main/specification/beta/skills.mdx
+#
+# pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:6
+class MCP::Skill
+  # pkg:gem/mcp#lib/mcp/skill.rb:397
+  def initialize(uri:, frontmatter:, resources:, meta: T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:401
+  def dynamic?; end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:392
+  def frontmatter; end
+
+  # The `_meta` of the entry as a frozen Hash with String keys, or nil when the entry carries none.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:395
+  def meta; end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:392
+  def name; end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:392
+  def resources; end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:392
+  def skill_path; end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:410
+  def to_h; end
+
+  # The sum of the listed sizes, or nil for a dynamic skill; the hook for a host that declines large skills.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:406
+  def total_size; end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:392
+  def uri; end
+
+  private
+
+  # The length is looked at first, so the pattern never runs over a long name.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:461
+  def check_agent_skills_rules!(frontmatter); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:418
+  def file_records; end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:422
+  def initialize_members(uri, frontmatter, resources, meta:, local:, file_records:); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:472
+  def normalize_meta(meta); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:485
+  def normalize_resources(resources, local); end
+
+  class << self
+    # The `capabilities.extensions` fragment advertising the extension, for a hand-built
+    # `MCP::Server::Capabilities`; a server configured with `skills:` adds it itself.
+    #
+    # pkg:gem/mcp#lib/mcp/skill.rb:249
+    def capability; end
+
+    # The file records of directory-backed skills keyed by URI, for the server's default resource reader.
+    # A nested skill and its enclosing skill share the records of the nested files, so the same record
+    # under the same URI is fine; two different records for one URI are not.
+    #
+    # @api private
+    #
+    # pkg:gem/mcp#lib/mcp/skill.rb:354
+    def file_map(skills); end
+
+    # The roots (`skill://<path>`) of the directory-backed skills among `skills`, for the server to tell
+    # a read of an unserved file under one of them from an ordinary unknown resource.
+    #
+    # @api private
+    #
+    # pkg:gem/mcp#lib/mcp/skill.rb:375
+    def file_roots(skills); end
+
+    # Scans `root` and returns the skills found under it (an Array of `MCP::Skill`, ordered by URI); every
+    # problem is an `ArgumentError` naming the path. `root` is resolved once with `File.realpath`, so
+    # a symbolic link to the directory is fine; a `SKILL.md` directly under `root`, or no skill at all, is
+    # refused, because `root` is the container of skill directories, not a skill.
+    #
+    # The tree is trusted as the operator's: it must be writable only by the operator while skills are built
+    # and served. The checks on each file narrow what a concurrent change to the tree can do; they do not
+    # confine a writer who can change it.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:25
+    def from_directory(root); end
+
+    # Builds a skill from an entry a server returned (String or Symbol keys), under the structural rules only.
+    #
+    # @api private
+    #
+    # pkg:gem/mcp#lib/mcp/skill.rb:256
+    def from_entry(entry); end
+
+    # Serves one file of a directory-backed skill for a custom `resources_read_handler`, which replaces
+    # the default reader and with it the serving of skill files: returns the `contents` Array holding one item,
+    # or nil when `uri` is not a file of any of `skills`. A file that changed since registration raises
+    # the same `-32603` the default reader answers. The files of a nested skill are files of the enclosing skill
+    # as well, so a caller given the enclosing skill reads them whether or not the nested one is among `skills`.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:51
+    def read_file(skills, uri); end
+
+    # The default reader's path for a file record found in the server's map.
+    #
+    # @api private
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:63
+    def read_record(record, request); end
+
+    # Compares the frontmatter of a fetched `SKILL.md` (its text) with `skill`'s entry field by field,
+    # the host-side MUST of SEP-2640, which `verify_resource` does not cover. Raises
+    # `MCP::Client::SkillVerificationError` with reason `:parse` or `:frontmatter`.
+    #
+    # pkg:gem/mcp#lib/mcp/skill.rb:326
+    def verify_frontmatter(skill, text); end
+
+    # Checks fetched bytes against the entry for `uri` in `skill`'s manifest (size, then SHA-256), for hosts
+    # that read skill files through `MCP::Client#read_resource` rather than `#read_skill_resource`. Pass
+    # exactly the bytes received: `text.b` for a `text` item, the decoded `blob` otherwise. Raises
+    # `MCP::Client::SkillReadRefusedError` when the skill is dynamic or does not list `uri`, and
+    # `MCP::Client::SkillVerificationError` on a mismatch. Does not compare frontmatter: a `SKILL.md`
+    # also needs `verify_frontmatter`.
+    #
+    # pkg:gem/mcp#lib/mcp/skill.rb:287
+    def verify_resource(skill, uri, bytes); end
+
+    # Builds a locally defined skill that also carries the records `from_directory` serves files from.
+    #
+    # @api private
+    #
+    # pkg:gem/mcp#lib/mcp/skill.rb:275
+    def with_file_records(uri:, frontmatter:, resources:, file_records:, meta: T.unsafe(nil)); end
+
+    private
+
+    # Adds a nested skill's records to the enclosing skill's walk; they count against its size budget like
+    # its own files, since the specification counts the limits over every listed entry.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:186
+    def adopt_records(records, walk); end
+
+    # Hashes one file and returns its record with the bytes it hashed. The skill's remaining size budget is
+    # checked against `fstat` before anything is read, so an oversized file is refused without loading it, and
+    # the read itself stops one byte past the budget, so a file growing after that check is never held whole.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:200
+    def capture_file(path, uri, walk); end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:108
+    def check_name!(name, path); end
+
+    # pkg:gem/mcp#lib/mcp/skill.rb:386
+    def check_skill_and_uri!(skill, uri); end
+
+    # Directory listing and `lstat` in a stable order; a filesystem error is reported as an `ArgumentError`
+    # like every other construction problem, since the input is the operator's own tree.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:116
+    def children_of(directory); end
+
+    # Builds the skill rooted at `directory`: walks its files, reads the frontmatter from the same bytes
+    # the manifest's digest was computed over, and attaches the file records.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:130
+    def collect_skill(directory, segments, skills); end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:305
+    def file_changed_error(request, cause); end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:122
+    def lstat_of(path); end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:274
+    def nofollow_supported?; end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:268
+    def open_flags; end
+
+    # Opens a regular file for reading without following a symbolic link in its last component, and hands
+    # the handle and its `fstat` to the block; everything the block reads comes from the handle it checked.
+    # Where the platform lacks `NOFOLLOW`, an `lstat` before the open refuses a symbolic link instead;
+    # the `fstat` comparison and the digest over the served bytes still close the race.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:252
+    def open_regular_file(path); end
+
+    # pkg:gem/mcp#lib/mcp/skill.rb:381
+    def read_key(hash, key); end
+
+    # Reads a registered file for serving: the handle must still be the recorded inode with the recorded size
+    # and no additional hard link (`nlink` is compared the way registration does, so a filesystem that reports 0
+    # is served), and the bytes read (at most one more than recorded, so growth shows) must still have
+    # the recorded digest.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:282
+    def read_record_item(record); end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:242
+    def resolved_path?(path); end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:85
+    def scan_directory(directory, segments, skills); end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:102
+    def skill_directory?(path); end
+
+    # pkg:gem/mcp#lib/mcp/skill/directory.rb:155
+    def walk_skill_files(directory, segments, walk, skills); end
+  end
+end
+
+# The `resources` value of a skill whose files are generated per request and carry no digests.
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:42
+MCP::Skill::DYNAMIC = T.let(T.unsafe(nil), String)
+
+# pkg:gem/mcp#lib/mcp/skill.rb:31
+MCP::Skill::EXTENSION_ID = T.let(T.unsafe(nil), String)
+
+# Reads and compares the YAML frontmatter of a `SKILL.md`, the same way on the server (where
+# `from_directory` publishes it) and on the client (where a host compares what it fetched with the entry
+# it holds, a SEP-2640 MUST). The rules are stricter than YAML so that every YAML library reads the block
+# the same way: one document, no directives or document markers, no tags, no aliases or merge keys, keys
+# that are untagged Strings, and no plain scalar whose YAML 1.1 reading (Psych's) differs from its
+# YAML 1.2 core-schema reading (the JavaScript and Go libraries'); such a value is written quoted instead.
+# Values must be JSON-representable because the entry travels as JSON.
+#
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:14
+module MCP::Skill::Frontmatter
+  extend ::MCP::Skill::Frontmatter
+
+  # Whether two normalized frontmatter Hashes are equal, with Integer and Float kept distinct.
+  #
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:181
+  def equal?(expected, actual); end
+
+  # The text between the opening `---` line and the next `---` line. A leading UTF-8 BOM is skipped
+  # here only; digests always cover the raw bytes. Lines end with `\n` or `\r\n`.
+  #
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:126
+  def extract(bytes); end
+
+  # Extracts and parses the frontmatter of a `SKILL.md` given as bytes; returns a Hash with String keys.
+  #
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:120
+  def load(bytes); end
+
+  # Parses an extracted block under the rules above.
+  #
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:162
+  def parse(block); end
+
+  private
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:244
+  def check_mapping!(node, depth, stack, scanner); end
+
+  # Walks the AST iteratively, before `safe_load` ever builds Ruby objects from it.
+  #
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:223
+  def check_nodes!(root); end
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:187
+  def delimiter_line?(line); end
+
+  # A line break the delimiter scan above does not see but Psych does: a carriage return that is not part of
+  # a `\r\n` ending, or one of the YAML 1.1-only separators. The scan and Psych must never disagree, and neither
+  # must Psych and a YAML 1.2 reader. Only an exact `\r\n` suffix is taken off before looking (`chomp` would
+  # also strip a lone `\r` or the `\r` of `\r\r\n`).
+  #
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:195
+  def foreign_break?(line); end
+
+  # `Psych.parse` and `safe_load` read only the first document, so a `...` or a second `---` inside
+  # the block would hide content from every check; the stream must hold exactly one implicit document.
+  #
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:201
+  def single_document(block); end
+end
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:28
+MCP::Skill::Frontmatter::BOM = T.let(T.unsafe(nil), String)
+
+# Builds the AST as `Psych.parse_stream` does and stops the parser at the first collection nested beyond
+# `MAX_DEPTH`. The scan in libyaml costs the square of the flow nesting, so a block within the size limit
+# could otherwise take seconds before `check_nodes!` ever saw its depth.
+#
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:84
+class MCP::Skill::Frontmatter::BoundedTreeBuilder < ::Psych::TreeBuilder
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:85
+  def initialize; end
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:105
+  def end_mapping; end
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:100
+  def end_sequence; end
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:95
+  def start_mapping(*); end
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:90
+  def start_sequence(*); end
+
+  private
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:112
+  def descend; end
+end
+
+# Resolves plain scalars by the YAML 1.2 core schema, to compare with Psych's YAML 1.1 resolution.
+#
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:38
+module MCP::Skill::Frontmatter::CoreSchema
+  extend ::MCP::Skill::Frontmatter::CoreSchema
+
+  # Whether Psych's reading of a plain scalar differs in type or value from the core-schema reading.
+  # A scanner failure counts as a difference, because the other side would not fail the same way.
+  #
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:69
+  def divergent?(scanner, text); end
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:51
+  def resolve(text); end
+end
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:43
+MCP::Skill::Frontmatter::CoreSchema::FALSE = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:47
+MCP::Skill::Frontmatter::CoreSchema::FLOAT = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:48
+MCP::Skill::Frontmatter::CoreSchema::INF = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:44
+MCP::Skill::Frontmatter::CoreSchema::INT10 = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:46
+MCP::Skill::Frontmatter::CoreSchema::INT16 = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:45
+MCP::Skill::Frontmatter::CoreSchema::INT8 = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:49
+MCP::Skill::Frontmatter::CoreSchema::NAN = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:41
+MCP::Skill::Frontmatter::CoreSchema::NULL = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:42
+MCP::Skill::Frontmatter::CoreSchema::TRUE = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:29
+MCP::Skill::Frontmatter::DELIMITER = T.let(T.unsafe(nil), String)
+
+# Raised internally with `reason` `:parse` (the block cannot be read under these rules) or `:frontmatter`
+# (it reads fine but differs from the entry); callers translate it into their own error types.
+#
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:19
+class MCP::Skill::Frontmatter::Error < ::StandardError
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:22
+  def initialize(reason, message = T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:20
+  def reason; end
+end
+
+# An SDK loading limit for the frontmatter block, not a protocol rule: the file itself may be 16 MiB.
+#
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:34
+MCP::Skill::Frontmatter::MAX_BLOCK_BYTES = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:35
+MCP::Skill::Frontmatter::MAX_DEPTH = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:32
+MCP::Skill::Frontmatter::MERGE_KEY = T.let(T.unsafe(nil), String)
+
+# NEL, LINE SEPARATOR, and PARAGRAPH SEPARATOR: line breaks in YAML 1.1 (Psych) but not in YAML 1.2.
+#
+# pkg:gem/mcp#lib/mcp/skill/frontmatter.rb:31
+MCP::Skill::Frontmatter::UNICODE_BREAKS = T.let(T.unsafe(nil), Regexp)
+
+# JSON-value helpers for frontmatter and capability copies.
+#
+# @api private
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:120
+module MCP::Skill::Json
+  extend ::MCP::Skill::Json
+
+  # A deep copy of a value a transport returned; refuses nesting beyond `MAX_DEPTH` with an `ArgumentError`.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:187
+  def deep_dup(value, depth = T.unsafe(nil)); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:176
+  def deep_freeze(value); end
+
+  # Structural equality with Integer and Float kept distinct, Hash keys compared as sets, and Arrays in order.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:201
+  def equal?(expected, actual); end
+
+  # A deep copy with String keys holding only JSON-representable values (String that JSON can encode, Integer within
+  # the safe range, finite Float, true, false, nil, Array, Hash); refuses cycles, nesting beyond `MAX_DEPTH`, and keys
+  # that collide once stringified.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:133
+  def normalize(value, path = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:226
+  def normalize_string(value); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:222
+  def refuse_depth!(depth); end
+
+  # JSON carries UTF-8. `encode` hands a String already labeled UTF-8 back unchecked, so that case asks
+  # `valid_encoding?` instead; a binary String with a byte beyond ASCII fails the conversion.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:234
+  def utf8_encodable?(value); end
+end
+
+# The default nesting limit of `JSON.parse`, which the SDK's transports apply to a whole message. Restated
+# here so that a value from a transport parsing without one is refused instead of exhausting the stack.
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:128
+MCP::Skill::Json::MAX_DEPTH = T.let(T.unsafe(nil), Integer)
+
+# The largest integer every JSON reader represents exactly (RFC 7493); beyond it JavaScript loses digits,
+# so two hosts would disagree about one frontmatter.
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:125
+MCP::Skill::Json::MAX_SAFE_INTEGER = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/skill.rb:40
+MCP::Skill::MAX_DESCRIPTION_LENGTH = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/skill.rb:39
+MCP::Skill::MAX_NAME_LENGTH = T.let(T.unsafe(nil), Integer)
+
+# SEP-2640 limits per skill: servers SHOULD NOT serve a skill beyond them, hosts MUST accept up to them.
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:33
+MCP::Skill::MAX_RESOURCES = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/skill.rb:34
+MCP::Skill::MAX_TOTAL_SIZE = T.let(T.unsafe(nil), Integer)
+
+# The Agent Skills rules SEP-2640 requires of the last segment of a skill path, its `name`: lowercase
+# letters, digits, and single hyphens that neither lead nor trail, 64 characters at most. `description`
+# holds at most 1024 characters.
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:38
+MCP::Skill::NAME_PATTERN = T.let(T.unsafe(nil), Regexp)
+
+# One file of a skill as its manifest lists it: `{ uri, digest, size }` (SEP-2640). The `digest` is
+# `sha256:` followed by 64 lowercase hex characters over the file's raw bytes, `size` is the byte length.
+# Only the shape is checked here; whether the URI lies under the skill's root is checked by `MCP::Skill`,
+# which knows the root.
+#
+# pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:11
+class MCP::Skill::ResourceEntry
+  # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:76
+  def initialize(uri:, digest:, size:); end
+
+  # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:99
+  def ==(other); end
+
+  # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:74
+  def digest; end
+
+  # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:102
+  def eql?(other); end
+
+  # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:104
+  def hash; end
+
+  # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:74
+  def size; end
+
+  # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:95
+  def to_h; end
+
+  # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:74
+  def uri; end
+
+  class << self
+    # Returns `value` when it is already a `ResourceEntry`, builds one from a Hash, and refuses anything else.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:20
+    def from(value); end
+
+    # Builds the entry for a file from the exact bytes the resource will serve, so an author never formats
+    # a digest by hand: pass `File.binread` output for a binary file and UTF-8 text for a text file.
+    #
+    # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:58
+    def from_content(uri:, content:); end
+
+    # Builds an entry from a server's wire Hash (String or Symbol keys), reading `uri`, `digest`, and `size` and
+    # ignoring any other member a server may add; `from` refuses unknown members for local definitions instead.
+    #
+    # @api private
+    #
+    # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:49
+    def from_wire(value); end
+
+    private
+
+    # pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:68
+    def wire_member(hash, key); end
+  end
+end
+
+# pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:12
+MCP::Skill::ResourceEntry::DIGEST_PATTERN = T.let(T.unsafe(nil), Regexp)
+
+# The keys `from` accepts in a Hash, as Symbols or Strings.
+#
+# pkg:gem/mcp#lib/mcp/skill/resource_entry.rb:15
+MCP::Skill::ResourceEntry::HASH_KEYWORDS = T.let(T.unsafe(nil), Hash)
+
+# `skill://` URI rules shared by the server and the client. URIs are plain Strings: nothing is decoded,
+# normalized, or joined, and `URI.parse` is never used.
+#
+# @api private
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:48
+module MCP::Skill::Uri
+  extend ::MCP::Skill::Uri
+
+  # The `SKILL.md` URIs of every skill whose root could contain `uri`, least specific first; for
+  # a `SKILL.md` URI the last candidate is the URI itself.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:108
+  def candidate_skill_uris(uri); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:93
+  def local_segments?(parts); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:89
+  def manifest_uri?(uri); end
+
+  # Whether `uri` is within the limits above; counts separators instead of splitting, so the check is linear.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:62
+  def resolvable?(uri); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:97
+  def root(skill_path); end
+
+  # The path segments of a `skill://` URI, or nil when it is not structurally valid: a validly encoded String
+  # in an ASCII-compatible encoding with at least one segment, none empty, none `.` or `..`.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:68
+  def segments(uri); end
+
+  # The segments before `SKILL.md`, or nil when the URI does not name a `SKILL.md`.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:82
+  def skill_path(uri); end
+
+  # pkg:gem/mcp#lib/mcp/skill.rb:77
+  def structural?(uri); end
+
+  # Whether `uri` lies under `root` at a segment boundary: `skill://ab/x` is not under `skill://a`.
+  #
+  # pkg:gem/mcp#lib/mcp/skill.rb:102
+  def under?(uri, root); end
+end
+
+# RFC 3986 unreserved characters, the only ones a locally defined URI may use in a segment.
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:54
+MCP::Skill::Uri::LOCAL_SEGMENT = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/mcp#lib/mcp/skill.rb:52
+MCP::Skill::Uri::MANIFEST = T.let(T.unsafe(nil), String)
+
+# SDK limits (not protocol rules) on a URI the client resolves against its remembered skills. Resolution
+# considers every ancestor root, so without a bound one read would cost time and memory quadratic in
+# the length of a URI that may come from untrusted model output.
+#
+# pkg:gem/mcp#lib/mcp/skill.rb:58
+MCP::Skill::Uri::MAX_RESOLVED_BYTES = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/skill.rb:59
+MCP::Skill::Uri::MAX_RESOLVED_SEGMENTS = T.let(T.unsafe(nil), Integer)
+
+# pkg:gem/mcp#lib/mcp/skill.rb:51
+MCP::Skill::Uri::SCHEME = T.let(T.unsafe(nil), String)
 
 # pkg:gem/mcp#lib/mcp/string_utils.rb:4
 module MCP::StringUtils
@@ -7064,7 +9634,7 @@ class MCP::Tool::InputSchema::ValidationError < ::StandardError; end
 
 # pkg:gem/mcp#lib/mcp/tool/output_schema.rb:7
 class MCP::Tool::OutputSchema < ::MCP::Tool::Schema
-  # pkg:gem/mcp#lib/mcp/tool/output_schema.rb:14
+  # pkg:gem/mcp#lib/mcp/tool/output_schema.rb:15
   def validate_result(result); end
 
   private
@@ -7075,14 +9645,15 @@ class MCP::Tool::OutputSchema < ::MCP::Tool::Schema
   # of the common `properties`-only shape while leaving e.g. `{ type: "array" }` or `{ oneOf: [...] }` untouched
   # (the old unconditional default merged `type: "object"` into root combinators, producing a wrong schema).
   #
-  # pkg:gem/mcp#lib/mcp/tool/output_schema.rb:28
+  # pkg:gem/mcp#lib/mcp/tool/output_schema.rb:29
   def apply_default_root_type!; end
 end
 
-# Root-level keywords whose presence means the user already chose a root schema shape,
-# so no `type: "object"` default should be merged in.
+# Root-level keywords whose presence means the user already chose a root schema shape, so no `type: "object"`
+# default should be merged in. Both reference keywords count, since a root `$dynamicRef` names the shape as
+# a root `$ref` does; they come from `Schema` so that this list cannot drift from the same-document check.
 #
-# pkg:gem/mcp#lib/mcp/tool/output_schema.rb:12
+# pkg:gem/mcp#lib/mcp/tool/output_schema.rb:13
 MCP::Tool::OutputSchema::ROOT_SCHEMA_KEYWORDS = T.let(T.unsafe(nil), Array)
 
 # pkg:gem/mcp#lib/mcp/tool/output_schema.rb:8
@@ -7222,9 +9793,9 @@ end
 # pkg:gem/mcp#lib/mcp/tool/schema.rb:13
 MCP::Tool::Schema::ValidationCache::DEFAULT_MAX_SIZE = T.let(T.unsafe(nil), Integer)
 
-# pkg:gem/mcp#lib/mcp/server.rb:22
+# pkg:gem/mcp#lib/mcp/server.rb:23
 class MCP::ToolNotUnique < ::StandardError
-  # pkg:gem/mcp#lib/mcp/server.rb:23
+  # pkg:gem/mcp#lib/mcp/server.rb:24
   def initialize(duplicated_tool_names); end
 end
 
@@ -7268,6 +9839,14 @@ class MCP::Transport
   # pkg:gem/mcp#lib/mcp/transport.rb:24
   def close; end
 
+  # Whether the transport delivers notifications to a connected client outside the response to one of its
+  # requests (`notifications/*/list_changed`, `notifications/resources/updated`). `Server#init` strips the
+  # `listChanged`/`subscribe` capability flags when it does not, since the handshake would promise notifications
+  # the transport drops.
+  #
+  # pkg:gem/mcp#lib/mcp/transport.rb:64
+  def delivers_notifications?; end
+
   # Handle a JSON request
   # Returns a response that should be sent back to the client
   #
@@ -7310,7 +9889,7 @@ class MCP::Transport
 
   private
 
-  # pkg:gem/mcp#lib/mcp/transport.rb:62
+  # pkg:gem/mcp#lib/mcp/transport.rb:70
   def generate_request_id; end
 end
 

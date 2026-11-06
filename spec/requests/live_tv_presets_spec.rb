@@ -71,6 +71,9 @@ RSpec.describe "Grid presets", type: :request do
     expect(json["blocks"].last["starts_on"]).to end_with("-12-01")
     get "/api/v1/stations/preset", params: { kind: "movies", value: "Horror" }, headers: auth_headers(admin)
     expect(json).to include("name" => "Horror movies")
+    get "/api/v1/stations/preset", params: { kind: "youtube" }, headers: auth_headers(admin)
+    expect(json).to include("name" => "YouTube", "snap_minutes" => 0)
+    expect(json["blocks"].sole["source"]).to eq("kinds" => [ "video" ], "unwatched" => true)
     get "/api/v1/stations/preset", params: { kind: "weather" }, headers: auth_headers(admin)
     expect(response).to have_http_status(:unprocessable_content)
   end

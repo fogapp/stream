@@ -323,6 +323,34 @@ RSpec.describe Stations::Scheduler do
     expect(Stations::Rules.normalize({ "kinds" => [ "episode" ], "channel_ids" => [ tc.id ] })).not_to have_key("channel_ids")
   end
 
+  it "airs only what hasn't been watched, by anyone or by the picked profiles, from the next plan on" do
+    tc = youtube("Technology Connections", videos: 3)
+    first, second, third = tc.videos.order(:upload_date).to_a
+    started = Profile.create!(household: household, name: "Started")
+    kid = Profile.create!(household: household, name: "Kid")
+    Playback::Progress.mark(started, first, watched: true)
+    Playback::Progress.mark(kid, second, watched: true)
+    # Halfway through is still unwatched.
+    WatchState.create!(profile: started, playable: third, position_seconds: 300, duration_seconds: 720)
+    other = create_household(name: "Elsewhere")
+    Playback::Progress.mark(Profile.create!(household: other, name: "Neighbour"), third, watched: true)
+
+    rules = { "kinds" => [ "video" ], "unwatched" => true }
+    expect(Stations::Source.candidates(household.id, rules).map(&:playable_id)).to eq([ third.id ])
+    expect(Stations::Source.candidates(household.id, rules.merge("unwatched_profile_ids" => [ started.id ])).map(&:playable_id))
+      .to contain_exactly(second.id, third.id)
+    expect(Stations::Rules.normalize({ "unwatched" => "0", "unwatched_profile_ids" => [ started.id ] })).not_to include("unwatched", "unwatched_profile_ids")
+
+    channel = station(blocks: [ { layer: "base", source: rules, ordering: "shuffle" } ])
+    described_class.extend!(channel, now: now, through: now + 30.minutes)
+    expect(aired(channel).map(&:playable_id).uniq).to eq([ third.id ])
+
+    # Seen to the end: it leaves the schedule from the next plan, and with nothing left the channel says so.
+    Playback::Progress.mark(kid, third, watched: true)
+    described_class.rebuild!(channel, now: now - 1.day)
+    expect(channel.reload.last_error).to eq("Nothing in the library matches “The channel's mix”")
+  end
+
   it "leaves files that went missing out" do
     seinfeld = show("Seinfeld", episodes: 2)
     seinfeld.episodes.first.media_files.first.update!(state: "missing", missing_since: Time.current)

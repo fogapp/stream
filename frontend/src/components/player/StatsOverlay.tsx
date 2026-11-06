@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PLAYBACK_METHOD_LABELS } from "@/lib/playback";
 import { startupLabel, type Seek, type Startup } from "@/components/player/timing";
+import { audioGraphInfo, soundLabel, type AudioGraphInfo, type SoundPath } from "@/components/player/audio";
 import type { PlaybackSessionInfo } from "@/types";
 
 interface Sample {
@@ -9,6 +10,7 @@ interface Sample {
   bufferAhead: number;
   dropped: number;
   frames: number;
+  graph: AudioGraphInfo | null;
 }
 
 function sample(video: HTMLVideoElement): Sample {
@@ -24,6 +26,7 @@ function sample(video: HTMLVideoElement): Sample {
     bufferAhead: ahead,
     dropped: quality?.droppedVideoFrames ?? 0,
     frames: quality?.totalVideoFrames ?? 0,
+    graph: audioGraphInfo(video),
   };
 }
 
@@ -37,12 +40,14 @@ export function StatsOverlay({
   quality,
   startup = null,
   lastSeek = null,
+  sound = null,
 }: {
   video: HTMLVideoElement | null;
   session: PlaybackSessionInfo;
   quality?: string | null;
   startup?: Startup | null;
   lastSeek?: Seek | null;
+  sound?: SoundPath | null;
 }) {
   const [stats, setStats] = useState<Sample | null>(null);
   useEffect(() => {
@@ -67,6 +72,7 @@ export function StatsOverlay({
         : "none",
     ],
     ["Audio", audio ? (audio.copy ? `${audio.codec} as-is` : `→ ${audio.codec} ${audio.channels ?? ""}ch`) : "none"],
+    ...(audio && sound && stats ? ([["Sound", soundLabel(sound, stats.graph, session.loudness)]] as [string, string][]) : []),
     ["Rendering", stats ? `${stats.width}×${stats.height}` : "…"],
     ["Buffer ahead", stats ? `${stats.bufferAhead.toFixed(1)} s` : "…"],
     ["Dropped frames", stats ? `${stats.dropped} of ${stats.frames}` : "…"],

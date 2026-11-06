@@ -73,6 +73,7 @@ module Stations
 
       scope = scope.where(year: rules["year_from"]..) if rules["year_from"]
       scope = scope.where(year: ..rules["year_to"]) if rules["year_to"]
+      scope = unwatched(scope, "Movie", household_id, rules)
       rows = files("Movie", scope.select(:id), rules)
         .joins("JOIN movies ON movies.id = editions.playable_id")
         .pluck(Arel.sql("DISTINCT ON (editions.playable_id) editions.playable_id, media_files.id, media_files.duration_seconds, " \
@@ -96,6 +97,7 @@ module Stations
       aired = "COALESCE(EXTRACT(YEAR FROM episodes.air_date)::int, (SELECT year FROM shows s WHERE s.id = episodes.show_id))"
       episodes = episodes.where("#{aired} >= ?", rules["year_from"]) if rules["year_from"]
       episodes = episodes.where("#{aired} <= ?", rules["year_to"]) if rules["year_to"]
+      episodes = unwatched(episodes, "Episode", household_id, rules)
       rows = files("Episode", episodes.select(:id), rules)
         .joins("JOIN episodes ON episodes.id = editions.playable_id JOIN shows ON shows.id = episodes.show_id")
         .pluck(Arel.sql("DISTINCT ON (editions.playable_id) editions.playable_id, media_files.id, media_files.duration_seconds, " \
@@ -126,6 +128,7 @@ module Stations
       scope = scope.where(library_id: rules["library_ids"]) if rules["library_ids"]
       scope = scope.where(upload_date: Date.new(rules["year_from"].to_i)..) if rules["year_from"]
       scope = scope.where(upload_date: ..Date.new(rules["year_to"].to_i, 12, 31)) if rules["year_to"]
+      scope = unwatched(scope, "Video", household_id, rules)
       rows = files("Video", scope.select(:id), rules)
         .joins("JOIN videos ON videos.id = editions.playable_id JOIN channels ON channels.id = videos.channel_id")
         .pluck(Arel.sql("DISTINCT ON (editions.playable_id) editions.playable_id, media_files.id, media_files.duration_seconds, " \
@@ -136,6 +139,22 @@ module Stations
       end
     end
     private_class_method :videos
+
+    # Without what's been finished: by any profile in the household, or by
+    # any of the ones picked. Read when a plan is made, so what someone
+    # watches leaves the schedule from the next plan on; what's already on
+    # the schedule stays.
+    sig { params(scope: T.untyped, type: String, household_id: String, rules: T::Hash[String, T.untyped]).returns(T.untyped) }
+    def self.unwatched(scope, type, household_id, rules)
+      return scope unless rules["unwatched"]
+
+      profiles = Profile.unscoped.where(household_id: household_id)
+      picked = Array(rules["unwatched_profile_ids"])
+      profiles = profiles.where(id: picked) if picked.any?
+      finished = WatchState.where(playable_type: type, profile_id: profiles.select(:id)).where.not(completed_at: nil)
+      scope.where.not(id: finished.select(:playable_id))
+    end
+    private_class_method :unwatched
 
     # A readable file for each playable, largest first, the right length.
     sig { params(type: String, ids: T.untyped, rules: T::Hash[String, T.untyped]).returns(T.untyped) }

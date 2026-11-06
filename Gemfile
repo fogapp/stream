@@ -45,7 +45,7 @@ gem "nokogiri"
 # for ~12 MB of heap, and only the two passkey controllers ever touch it.
 # WebauthnRelyingParty requires it in a before_action, so the worker container
 # and every non-passkey request boot without it.
-gem "webauthn", "~> 3.4", require: false
+gem "webauthn", "~> 3.5", require: false
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]

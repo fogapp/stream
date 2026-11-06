@@ -265,7 +265,7 @@ module PlaybackSessionSerializer
   def self.track_json(stream)
     {
       index: stream.index, codec: stream.codec, language: stream.language, title: stream.title,
-      channels: stream.channels, default: stream.default, forced: stream.forced
+      channels: stream.channels, sample_rate: stream.sample_rate, default: stream.default, forced: stream.forced
     }
   end
 end

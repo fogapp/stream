@@ -27,6 +27,7 @@ export function SourceFields({ value, onChange, options }: { value: StationSourc
   const shows: ChipOption[] = options.shows.map((show) => ({ value: show.id, label: show.title, hint: show.year ? String(show.year) : undefined }));
   const collections: ChipOption[] = options.collections.map((collection) => ({ value: collection.id, label: collection.title }));
   const channels: ChipOption[] = options.youtube_channels.map((channel) => ({ value: channel.id, label: channel.title }));
+  const profiles: ChipOption[] = options.profiles.map((profile) => ({ value: profile.id, label: profile.name }));
   const genres = counted(options.genres);
   const keywords = counted(options.keywords);
 
@@ -78,7 +79,21 @@ export function SourceFields({ value, onChange, options }: { value: StationSourc
           <Toggle label="Include unrated titles" checked={value.allow_unrated ?? true} onChange={(on) => set("allow_unrated", on)} />
         ) : null}
         <Toggle label="Include specials (season 0)" checked={value.include_specials ?? false} onChange={(on) => set("include_specials", on)} />
+        <Toggle
+          label="Only what hasn't been watched"
+          checked={value.unwatched ?? false}
+          onChange={(on) => onChange({ ...value, unwatched: on, ...(on ? {} : { unwatched_profile_ids: [] }) })}
+        />
       </div>
+      {value.unwatched ? (
+        <ChipPicker
+          label="Watched by"
+          hint="None chosen: anything any profile has finished is left out. Read each night, so what's already on the schedule stays."
+          options={profiles}
+          selected={value.unwatched_profile_ids ?? []}
+          onChange={(ids) => set("unwatched_profile_ids", ids)}
+        />
+      ) : null}
     </div>
   );
 }

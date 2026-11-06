@@ -109,6 +109,7 @@ module Api
           shows: Show.order(:sort_title).pluck(:id, :title, :year).map { |id, title, year| { id: id, title: title, year: year } },
           collections: Collection.order(:sort_title).pluck(:id, :title).map { |id, title| { id: id, title: title } },
           youtube_channels: Channel.order(:title).pluck(:id, :title).map { |id, title| { id: id, title: title } },
+          profiles: Profile.order(:name).pluck(:id, :name).map { |id, name| { id: id, name: name } },
           live_streams: LiveStream.order(:sort_title).pluck(:id, :name, :mlb_team_id).map { |id, name, team| { id: id, name: name, mlb_team: !team.nil? } },
           mlb_teams: mlb_teams,
           decades: decades,

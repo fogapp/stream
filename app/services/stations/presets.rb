@@ -18,6 +18,7 @@ module Stations
         Movies = new("movies")
         OneShow = new("one_show")
         Holiday = new("holiday")
+        Youtube = new("youtube")
       end
     end
 
@@ -58,6 +59,7 @@ module Stations
         when Kind::Movies then movies(value.to_s)
         when Kind::OneShow then one_show(household_id, value.to_s)
         when Kind::Holiday then holiday(value.to_s)
+        when Kind::Youtube then youtube
         else T.absurd(kind)
         end
       { snap_minutes: 30, no_repeat_days: 3, filler: "slate", filler_channel_ids: [], call_sign: nil }
@@ -145,6 +147,17 @@ module Stations
           block("daypart", name: "At night", days: StationBlock::EVERY_DAY, start: 20 * 60, finish: 2 * 60,
             source: { kinds: %w[episode], genres: COMEDY }, ordering: "rotate")
         ]
+      }
+    end
+
+    # The YouTube videos nobody has watched yet, shuffled across channels and
+    # back to back: what's seen drops out from the next night's schedule.
+    sig { returns(T::Hash[Symbol, T.untyped]) }
+    def self.youtube
+      {
+        number: "60", name: "YouTube", call_sign: "TUBE", snap_minutes: 0,
+        description: "The YouTube videos nobody has watched yet, shuffled across channels, one after another.",
+        blocks: [ block("base", source: { kinds: %w[video], unwatched: true }, ordering: "shuffle") ]
       }
     end
 

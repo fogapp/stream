@@ -11,10 +11,16 @@ module RuboCop; end
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/target_sorbet_version.rb:4
 module RuboCop::Cop; end
 
+module RuboCop::Cop::Lint; end
+
+class RuboCop::Cop::Lint::Void < ::RuboCop::Cop::Base
+  include ::RuboCop::Cop::Sorbet::VoidSorbetAwareBehaviour
+end
+
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/target_sorbet_version.rb:5
 module RuboCop::Cop::Sorbet; end
 
-# Disallows using `.override(allow_incompatible: true)`.
+# Disallows incompatible overrides in Sorbet signatures and RBS comments.
 # Using `allow_incompatible` suggests a violation of the Liskov
 # Substitution Principle, meaning that a subclass is not a valid
 # subtype of its superclass. This Cop prevents these design smells
@@ -23,36 +29,69 @@ module RuboCop::Cop::Sorbet; end
 # @example
 #
 #   # bad
-#   sig.override(allow_incompatible: true)
+#   sig { override(allow_incompatible: true).void }
+#   def foo; end
+#
+#   # @override(allow_incompatible: true)
+#   #: () -> void
+#   def foo; end
+#
+#   # @override(allow_incompatible: true)
+#   #: String
+#   attr_reader :foo
 #
 #   # good
-#   sig.override
+#   sig { override.void }
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:21
+#   # @override
+#   #: () -> void
+#   def foo; end
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:34
 class RuboCop::Cop::Sorbet::AllowIncompatibleOverride < ::RuboCop::Cop::Base
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:55
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:80
   def on_block(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:72
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:64
+  def on_def(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:68
+  def on_defs(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:98
+  def on_itblock(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:97
   def on_numblock(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:49
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:70
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:41
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:56
   def override?(param0 = T.unsafe(nil)); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:36
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:51
   def sig?(param0); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:27
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:42
   def sig_dot_override?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:102
+  def check_rbs_annotations(node); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:22
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:35
 RuboCop::Cop::Sorbet::AllowIncompatibleOverride::MSG = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:24
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:37
+RuboCop::Cop::Sorbet::AllowIncompatibleOverride::RBS_ALLOW_INCOMPATIBLE_OVERRIDE = T.let(T.unsafe(nil), Regexp)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:38
+RuboCop::Cop::Sorbet::AllowIncompatibleOverride::RBS_ATTRIBUTE_METHODS = T.let(T.unsafe(nil), Array)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/allow_incompatible_override.rb:39
 RuboCop::Cop::Sorbet::AllowIncompatibleOverride::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # Disallows binding the return value of `T.any`, `T.all`, `T.enum`
@@ -169,45 +208,48 @@ class RuboCop::Cop::Sorbet::BlockMethodDefinition < ::RuboCop::Cop::Base
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:80
   def on_block(node); end
 
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:95
+  def on_itblock(node); end
+
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:94
   def on_numblock(node); end
 
   private
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:186
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:187
   def adjust_for_closing_parenthesis(end_pos); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:106
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:107
   def autocorrect_method_in_block(corrector, node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:198
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:199
   def closing_parenthesis_follows(source); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:175
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:176
   def find_end_position_with_arguments(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:182
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:183
   def find_end_position_without_arguments(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:167
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:168
   def find_method_signature_end_position(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:143
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:144
   def handle_method_without_body(node, indent); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:161
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:162
   def handle_multiline_method_without_body(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:155
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:156
   def handle_single_line_method(node, indent); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:98
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:99
   def in_activesupport_concern_class_methods_block?(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:151
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:152
   def single_line_method?(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:132
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/block_method_definition.rb:133
   def transform_args_to_block_args(node); end
 end
 
@@ -580,89 +622,120 @@ RuboCop::Cop::Sorbet::EnforceSigilOrder::PREFERRED_ORDER = T.let(T.unsafe(nil), 
 # * `Style`: signature style to enforce - 'sig' for sig blocks, 'rbs' for RBS comments, 'both' to allow either (default: 'sig')
 # * `AutocorrectStyle`: signature style to use when autocorrecting - 'sig' for sig blocks, 'rbs' for RBS comments (default: 'sig'). Only used when `Style` is 'both'.
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:27
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:30
 class RuboCop::Cop::Sorbet::EnforceSignatures < ::RuboCop::Cop::Base
+  include ::RuboCop::Cop::RangeHelp
   include ::RuboCop::Cop::Sorbet::SignatureHelp
   extend ::RuboCop::Cop::AutoCorrector
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:40
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:44
   def accessor?(param0 = T.unsafe(nil)); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:44
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:48
   def on_def(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:48
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:52
   def on_defs(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:60
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:64
   def on_new_investigation; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:52
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:56
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:56
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:60
   def on_signature(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:66
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:70
   def scope(node); end
 
   private
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:190
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:293
   def add_accessor_parameter_if_needed(suggest, symbol, method); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:212
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:315
   def allow_rbs?; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:231
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:153
+  def autocorrect_rbs_to_sigs(corrector, node, rbs_signatures); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:169
+  def autocorrect_sigs_to_rbs(corrector, node, sig_nodes); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:334
   def autocorrect_style; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:120
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:140
   def autocorrect_with_signature_type(corrector, node, type); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:75
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:79
   def check_node(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:133
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:148
   def create_signature_suggestion(node, type); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:166
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:273
   def in_sclass_context?(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:162
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:269
   def instance_initialize?(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:127
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:247
   def leftmost_send_ancestor(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:204
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:179
+  def normalize_runtime_sig_receivers(range, sig_nodes); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:307
   def param_type_placeholder; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:177
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:284
   def populate_accessor_suggestion(suggest, node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:150
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:261
   def populate_method_definition_suggestion(suggest, node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:142
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:253
   def populate_signature_suggestion(suggest, node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:116
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:136
   def rbs_checker; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:208
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:201
+  def rbs_correction_range(comments); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:163
+  def remove_rbs(corrector, rbs_signatures); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:192
+  def remove_sigs(corrector, sig_nodes); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:311
   def return_type_placeholder; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:196
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:299
   def set_void_return_for_writer(suggest, method); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:112
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:132
   def sig_checker; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:216
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:197
+  def sig_correction_range(sig_nodes); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:319
   def signature_style; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:200
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:240
+  def translate_rbs_to_sigs(input); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:232
+  def translate_sigs_to_rbs(input); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:215
+  def translated_signature_prefix(translated, reject_sig: T.unsafe(nil)); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:303
   def writer_or_accessor?(method); end
 end
 
@@ -670,155 +743,141 @@ end
 # @kind is the RuboCop AST node type (:arg, :optarg, :restarg, :kwarg,
 # :kwoptarg, :kwrestarg, :forward_arg, :blockarg).
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
 class RuboCop::Cop::Sorbet::EnforceSignatures::Param < ::Struct
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
   def kind; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
   def kind=(_); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
   def name; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
   def name=(_); end
 
   class << self
-    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
     def [](*_arg0); end
 
-    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
     def inspect; end
 
-    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
     def keyword_init?; end
 
-    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
     def members; end
 
-    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:37
+    # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:41
     def new(*_arg0); end
   end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:254
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:353
 class RuboCop::Cop::Sorbet::EnforceSignatures::RBSSignatureChecker < ::RuboCop::Cop::Sorbet::EnforceSignatures::SignatureChecker
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:257
-  def signature_node(node); end
-
-  private
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:270
-  def find_non_send_ancestor(node); end
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:354
+  def signatures(node); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:255
-RuboCop::Cop::Sorbet::EnforceSignatures::RBSSignatureChecker::RBS_COMMENT_REGEX = T.let(T.unsafe(nil), Regexp)
-
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:330
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:380
 class RuboCop::Cop::Sorbet::EnforceSignatures::RBSSuggestion
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:333
-  def initialize(indent); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:331
-  def attribute; end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:331
-  def attribute=(_arg0); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:331
-  def has_block; end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:331
-  def has_block=(_arg0); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:331
-  def params; end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:331
-  def params=(_arg0); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:331
-  def returns; end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:331
-  def returns=(_arg0); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:341
-  def to_autocorrect; end
-
-  private
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:347
-  def generate_signature; end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:365
-  def rbs_param(param); end
-end
-
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:276
-class RuboCop::Cop::Sorbet::EnforceSignatures::SigSignatureChecker < ::RuboCop::Cop::Sorbet::EnforceSignatures::SignatureChecker
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:277
-  def initialize(processed_source); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:290
-  def clear_signature(scope); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:286
-  def on_signature(node, scope); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:282
-  def signature_node(scope); end
-end
-
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:295
-class RuboCop::Cop::Sorbet::EnforceSignatures::SigSuggestion
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:298
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:383
   def initialize(indent, param_placeholder, return_placeholder); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:296
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:381
+  def accessor; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:381
+  def accessor=(_arg0); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:381
   def params; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:296
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:381
   def params=(_arg0); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:296
-  def returns; end
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:392
+  def returns=(value); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:296
-  def returns=(_arg0); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:306
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:396
   def to_autocorrect; end
 
   private
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:312
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:418
+  def rbi_params(param); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:359
+class RuboCop::Cop::Sorbet::EnforceSignatures::SigSignatureChecker < ::RuboCop::Cop::Sorbet::EnforceSignatures::SignatureChecker
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:362
+  def initialize(processed_source); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:375
+  def clear_signature(scope); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:371
+  def on_signature(node, scope); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:367
+  def signature_nodes(scope); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:360
+RuboCop::Cop::Sorbet::EnforceSignatures::SigSignatureChecker::EMPTY_SIGNATURES = T.let(T.unsafe(nil), Array)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:448
+class RuboCop::Cop::Sorbet::EnforceSignatures::SigSuggestion
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:451
+  def initialize(indent, param_placeholder, return_placeholder); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:449
+  def accessor; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:449
+  def accessor=(_arg0); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:449
+  def params; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:449
+  def params=(_arg0); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:449
+  def returns; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:449
+  def returns=(_arg0); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:459
+  def to_autocorrect; end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:465
   def generate_params; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:319
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:472
   def generate_return; end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:240
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:343
 class RuboCop::Cop::Sorbet::EnforceSignatures::SignatureChecker
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:241
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:344
   def initialize(processed_source); end
 
   protected
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:249
-  def preceding_comments(node); end
-
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:247
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:350
   def processed_source; end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:32
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:36
 RuboCop::Cop::Sorbet::EnforceSignatures::VALID_AUTOCORRECT_STYLES = T.let(T.unsafe(nil), Array)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:31
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/enforce_signatures.rb:35
 RuboCop::Cop::Sorbet::EnforceSignatures::VALID_STYLES = T.let(T.unsafe(nil), Array)
 
 # Checks that there is only one Sorbet sigil in a given file
@@ -1172,6 +1231,7 @@ end
 RuboCop::Cop::Sorbet::ForbidSuperclassConstLiteral::MSG = T.let(T.unsafe(nil), String)
 
 # Disallows using `T.absurd` anywhere.
+# Set `AutocorrectToRBS: true` to replace supported calls with RBS inline comments.
 #
 # @example
 #
@@ -1179,24 +1239,46 @@ RuboCop::Cop::Sorbet::ForbidSuperclassConstLiteral::MSG = T.let(T.unsafe(nil), S
 #   T.absurd(foo)
 #
 #   # good
-#   x #: absurd
+#   foo #: absurd
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:17
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:18
 class RuboCop::Cop::Sorbet::ForbidTAbsurd < ::RuboCop::Cop::Base
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:27
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+  include ::RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:33
   def on_csend(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:24
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:28
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:22
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:26
   def t_absurd?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:43
+  def assertion_statement(node, allow_assignment:); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:37
+  def autocorrect_t_absurd_to_rbs(corrector, node); end
+
+  # `unless` is represented as an `if` node with its branches swapped, so its source
+  # `else` branch is the second child. For `if` and `case`, it is the last child.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:61
+  def inline_else_branch(parent); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:50
+  def inline_else_statement(node); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:18
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:22
 RuboCop::Cop::Sorbet::ForbidTAbsurd::MSG = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:19
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_absurd.rb:23
 RuboCop::Cop::Sorbet::ForbidTAbsurd::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # Detect and autocorrect `T.any(..., NilClass, ...)` to `T.nilable(...)`
@@ -1241,7 +1323,39 @@ RuboCop::Cop::Sorbet::ForbidTAnyWithNil::MSG = T.let(T.unsafe(nil), String)
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_any_with_nil.rb:23
 RuboCop::Cop::Sorbet::ForbidTAnyWithNil::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
+# Disallows using `T.assert_type!` anywhere.
+#
+# @example
+#
+#   # bad
+#   T.assert_type!(foo, Integer)
+#
+#   # good
+#   raise unless foo.is_a?(Integer)
+#
+#   # good
+#   assert_kind_of(Integer, foo)
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_assert_type.rb:20
+class RuboCop::Cop::Sorbet::ForbidTAssertType < ::RuboCop::Cop::Base
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_assert_type.rb:30
+  def on_csend(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_assert_type.rb:27
+  def on_send(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_assert_type.rb:25
+  def t_assert_type?(param0 = T.unsafe(nil)); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_assert_type.rb:21
+RuboCop::Cop::Sorbet::ForbidTAssertType::MSG = T.let(T.unsafe(nil), String)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_assert_type.rb:22
+RuboCop::Cop::Sorbet::ForbidTAssertType::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
+
 # Disallows using `T.bind` anywhere.
+# Set `AutocorrectToRBS: true` to replace supported calls with RBS inline comments.
 #
 # @example
 #
@@ -1251,25 +1365,75 @@ RuboCop::Cop::Sorbet::ForbidTAnyWithNil::RESTRICT_ON_SEND = T.let(T.unsafe(nil),
 #   # good
 #   #: self as Integer
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:17
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:19
 class RuboCop::Cop::Sorbet::ForbidTBind < ::RuboCop::Cop::Base
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:27
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+  include ::RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:34
   def on_csend(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:24
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:29
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:22
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:27
+  def t_bind?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:38
+  def autocorrect_t_bind_to_rbs(corrector, node); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:23
+RuboCop::Cop::Sorbet::ForbidTBind::MSG = T.let(T.unsafe(nil), String)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:24
+RuboCop::Cop::Sorbet::ForbidTBind::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
+
+# Disallows assigning the result of `T.bind`.
+#
+# `T.bind` changes the type of its first argument and returns that argument.
+# Assigning its result can therefore unintentionally change the inferred type
+# of both the assignment target and the first argument.
+#
+# @safety
+#   Auto-correction is unsafe because replacing `T.bind` with `T.cast`
+#   removes the scope-wide type rebind of the first argument. Code that
+#   relies on that narrowed type may no longer type-check.
+#
+# @example
+#
+#   # bad
+#   foo = T.bind(self, Integer)
+#
+#   # good
+#   foo = T.cast(self, Integer)
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind_in_assignment.rb:26
+class RuboCop::Cop::Sorbet::ForbidTBindInAssignment < ::RuboCop::Cop::Base
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind_in_assignment.rb:42
+  def on_csend(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind_in_assignment.rb:34
+  def on_send(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind_in_assignment.rb:32
   def t_bind?(param0 = T.unsafe(nil)); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:18
-RuboCop::Cop::Sorbet::ForbidTBind::MSG = T.let(T.unsafe(nil), String)
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind_in_assignment.rb:28
+RuboCop::Cop::Sorbet::ForbidTBindInAssignment::MSG = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind.rb:19
-RuboCop::Cop::Sorbet::ForbidTBind::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_bind_in_assignment.rb:29
+RuboCop::Cop::Sorbet::ForbidTBindInAssignment::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # Disallows using `T.cast` anywhere.
+# Set `AutocorrectToRBS: true` to replace supported calls with RBS inline comments.
 #
 # @example
 #
@@ -1279,23 +1443,107 @@ RuboCop::Cop::Sorbet::ForbidTBind::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array
 #   # good
 #   foo #: as Integer
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:17
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:19
 class RuboCop::Cop::Sorbet::ForbidTCast < ::RuboCop::Cop::Base
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:27
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+  include ::RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:34
   def on_csend(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:24
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:29
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:22
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:27
   def t_cast?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:38
+  def autocorrect_t_cast_to_rbs(corrector, node); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:18
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:23
 RuboCop::Cop::Sorbet::ForbidTCast::MSG = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:19
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_cast.rb:24
 RuboCop::Cop::Sorbet::ForbidTCast::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
+
+# Disallows instantiating Sorbet collection types. Instantiate the Ruby
+# collection directly and declare its type separately when needed.
+#
+# Checks `T::Array`, `T::Hash`, `T::Set`, `T::Range`,
+# `T::Enumerator`, `T::Enumerator::Lazy`, and `T::Enumerator::Chain`,
+# with or without type arguments.
+#
+# Set `AutocorrectToRBS: true` to replace Sorbet constructors with Ruby
+# constructors. RBS inline type annotations are added only to assignments.
+# Assignments with an existing RBS annotation or an untranslatable type
+# are not autocorrected.
+# Empty Array and Hash constructors use literals unless arguments, blocks,
+# or comments inside the call need to be preserved.
+#
+# @safety
+#   Autocorrection removes runtime evaluation of type arguments and changes
+#   constant lookup. RBS annotations require an RBS-aware type checker.
+#
+# @example
+#   # bad
+#   T::Array[String].new
+#   T::Hash[Symbol, Integer].new
+#   T::Set[String].new
+#   T::Array.new
+#
+#   # good
+#   Array.new
+#   Hash.new
+#   Set.new
+#   T.let(Array.new, T::Array[String])
+#   Set.new #: Set[String]
+#
+# @example AutocorrectToRBS: true
+#   # bad
+#   arr = T::Array[String].new
+#   items = T::Set[T.nilable(String)].new(values)
+#   consume(T::Array[String].new)
+#
+#   # good
+#   arr = [] #: Array[String]
+#   items = Set.new(values) #: Set[String?]
+#   consume([])
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_collection_instantiation.rb:50
+class RuboCop::Cop::Sorbet::ForbidTCollectionInstantiation < ::RuboCop::Cop::Base
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+  include ::RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_collection_instantiation.rb:74
+  def on_csend(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_collection_instantiation.rb:65
+  def on_send(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_collection_instantiation.rb:58
+  def t_collection?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_collection_instantiation.rb:78
+  def autocorrect_to_rbs(corrector, node, type); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_collection_instantiation.rb:105
+  def empty_collection_literal(node, type); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_collection_instantiation.rb:54
+RuboCop::Cop::Sorbet::ForbidTCollectionInstantiation::MSG = T.let(T.unsafe(nil), String)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_collection_instantiation.rb:55
+RuboCop::Cop::Sorbet::ForbidTCollectionInstantiation::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # Disallow using `T::Enum`.
 #
@@ -1368,6 +1616,7 @@ RuboCop::Cop::Sorbet::ForbidTHelpers::MSG = T.let(T.unsafe(nil), String)
 RuboCop::Cop::Sorbet::ForbidTHelpers::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # Disallows using `T.let` anywhere.
+# Set `AutocorrectToRBS: true` to replace supported calls with RBS inline comments.
 #
 # @example
 #
@@ -1377,25 +1626,36 @@ RuboCop::Cop::Sorbet::ForbidTHelpers::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Ar
 #   # good
 #   foo #: Integer
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:17
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:19
 class RuboCop::Cop::Sorbet::ForbidTLet < ::RuboCop::Cop::Base
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:27
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+  include ::RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:34
   def on_csend(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:24
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:29
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:22
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:27
   def t_let?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:38
+  def autocorrect_t_let_to_rbs(corrector, node); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:18
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:23
 RuboCop::Cop::Sorbet::ForbidTLet::MSG = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:19
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_let.rb:24
 RuboCop::Cop::Sorbet::ForbidTLet::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # Disallows using `T.must` anywhere.
+# Set `AutocorrectToRBS: true` to replace supported calls with RBS inline comments.
 #
 # @example
 #
@@ -1405,22 +1665,32 @@ RuboCop::Cop::Sorbet::ForbidTLet::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 #   # good
 #   foo #: as !nil
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:17
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:18
 class RuboCop::Cop::Sorbet::ForbidTMust < ::RuboCop::Cop::Base
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:27
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+  include ::RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:33
   def on_csend(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:24
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:28
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:22
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:26
   def t_must?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:37
+  def autocorrect_t_must_to_rbs(corrector, node); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:18
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:22
 RuboCop::Cop::Sorbet::ForbidTMust::MSG = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:19
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_must.rb:23
 RuboCop::Cop::Sorbet::ForbidTMust::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # Forbids `extend T::Sig` and `include T::Sig` in classes and modules.
@@ -1493,113 +1763,185 @@ RuboCop::Cop::Sorbet::ForbidTSig::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 #     def some_method; end
 #   end
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:38
+# @example AutocorrectStyle: rbs
+#
+#   # bad
+#   class MyStruct < T::Struct
+#     const :foo, String
+#     prop :bar, T.nilable(Integer), default: 0
+#   end
+#
+#   # good
+#   class MyStruct
+#     #: String
+#     attr_reader :foo
+#
+#     #: Integer?
+#     attr_accessor :bar
+#
+#     #: (foo: String, ?bar: Integer?) -> void
+#     def initialize(foo:, bar: 0)
+#       @foo = foo
+#       @bar = bar
+#     end
+#   end
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:63
 class RuboCop::Cop::Sorbet::ForbidTStruct < ::RuboCop::Cop::Base
   include ::RuboCop::Cop::Alignment
   include ::RuboCop::Cop::RangeHelp
   include ::RuboCop::Cop::CommentsHelp
   extend ::RuboCop::Cop::AutoCorrector
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:169
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:232
   def on_class(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:210
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:277
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:167
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:230
   def t_props?(param0 = T.unsafe(nil)); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:162
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:225
   def t_struct?(param0 = T.unsafe(nil)); end
 
   private
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:218
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:333
+  def autocorrect_style; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:285
   def initialize_method(indent, props); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:258
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:329
   def previous_line_blank?(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:343
+  def rbs?; end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:47
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:72
 RuboCop::Cop::Sorbet::ForbidTStruct::MSG_PROPS = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:46
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:71
 RuboCop::Cop::Sorbet::ForbidTStruct::MSG_STRUCT = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:104
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:141
 class RuboCop::Cop::Sorbet::ForbidTStruct::Property
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:107
-  def initialize(node, kind, name, type, default:, factory:); end
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:144
+  def initialize(node, kind, name, type, default:, factory:, style: T.unsafe(nil)); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:123
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:165
   def attr_accessor; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:119
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:157
   def attr_sig; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:105
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:142
   def default; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:105
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:142
   def factory; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:144
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:189
   def initialize_assign; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:131
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:176
   def initialize_param; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:127
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:169
   def initialize_sig_param; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:105
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:142
   def kind; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:105
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:142
   def name; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:151
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:196
   def nilable?; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:105
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:142
   def node; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:155
+  # A prop is optional when it declares a `default:`, a `factory:`, or
+  # is nilable (which gives it an implicit `nil` default). RBS marks
+  # optional keyword parameters with `?name:`, mirroring the default
+  # value that `initialize_param` emits.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:204
+  def optional?; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:213
+  def rbs?; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:217
+  def rbs_type; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:208
   def type; end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:44
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:69
 RuboCop::Cop::Sorbet::ForbidTStruct::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # This class walks down the class body of a T::Struct and collects all the properties that will need to be
 # translated into `attr_reader` and `attr_accessor` methods.
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:51
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:77
 class RuboCop::Cop::Sorbet::ForbidTStruct::TStructWalker
   include ::RuboCop::AST::Traversal
   extend ::RuboCop::AST::NodePattern::Macros
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:57
-  def initialize; end
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:82
+  def initialize(style = T.unsafe(nil)); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:63
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:90
   def extend_t_sig?(param0 = T.unsafe(nil)); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:55
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:80
+  def extend_t_sig_node; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:80
   def has_extend_t_sig; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:72
+  # Override AST::Traversal's callbacks to stop at nested scopes, so their properties and `extend T::Sig` stay
+  # out of this class.
+  # RuboCop's separate traversal still visits nested structs and creates a fresh walker for each.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:102
+  def on_class(_node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:105
+  def on_def(_node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:106
+  def on_defs(_node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:103
+  def on_module(_node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:104
+  def on_sclass(_node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:108
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:55
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:80
   def props; end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:68
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:95
   def t_struct_prop?(param0 = T.unsafe(nil)); end
 end
 
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_struct.rb:74
+RuboCop::Cop::Sorbet::ForbidTStruct::VALID_AUTOCORRECT_STYLES = T.let(T.unsafe(nil), Array)
+
 # Disallows using `T.type_alias` anywhere.
+# Set `AutocorrectToRBS: true` to replace standalone constant assignments with RBS type aliases.
+# Autocorrection is unsafe because it removes the Ruby constant. References to the
+# constant must be migrated separately to the lowercase RBS alias name.
+# Declarations containing RuboCop directives are not autocorrected.
 #
 # @example
 #
@@ -1609,22 +1951,39 @@ end
 #   # good
 #   #: type string_or_integer = Integer | String
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:17
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:22
 class RuboCop::Cop::Sorbet::ForbidTTypeAlias < ::RuboCop::Cop::Base
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:23
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+  include ::RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:31
   def on_block(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:26
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:37
+  def on_itblock(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:36
   def on_numblock(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:21
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:29
   def t_type_alias?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:41
+  def autocorrect_type_alias(corrector, node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:69
+  def standalone_alias?(assignment); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:18
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_type_alias.rb:26
 RuboCop::Cop::Sorbet::ForbidTTypeAlias::MSG = T.let(T.unsafe(nil), String)
 
 # Disallows using `T.unsafe` anywhere.
+# Set `AutocorrectToRBS: true` to replace supported calls with RBS inline comments.
 #
 # @example
 #
@@ -1632,24 +1991,34 @@ RuboCop::Cop::Sorbet::ForbidTTypeAlias::MSG = T.let(T.unsafe(nil), String)
 #   T.unsafe(foo)
 #
 #   # good
-#   foo
+#   foo #: as untyped
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:17
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:18
 class RuboCop::Cop::Sorbet::ForbidTUnsafe < ::RuboCop::Cop::Base
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:27
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+  include ::RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:33
   def on_csend(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:24
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:28
   def on_send(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:22
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:26
   def t_unsafe?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:37
+  def autocorrect_t_unsafe_to_rbs(corrector, node); end
 end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:18
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:22
 RuboCop::Cop::Sorbet::ForbidTUnsafe::MSG = T.let(T.unsafe(nil), String)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:19
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_t_unsafe.rb:23
 RuboCop::Cop::Sorbet::ForbidTUnsafe::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 # Disallows using `T.untyped` anywhere.
@@ -1700,6 +2069,9 @@ RuboCop::Cop::Sorbet::ForbidTUntyped::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Ar
 class RuboCop::Cop::Sorbet::ForbidTypeAliasedShapes < ::RuboCop::Cop::Base
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_type_aliased_shapes.rb:36
   def on_block(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_type_aliased_shapes.rb:41
+  def on_itblock(node); end
 
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/forbid_type_aliased_shapes.rb:40
   def on_numblock(node); end
@@ -1967,6 +2339,59 @@ end
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/obsolete_strict_memoization.rb:47
 RuboCop::Cop::Sorbet::ObsoleteStrictMemoization::MSG = T.let(T.unsafe(nil), String)
 
+# Shared guards and rewrites for replacing Sorbet runtime assertions
+# with equivalent RBS inline comments.
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:8
+module RuboCop::Cop::Sorbet::RBSAssertionCorrection
+  include ::RuboCop::Cop::RangeHelp
+  include ::RuboCop::Cop::Alignment
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:149
+  def assertion_ends_line?(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:142
+  def assertion_statement(node, allow_assignment:); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:82
+  def autocorrect_argument_list(corrector, node, expression, annotation, context); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:17
+  def autocorrect_rbs_assertion(corrector, node, allow_assignment: T.unsafe(nil)); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:37
+  def call_argument_context(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:105
+  def comments_within?(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:129
+  def inside_single_line_block?(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:120
+  def nested_rbs_assertion_autocorrectable?(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:112
+  def one_matching_assertion?(container, node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:156
+  def range_after_horizontal_whitespace(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:133
+  def rbs_assertion_autocorrectable?(node, allow_assignment: T.unsafe(nil)); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:30
+  def rbs_assertion_correction_context(node, allow_assignment:); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:12
+RuboCop::Cop::Sorbet::RBSAssertionCorrection::COMMENT_START = T.let(T.unsafe(nil), String)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/rbs_assertion_correction.rb:13
+RuboCop::Cop::Sorbet::RBSAssertionCorrection::NEWLINES = T.let(T.unsafe(nil), Array)
+
 # Forbids the use of redundant `extend T::Sig`. Only for use in
 # applications that monkey patch `Module.include(T::Sig)` globally,
 # which would make it redundant.
@@ -2128,9 +2553,9 @@ RuboCop::Cop::Sorbet::RedundantTLet::MSG = T.let(T.unsafe(nil), String)
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let.rb:64
 RuboCop::Cop::Sorbet::RedundantTLet::MSG_CONSTRUCTOR = T.let(T.unsafe(nil), String)
 
-# Checks for redundant `T.let` declarations where the first argument
-# is a literal whose type Sorbet can infer automatically, so wrapping
-# it in `T.let` is redundant.
+# Checks for redundant `T.let` declarations and trailing RBS annotations
+# where the assigned value is a literal whose type Sorbet can infer
+# automatically.
 #
 # Simple literals (strings, symbols, integers, floats, regexps) infer as
 # their own class. Regexp literals are the only simple literals whose
@@ -2146,6 +2571,11 @@ RuboCop::Cop::Sorbet::RedundantTLet::MSG_CONSTRUCTOR = T.let(T.unsafe(nil), Stri
 #   flagged when that inferred type matches the annotation exactly, to
 #   avoid silently widening (e.g. `["a", nil]` infers a nilable element).
 #
+# An array annotation whose direct element type is a fixed-size tuple is
+# preserved. Removing `T::Array[[...]]` or `Array[[...]]` can widen each
+# tuple into an array with a union element type and lose its positional
+# types.
+#
 # Hashes are excluded: Sorbet infers hash literals as `T.untyped`, so the
 # annotation is required.
 #
@@ -2159,6 +2589,8 @@ RuboCop::Cop::Sorbet::RedundantTLet::MSG_CONSTRUCTOR = T.let(T.unsafe(nil), Stri
 #   STATUS = T.let(:active, Symbol)
 #   SHELLS = T.let([:bash, :zsh].freeze, T::Array[Symbol])
 #   NAMES = T.let(["alice", "bob"], T::Array[String])
+#   RBS_GREETING = "hello" #: String
+#   RBS_NAMES = ["alice", "bob"] #: Array[String]
 #
 #   # good
 #   MAX_RETRIES = 3
@@ -2169,6 +2601,8 @@ RuboCop::Cop::Sorbet::RedundantTLet::MSG_CONSTRUCTOR = T.let(T.unsafe(nil), Stri
 #   STATUS = :active
 #   SHELLS = [:bash, :zsh].freeze
 #   NAMES = ["alice", "bob"]
+#   RBS_GREETING = "hello"
+#   RBS_NAMES = ["alice", "bob"]
 #
 #   # good — non-regexp frozen simple literals are not inferred
 #   GREETING = T.let("hello".freeze, String)
@@ -2179,6 +2613,10 @@ RuboCop::Cop::Sorbet::RedundantTLet::MSG_CONSTRUCTOR = T.let(T.unsafe(nil), Stri
 #   # good — unfrozen array whose annotation is wider than the inferred type
 #   NAMES = T.let(["alice", "bob"], T::Array[T.nilable(String)])
 #
+#   # good — the tuple element type is not inferred from the nested literals
+#   BUCKETS = T.let([[1, "one"]].freeze, T::Array[[Integer, String]])
+#   RBS_BUCKETS = [[1, "one"]].freeze #: Array[[Integer, String]]
+#
 #   # good — type is not the literal's own class
 #   value = T.let("hello", T.nilable(String))
 #
@@ -2188,7 +2626,7 @@ RuboCop::Cop::Sorbet::RedundantTLet::MSG_CONSTRUCTOR = T.let(T.unsafe(nil), Stri
 #   # good — local variables may need T.let so Sorbet allows reassignment
 #   count = T.let(0, Integer)
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:67
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:80
 class RuboCop::Cop::Sorbet::RedundantTLetForLiteral < ::RuboCop::Cop::Base
   include ::RuboCop::Cop::Sorbet::ConstantScope
   include ::RuboCop::Cop::Sorbet::TargetSorbetVersion
@@ -2196,62 +2634,77 @@ class RuboCop::Cop::Sorbet::RedundantTLetForLiteral < ::RuboCop::Cop::Base
   extend ::RuboCop::Cop::Sorbet::TargetSorbetVersion::ClassMethods
   extend ::RuboCop::Cop::AutoCorrector
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:123
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:134
   def on_casgn(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:119
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:130
   def t_let_with_array?(param0 = T.unsafe(nil)); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:114
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:125
   def t_let_with_literal_and_class?(param0 = T.unsafe(nil)); end
 
   private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:180
+  def check_rbs_annotation(node); end
 
   # An array literal is inferable only when every element is one of the
   # simple literals Sorbet reflects into the element type (or a nested
   # inferable array). Empty arrays are excluded: they infer as
   # `T::Array[T.untyped]` and so still need the annotation.
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:170
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:230
   def inferable_array?(node); end
 
   # Returns the underlying literal when its inference is supported by the
-  # target Sorbet version. Bare literals are always supported; for example,
-  # `3` returns its integer node. Frozen literals are version-gated, so
-  # `/foo/.freeze` returns its regexp node only for supported targets.
+  # target Sorbet version. Bare literals return themselves. A frozen value
+  # returns its receiver only for regexps, whose inference survives
+  # `.freeze` on supported targets.
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:152
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:165
   def inferable_literal_node(value_node); end
 
   # The type Sorbet infers for an unfrozen array literal, or nil when the
   # element types are not uniform enough to render deterministically
   # (mixed classes, booleans, nils and nested arrays are left alone).
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:202
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:267
   def inferred_array_type(node); end
 
   # Strips whitespace and any trailing comma before a closing delimiter,
   # so a multi-line annotation (`T::Array[\n  String,\n]`) still compares
   # equal to the rendered inferred type.
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:212
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:277
   def normalize(source); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:222
+  def rbs_array_type_with_tuple_element?(type); end
 
   # Returns whether Sorbet's inferred array type makes the annotation
   # redundant. A frozen `[:a].freeze` infers as a tuple compatible with
   # any `T::Array[...]`; an unfrozen `[:a]` must infer exactly the
   # annotated type, such as `T::Array[Symbol]`.
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:187
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:247
   def redundant_array_annotation?(array_node, type_node, frozen:); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:159
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:214
+  def redundant_rbs_array_annotation?(array_node, type, frozen:); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:173
   def register_offense(node, value_node, type); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:207
+  def register_rbs_offense(node, comment, type); end
 
   # `T::Array[...]` (with or without a leading `::`)
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:194
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:259
   def t_array_type?(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:254
+  def t_array_type_with_tuple_element?(node); end
 end
 
 # Element node types allowed inside an inferable array literal: the
@@ -2260,22 +2713,22 @@ end
 # they are excluded. Interpolated strings/symbols (`dstr`/`dsym`) infer
 # as `String`/`Symbol`, the same as their plain literal forms.
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:100
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:111
 RuboCop::Cop::Sorbet::RedundantTLetForLiteral::ARRAY_ELEMENT_TYPES = T.let(T.unsafe(nil), Array)
 
 # Element node types whose inferred class is unambiguous, used to derive
 # the element type of an unfrozen array literal.
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:104
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:115
 RuboCop::Cop::Sorbet::RedundantTLetForLiteral::ELEMENT_TYPE_TO_CLASS = T.let(T.unsafe(nil), Hash)
 
 # Simple literal node types Sorbet infers, mapped to the class name.
 # Interpolated strings/symbols (`dstr`/`dsym`) infer as `String`/`Symbol`.
 #
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:85
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:96
 RuboCop::Cop::Sorbet::RedundantTLetForLiteral::LITERAL_TYPE_TO_CLASS = T.let(T.unsafe(nil), Hash)
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:81
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/redundant_t_let_for_literal.rb:92
 RuboCop::Cop::Sorbet::RedundantTLetForLiteral::MSG = T.let(T.unsafe(nil), String)
 
 # Checks for the use of Ruby Refinements library. Refinements add
@@ -2383,6 +2836,104 @@ RuboCop::Cop::Sorbet::SelectByIsA::MSG = T.let(T.unsafe(nil), String)
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/select_by_is_a.rb:23
 RuboCop::Cop::Sorbet::SelectByIsA::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
+# Checks that setter methods (methods whose name ends with `=`)
+# declare a `void` return type, in either a Sorbet `sig` block or an
+# RBS inline comment signature.
+#
+# Sorbet requires setter methods to return `void`. Declaring any other
+# return type violates the setter contract and is rejected by Sorbet
+#
+# @example
+#
+#   # bad
+#   sig { params(name: String).returns(String) }
+#   def name=(name); end
+#
+#   # good
+#   sig { params(name: String).void }
+#   def name=(name); end
+#
+#   # bad
+#   #: (String) -> String
+#   def name=(name); end
+#
+#   # good
+#   #: (String) -> void
+#   def name=(name); end
+#
+#   # bad
+#   #: (
+#   #|   String name
+#   #| ) -> String
+#   def name=(name); end
+#
+#   # good
+#   #: (
+#   #|   String name
+#   #| ) -> void
+#   def name=(name); end
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:44
+class RuboCop::Cop::Sorbet::SetterReturnType < ::RuboCop::Cop::Base
+  include ::RuboCop::Cop::Sorbet::SignatureHelp
+  include ::RuboCop::Cop::RangeHelp
+  extend ::RuboCop::Cop::AutoCorrector
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:53
+  def on_def(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:56
+  def on_defs(node); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:60
+  def check(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:140
+  def check_rbs(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:103
+  def check_sig(sig); end
+
+  # Climb past `private`/`public`/`protected` and other send wrappers so
+  # sig/RBS lookup runs against the real surrounding siblings rather than
+  # the send's other arguments.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:80
+  def outermost_send_ancestor(node); end
+
+  # The `sig` blocks immediately preceding `target` among its siblings,
+  # supporting consecutive overload sigs. The scan stops at the first
+  # non-signature sibling so a setter never inherits another method's sig.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:88
+  def preceding_sigs(target); end
+
+  # Walks the receiver chain of the sig body (the builder call chain)
+  # and returns the outermost `void` or `returns` node, so a `void` or
+  # `returns` nested inside a type argument (e.g. `T.proc.void`) is not
+  # mistaken for the method's return declaration.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:121
+  def return_declaration(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:72
+  def setter?(node); end
+
+  # Range covering `returns(TYPE)` (selector through the closing
+  # paren / last argument), to be replaced with `void`.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:133
+  def sig_return_range(returns_node); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:49
+RuboCop::Cop::Sorbet::SetterReturnType::MSG = T.let(T.unsafe(nil), String)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/setter_return_type.rb:51
+RuboCop::Cop::Sorbet::SetterReturnType::NON_SETTER_OPERATORS = T.let(T.unsafe(nil), Array)
+
 # Checks for the correct order of `sig` builder methods.
 #
 # Options:
@@ -2439,10 +2990,13 @@ module RuboCop::Cop::Sorbet::SignatureHelp
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/signature_help.rb:42
   def on_block(node); end
 
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/signature_help.rb:47
+  def on_itblock(node); end
+
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/signature_help.rb:46
   def on_numblock(node); end
 
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/signature_help.rb:48
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/signature_help.rb:49
   def on_signature(_node); end
 
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/signature_help.rb:25
@@ -2513,6 +3067,89 @@ class RuboCop::Cop::Sorbet::StrongSigil < ::RuboCop::Cop::Sorbet::HasSigil
   def minimum_strictness; end
 end
 
+# Checks that `T::Struct` property names use the configured style.
+# The supported styles and name filters match `Naming/MethodName`.
+#
+# @example EnforcedStyle: snake_case (default)
+#   # bad
+#   class User < T::Struct
+#     const :firstName, String
+#     prop :lastName, String
+#   end
+#
+#   # good
+#   class User < T::Struct
+#     const :first_name, String
+#     prop :last_name, String
+#   end
+#
+# @example EnforcedStyle: camelCase
+#   # bad
+#   class User < T::Struct
+#     const :first_name, String
+#     prop :last_name, String
+#   end
+#
+#   # good
+#   class User < T::Struct
+#     const :firstName, String
+#     prop :lastName, String
+#   end
+#
+# @example AllowedPatterns: ['\Alegacy[A-Z]']
+#   # good
+#   class User < T::Struct
+#     const :legacyName, String
+#   end
+#
+# @example ForbiddenIdentifiers: ['legacy_name']
+#   # bad
+#   class User < T::Struct
+#     const :legacy_name, String
+#   end
+#
+# @example ForbiddenPatterns: ['_v1\z']
+#   # bad
+#   class User < T::Struct
+#     const :name_v1, String
+#   end
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:52
+class RuboCop::Cop::Sorbet::StructPropName < ::RuboCop::Cop::Base
+  include ::RuboCop::Cop::AllowedPattern
+  include ::RuboCop::Cop::ConfigurableEnforcedStyle
+  include ::RuboCop::Cop::ConfigurableFormatting
+  include ::RuboCop::Cop::ConfigurableNaming
+  include ::RuboCop::Cop::ForbiddenIdentifiers
+  include ::RuboCop::Cop::ForbiddenPattern
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:68
+  def on_send(node); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:64
+  def t_struct?(param0 = T.unsafe(nil)); end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:91
+  def forbidden_name?(name); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:95
+  def message(style); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:85
+  def within_t_struct?(node); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:58
+RuboCop::Cop::Sorbet::StructPropName::MSG = T.let(T.unsafe(nil), String)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:59
+RuboCop::Cop::Sorbet::StructPropName::MSG_FORBIDDEN = T.let(T.unsafe(nil), String)
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/struct_prop_name.rb:61
+RuboCop::Cop::Sorbet::StructPropName::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
+
 # Mixing for writing cops that deal with `T::Enum`s
 #
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_enum.rb:7
@@ -2520,7 +3157,7 @@ module RuboCop::Cop::Sorbet::TEnum
   extend ::RuboCop::AST::NodePattern::Macros
 
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_enum.rb:9
-  def initialize(*_arg0); end
+  def initialize(*); end
 
   # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_enum.rb:23
   def after_class(node); end
@@ -2550,14 +3187,14 @@ module RuboCop::Cop::Sorbet::TLetCorrection
   # Returns the comment trailing the heredoc marker, including its leading space.
   # For example, the marker line `<<~SQL, String) # query` returns ` # query`.
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:55
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:65
   def marker_line_comment(value_node); end
 
   # Expands the correction range to include every heredoc body and terminator.
   # For example, the range for `T.let(<<~SQL, String)` extends through the
   # final `SQL` terminator rather than ending at the closing parenthesis.
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:35
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:45
   def range_including_heredocs(t_let_node, heredocs); end
 
   # Replaces `T.let(value, Type)` with `value`.
@@ -2569,15 +3206,22 @@ module RuboCop::Cop::Sorbet::TLetCorrection
   # contained in the value. For example, `T.let(<<~SQL, String)` becomes
   # `<<~SQL` followed by its original body and terminator.
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:25
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:35
   def replace_t_let_preserving_heredocs(corrector, t_let_node, value_node, heredocs); end
 
   # Reconstructs the value with its marker-line comment and heredoc bodies.
   # For example, `T.let(<<~SQL, String) # query` becomes a source string
   # containing `<<~SQL # query`, followed by its body and `SQL` terminator.
   #
-  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:44
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:54
   def source_including_heredocs(value_node, heredocs); end
+
+  # Heredocs at the tail of the value, whose body sits past `value_node`'s
+  # source range. An interior heredoc, e.g. `Foo.new(a: <<~X, b: 2)`, already
+  # lives inside `value_node.source` and must not be reattached.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/t_let_correction.rb:25
+  def tail_heredocs(value_node); end
 end
 
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/mixin/target_sorbet_version.rb:6
@@ -2808,6 +3452,45 @@ end
 # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/signatures/void_checked_tests.rb:41
 RuboCop::Cop::Sorbet::VoidCheckedTests::MESSAGE = T.let(T.unsafe(nil), String)
 
+# Patches `Lint/Void` to be aware of RBS inline `#: absurd` type
+# assertions, which are used to mark unreachable branches in exhaustive
+# `case`/`when` matching.
+#
+# Without this patch, RuboCop 1.85+ flags the expression in the
+# unreachable branch as "used in void context" because `Lint/Void` now
+# inspects `case`/`when` branch bodies (rubocop/rubocop#14756).
+#
+# @example
+#
+#   # good (not flagged)
+#   #: ((String | Integer) x) -> void
+#   def foo(x)
+#     case x
+#     when String
+#     when Integer
+#     else
+#       x #: absurd
+#     end
+#   end
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/void_sorbet_aware_behaviour.rb:28
+module RuboCop::Cop::Sorbet::VoidSorbetAwareBehaviour
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/void_sorbet_aware_behaviour.rb:31
+  def check_expression(expr); end
+
+  private
+
+  # Checks whether `node` is followed by an RBS `#: absurd` inline
+  # comment on the same line, indicating a deliberate unreachable-type
+  # assertion that should not be treated as a void-context misuse.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/void_sorbet_aware_behaviour.rb:43
+  def rbs_absurd_assertion?(node); end
+end
+
+# pkg:gem/rubocop-sorbet#lib/rubocop/cop/sorbet/void_sorbet_aware_behaviour.rb:29
+RuboCop::Cop::Sorbet::VoidSorbetAwareBehaviour::RBS_ABSURD_PATTERN = T.let(T.unsafe(nil), Regexp)
+
 module RuboCop::Cop::Style; end
 
 class RuboCop::Cop::Style::MutableConstant < ::RuboCop::Cop::Base
@@ -2817,7 +3500,7 @@ end
 # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/version.rb:4
 module RuboCop::Sorbet; end
 
-# pkg:gem/rubocop-sorbet#lib/rubocop/sorbet.rb:11
+# pkg:gem/rubocop-sorbet#lib/rubocop/sorbet.rb:12
 class RuboCop::Sorbet::Error < ::StandardError; end
 
 # A plugin that integrates RuboCop Sorbet with RuboCop's plugin system.
@@ -2832,6 +3515,113 @@ class RuboCop::Sorbet::Plugin < ::LintRoller::Plugin
 
   # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/plugin.rb:20
   def supported?(context); end
+end
+
+# Pure helpers for parsing RBS inline-comment signatures (`#:` / `#|`).
+#
+# Every public method takes a `processed_source` and/or comment nodes
+# explicitly, so this module is usable both from a Cop and from a plain
+# service class such as
+# `RuboCop::Cop::Sorbet::EnforceSignatures::RBSSignatureChecker`.
+# No Cop::Base state is required.
+#
+# `rbs_signatures_before` returns `Signature` objects that encapsulate one
+# RBS overload each. `rbs_annotations_before` returns the attached `# @`
+# comments. `rbs_annotation_after` returns the trailing RBS annotation
+# attached to an expression and its comment node.
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:19
+module RuboCop::Sorbet::RBSParser
+  class << self
+    # The trailing RBS annotation attached to `node`, as `[comment, text]`.
+    # The comment must follow the expression on its final line with only
+    # horizontal whitespace between them.
+    #
+    # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:51
+    def rbs_annotation_after(processed_source, node); end
+
+    # The Sorbet `# @` annotation comments attached to `node`, in source
+    # order. Other comments in the contiguous block, including the RBS
+    # signature itself, are omitted.
+    #
+    # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:41
+    def rbs_annotations_before(processed_source, node); end
+
+    # The RBS signatures attached to `node`, one `Signature` per overload.
+    # Climbs `private`/`public`/other send wrappers, collects the contiguous
+    # comment block above the unwrapped node, and groups the RBS comments.
+    # A signature separated from the method by a blank line is not attached.
+    #
+    # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:32
+    def rbs_signatures_before(processed_source, node); end
+
+    private
+
+    # Comments forming a contiguous block immediately above `node`, in source
+    # order. A blank line or non-comment sibling breaks the run.
+    #
+    # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:87
+    def comments_above(processed_source, node); end
+
+    # Group already-collected comments into RBS signatures. A `#:` line begins
+    # a new overload; subsequent `#|` lines continue it. Non-RBS comments are
+    # skipped.
+    #
+    # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:72
+    def rbs_signature_groups(comments); end
+  end
+end
+
+# `# @` begins a Sorbet method annotation used alongside RBS signatures.
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:25
+RuboCop::Sorbet::RBSParser::RBS_ANNOTATION_PREFIX = T.let(T.unsafe(nil), Regexp)
+
+# `#|` continues the preceding `#:` signature (e.g. multiline params/returns).
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:23
+RuboCop::Sorbet::RBSParser::RBS_CONTINUATION_PREFIX = T.let(T.unsafe(nil), Regexp)
+
+# `#:` begins an RBS signature (each repeated `#:` line is a new overload).
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:21
+RuboCop::Sorbet::RBSParser::RBS_SIGNATURE_PREFIX = T.let(T.unsafe(nil), Regexp)
+
+# One RBS signature (a `#:` line plus any `#|` continuation lines).
+# Encapsulates the parsed structure so callers query the signature rather
+# than re-parsing comments through the module.
+#
+# pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:109
+class RuboCop::Sorbet::RBSParser::Signature
+  # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:112
+  def initialize(processed_source, comments); end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:110
+  def comments; end
+
+  # The return type expression as a string, or nil if parsing fails.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:118
+  def return_type; end
+
+  # `[highlight_range, replace_range]` covering the return type, or nil
+  # if parsing fails or the return type has no source location.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:124
+  def return_type_range; end
+
+  # True if the signature declares a `void` return type.
+  #
+  # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:141
+  def void?; end
+
+  private
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:151
+  def parsed_method_type; end
+
+  # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/rbs_parser.rb:147
+  def return_type_node; end
 end
 
 # pkg:gem/rubocop-sorbet#lib/rubocop/sorbet/version.rb:5

@@ -35,7 +35,7 @@ jobs:
       BUNDLE_JOBS: "4"
       BUNDLE_PATH: vendor/bundle
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: bin/check-tracked
       # The tools the production image ships: specs shell out to real
@@ -52,7 +52,7 @@ jobs:
           apt-get update -qq
           apt-get install --no-install-recommends -y postgresql-client-18 zstd jellyfin-ffmpeg7
           echo "/usr/lib/jellyfin-ffmpeg" >> "$GITHUB_PATH"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: gems-${{ runner.os }}-${{ hashFiles('.ruby-version', 'Gemfile.lock', 'vendor/gems/**/*.gemspec') }}
@@ -71,8 +71,8 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm

@@ -53,6 +53,9 @@ export interface StationSource {
   min_minutes?: number | null;
   max_minutes?: number | null;
   include_specials?: boolean;
+  /** Leave out what's been finished: by any profile, or by any of `unwatched_profile_ids`. */
+  unwatched?: boolean;
+  unwatched_profile_ids?: string[];
 }
 
 export interface StationBlock {
@@ -99,6 +102,8 @@ export interface StationOptions {
   shows: { id: string; title: string; year: number | null }[];
   collections: { id: string; title: string }[];
   youtube_channels: { id: string; title: string }[];
+  /** Whose watching an unwatched block counts. */
+  profiles: { id: string; name: string }[];
   /** Cameras and web streams a channel can show instead (PROPOSAL §7.8); `mlb_team`: a club's MLB.tv games. */
   live_streams: { id: string; name: string; mlb_team: boolean }[];
   /** The clubs a channel can carry the games of; empty without an MLB.tv account. */
@@ -107,7 +112,7 @@ export interface StationOptions {
   time_zone: string;
 }
 
-export const PRESET_KINDS = ["network", "kids", "sitcoms", "decade", "movies", "one_show", "holiday"] as const;
+export const PRESET_KINDS = ["network", "kids", "sitcoms", "decade", "movies", "one_show", "holiday", "youtube"] as const;
 
 export type PresetKind = (typeof PRESET_KINDS)[number];
 
