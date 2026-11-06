@@ -52,7 +52,7 @@ jobs:
           apt-get update -qq
           apt-get install --no-install-recommends -y postgresql-client-18 zstd jellyfin-ffmpeg7
           echo "/usr/lib/jellyfin-ffmpeg" >> "$GITHUB_PATH"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: gems-${{ runner.os }}-${{ hashFiles('.ruby-version', 'Gemfile.lock', 'vendor/gems/**/*.gemspec') }}
