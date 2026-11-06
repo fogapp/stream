@@ -20,7 +20,7 @@
     "jassub": "^2.5.16",
     "leaflet": "^1.9.4",
     "libpgs": "^0.9.0",
-    "lucide-react": "^1.28.0",
+    "lucide-react": "^1.66.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",
