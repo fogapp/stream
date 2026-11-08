@@ -5,7 +5,7 @@ module Middleware
   # HTML goes out as a body, never by X-Sendfile. ActionDispatch::Static
   # answers `/` with public/index.html, and in production Rack::Sendfile
   # hands that to Thruster as an empty body plus an X-Sendfile header. The
-  # lucid agent sits above both and rewrites HTML to add its script tag: it
+  # glass agent sits above both and rewrites HTML to add its script tag: it
   # saw the empty body, wrote the bare tag with its own Content-Length, and
   # Thruster's file no longer matched it — every load of `/` was a 502. The
   # shell is a kilobyte; reading it here keeps what's above honest.

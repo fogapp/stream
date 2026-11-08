@@ -85,8 +85,25 @@ module Remote
     # What's playing on a device now, from its latest live session.
     sig { params(device: Device).returns(T.nilable(PlaybackSession)) }
     def self.now_playing(device)
-      device.playback_sessions.watched.where(state: PlaybackSession::State::Active.serialize).where(last_seen_at: 2.minutes.ago..)
-        .order(last_seen_at: :desc).first
+      playing(device.playback_sessions).order(last_seen_at: :desc).first
     end
+
+    # The same for several devices in one query, by device id, with what
+    # each plays (and an episode's show, a video's channel) loaded.
+    sig { params(devices: T::Array[Device]).returns(T::Hash[String, PlaybackSession]) }
+    def self.now_playing_on(devices)
+      return {} if devices.empty?
+
+      found = T.let({}, T::Hash[String, PlaybackSession])
+      playing(PlaybackSession.where(device_id: devices.map(&:id))).order(last_seen_at: :desc).includes(:profile, playable: %i[show channel owner])
+        .each { |session| found[session.device_id] ||= session }
+      found
+    end
+
+    sig { params(scope: T.untyped).returns(T.untyped) }
+    def self.playing(scope)
+      scope.watched.where(state: PlaybackSession::State::Active.serialize).where(last_seen_at: 2.minutes.ago..)
+    end
+    private_class_method :playing
   end
 end

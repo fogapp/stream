@@ -17,7 +17,7 @@ class UpdateYtDlpJob < ApplicationJob
 
     Activity.record(source: "youtube", event: "yt_dlp.updated", summary: "yt-dlp updated#{before ? " from #{before}" : ''} to #{after}")
     # YouTube pulls behave differently after this: a marker on every chart.
-    Lucid.event("yt-dlp updated", tags: { version: after.to_s })
+    Glass.event("yt-dlp updated", tags: { version: after.to_s })
   rescue Youtube::YtDlp::Error, ToolRunner::Error, UpstreamHttpClient::Error, SystemCallError => e
     Activity.record(source: "youtube", event: "yt_dlp.update_failed", severity: Activity::Severity::Warn,
       summary: "Couldn't update yt-dlp: #{e.message.truncate(200)}")

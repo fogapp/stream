@@ -11,8 +11,7 @@ module TraktSerializer
     return { configured: false } if setting.nil?
 
     {
-      configured: true, client_id: setting.client_id, last_tested_at: setting.last_tested_at,
-      last_test_ok: setting.last_test_ok, last_test_message: setting.last_test_message
+      configured: true, client_id: setting.client_id, **ConnectionTestSerializer.tested(setting)
     }
   end
 

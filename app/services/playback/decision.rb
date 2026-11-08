@@ -115,6 +115,10 @@ module Playback
     sig { returns(Constraints) }
     attr_reader :constraints
 
+    # Why it starts from those constraints, when they were learned or fell back.
+    sig { returns(T.nilable(String)) }
+    attr_reader :fell_back
+
     sig { returns(T::Array[String]) }
     def reason_codes = @codes.uniq
 
@@ -170,10 +174,6 @@ module Playback
       @primary_stream ||= T.let(streams.find { |candidate| candidate.kind_enum == MediaStream::Kind::Video }, T.nilable(MediaStream))
     end
 
-    # ffprobe's own record of a stream, for what the rows don't keep.
-    sig { params(stream: MediaStream).returns(T.nilable(T::Hash[String, T.untyped])) }
-    def probed(stream) = Array(@file&.probe&.dig("streams")).find { |candidate| candidate["index"] == stream.index }
-
     sig { returns(T.nilable(Video)) }
     def plan_video
       stream = primary_stream
@@ -222,7 +222,7 @@ module Playback
       profile = stream.dolby_vision_profile
       strip = dv && !(dv_client && [ 5, 8 ].include?(profile))
       tag = dv && dv_client && profile == 5 ? "dvh1" : nil
-      hev1 = stream.codec == "hevc" && %w[hev1 dvhe].include?(stream.codec_tag || codec_tag(stream))
+      hev1 = stream.codec == "hevc" && %w[hev1 dvhe].include?(stream.codec_tag)
       Video.new(index: stream.index, copy: true, codec: stream.codec.to_s, height: height, tonemap: false,
         retag_hvc1: hev1 || (strip && %w[dvh1 dvhe].include?(stream.codec_tag.to_s)), dv_strip: strip, dv_tag: tag)
     end
@@ -294,11 +294,10 @@ module Playback
 
     sig { params(requested: T.nilable(Integer)).returns(T.nilable(Audio)) }
     def plan_audio(requested)
-      tracks = streams.select { |candidate| candidate.kind_enum == MediaStream::Kind::Audio }
-      # Not a commentary or a description track, unless asked for: one
-      # flagged default by mistake played over the film (R6).
-      main = tracks.reject { |track| track.comment || track.visual_impaired || track.hearing_impaired }
-      stream = tracks.find { |track| track.index == requested } || main.find(&:default) || main.first || tracks.find(&:default) || tracks.first
+      # The track asked for, else the main one (MediaStream.main_audio: not
+      # a commentary or a description track).
+      stream = (requested && streams.find { |track| track.kind_enum == MediaStream::Kind::Audio && track.index == requested }) ||
+        MediaStream.main_audio(streams)
       return nil if stream.nil?
 
       codec = stream.codec.to_s
@@ -480,16 +479,15 @@ module Playback
       primary_stream&.dolby_vision_profile
     end
 
-    # What a Dolby Vision base layer is besides: 1 HDR10, 4 HLG, 2 SDR, 6 Blu-ray HDR10.
+    # What a Dolby Vision base layer is besides: 1 HDR10, 4 HLG, 2 SDR, 6
+    # Blu-ray HDR10, from the row (Media::Probe.normalize). A live stream's
+    # was never read (it has no stored probe), and still isn't: its base is
+    # taken as HDR10.
     sig { returns(T.nilable(Integer)) }
     def dolby_vision_compatibility
-      stream = primary_stream
-      return nil if stream.nil?
+      return nil if @live
 
-      side = Array(probed(stream)&.dig("side_data_list")).find { |data| data["side_data_type"].to_s.include?("DOVI") }
-      return nil if side.nil?
-
-      Integer(side["dv_bl_signal_compatibility_id"].to_s, exception: false)
+      primary_stream&.dolby_vision_compatibility
     end
 
     # What's wrong with a picture nothing about its stream blocks: its codec,
@@ -549,11 +547,6 @@ module Playback
       when 8 then "7.1"
       else "#{channels}-channel"
       end
-    end
-
-    sig { params(stream: MediaStream).returns(T.nilable(String)) }
-    def codec_tag(stream)
-      probed(stream)&.dig("codec_tag_string")
     end
   end
 end

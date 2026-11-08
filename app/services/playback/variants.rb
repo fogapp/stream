@@ -28,6 +28,9 @@ module Playback
       def original? = index.zero?
     end
 
+    # The session's own stream, as far as which version it is goes.
+    ORIGINAL = Variant.new(index: 0, height: nil, bandwidth: 0, codecs: nil, resolution: nil)
+
     #
     # Only for an adaptive session (docs/PERF_PROPOSAL.md › P8): off the
     # household's network, or where a browser asked. On the LAN a player
@@ -35,8 +38,7 @@ module Playback
     # smaller version, and so start a second ffmpeg on a busy machine.
     sig { params(session: PlaybackSession).returns(T::Array[Variant]) }
     def self.for(session)
-      original = Variant.new(index: 0, height: nil, bandwidth: 0, codecs: nil, resolution: nil)
-      return [ original ] unless session.adaptive
+      return [ ORIGINAL ] unless session.adaptive
 
       file = session.media_file
       decision = session.stored_decision
@@ -55,8 +57,17 @@ module Playback
       end
     end
 
+    # Version `index` of a session's stream, nil for one it doesn't have.
+    # Every stream has its original, and what asks for it by index (the
+    # transcoder, on every request) only needs to know it's the original:
+    # it's answered without reading the file to build the ladder. Its
+    # bandwidth and codecs are the master playlist's business (`for`).
     sig { params(session: PlaybackSession, index: Integer).returns(T.nilable(Variant)) }
-    def self.find(session, index) = self.for(session).find { |variant| variant.index == index }
+    def self.find(session, index)
+      return ORIGINAL if index.zero?
+
+      self.for(session).find { |variant| variant.index == index }
+    end
 
     sig { params(file: T.nilable(MediaFile)).returns(Integer) }
     def self.original_bandwidth(file)

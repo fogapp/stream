@@ -1539,6 +1539,51 @@ class Movie
     def metadata_refreshed_at_will_change!; end
 
     sig { returns(T.nilable(::String)) }
+    def normalized_title; end
+
+    sig { params(value: T.nilable(::String)).returns(T.nilable(::String)) }
+    def normalized_title=(value); end
+
+    sig { returns(T::Boolean) }
+    def normalized_title?; end
+
+    sig { returns(T.nilable(::String)) }
+    def normalized_title_before_last_save; end
+
+    sig { returns(T.untyped) }
+    def normalized_title_before_type_cast; end
+
+    sig { returns(T::Boolean) }
+    def normalized_title_came_from_user?; end
+
+    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
+    def normalized_title_change; end
+
+    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
+    def normalized_title_change_to_be_saved; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def normalized_title_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable(::String)) }
+    def normalized_title_in_database; end
+
+    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
+    def normalized_title_previous_change; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def normalized_title_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable(::String)) }
+    def normalized_title_previously_was; end
+
+    sig { returns(T.nilable(::String)) }
+    def normalized_title_was; end
+
+    sig { void }
+    def normalized_title_will_change!; end
+
+    sig { returns(T.nilable(::String)) }
     def original_title; end
 
     sig { params(value: T.nilable(::String)).returns(T.nilable(::String)) }
@@ -1821,6 +1866,9 @@ class Movie
     def restore_metadata_refreshed_at!; end
 
     sig { void }
+    def restore_normalized_title!; end
+
+    sig { void }
     def restore_original_title!; end
 
     sig { void }
@@ -2029,6 +2077,12 @@ class Movie
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def saved_change_to_metadata_refreshed_at?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
+    def saved_change_to_normalized_title; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def saved_change_to_normalized_title?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
     def saved_change_to_original_title; end
@@ -2638,6 +2692,9 @@ class Movie
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_metadata_refreshed_at?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def will_save_change_to_normalized_title?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_original_title?(from: T.unsafe(nil), to: T.unsafe(nil)); end

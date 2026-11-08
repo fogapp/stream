@@ -40,8 +40,6 @@ module Playback
     # A run that failed is started again once; a second failure this soon
     # after is the session's (transcode_error), not a hiccup.
     RETRY_WINDOW = 120.0
-    # Bytes of a run's playlist read for its end: its last line and then some.
-    ENDLIST_TAIL = 64
     # A run this far past what the player last asked for is paused (SIGSTOP)
     # until the player catches up to within the second (SIGCONT), or asks
     # for something further. -readrate
@@ -51,85 +49,6 @@ module Playback
     # full never finds itself at the run's frontier.
     AHEAD_PAUSE_MS = 180_000
     AHEAD_RESUME_MS = 120_000
-
-    class Run < T::Struct
-      extend T::Sig
-
-      const :session_id, String
-      # 0: the session's own stream; n: its smaller version n (Variants).
-      const :variant, Integer, default: 0
-      prop :handle, Runner::Handle
-      prop :start_gop, Integer
-      # Converting video, not just repackaging: what optimizing gives way to.
-      prop :video, T::Boolean, default: false
-      # The first GOP it hasn't finished, as last seen: only ever moves on.
-      prop :frontier, Integer
-      # Monotonic seconds when it started, for how fast it's going.
-      prop :clock, Float
-      # Where what it makes lands before it's published (Publisher): its
-      # ffmpeg's output here, its worker's uploads for a remote run — which
-      # NodeLink publishes as they arrive, so it has no publisher of its own.
-      const :staging, Pathname
-      const :publisher, T.nilable(Publisher), default: nil
-      # Its TranscodeRun: the row a run here writes, or a remote run's own.
-      const :record_id, T.nilable(String), default: nil
-      # Where its part of the session's ffmpeg.log begins.
-      const :log_from, Integer, default: 0
-      # When it last made anything, in monotonic seconds, and what that
-      # looked like (output_mark): the watchdog's evidence.
-      prop :progressed_at, Float, default: 0.0
-      prop :output_mark, T.nilable(String), default: nil
-      # Paused far ahead of the player (throttle), and the plan it runs to.
-      prop :paused, T::Boolean, default: false
-      const :plan, T.nilable(SegmentPlan), default: nil
-      # How fast it reads (Pace): what reaches? reckons with, the root
-      # it reads from, and whether its burst has been measured (ShareSpeed).
-      const :pace, Pace, default: Pace.new(rate: FfmpegArgs.readrate, burst: FfmpegArgs.readrate_burst)
-      prop :measured, T::Boolean, default: false
-
-      # Seconds since it started.
-      sig { returns(Float) }
-      def elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC).to_f - clock
-
-      # The run's first GOP not in the cache yet (up to `limit`, the plan's
-      # end): everything before it the run has made.
-      sig { params(limit: T.nilable(Integer)).returns(Integer) }
-      def advance_frontier(limit)
-        self.frontier += 1 while (limit.nil? || frontier < limit) && Cache.gop_ready?(session_id, frontier, variant)
-        frontier
-      end
-
-      # Whether it will reach this GOP within WAIT_FOR, from how fast it has
-      # gone so far — which only holds to the end of its initial burst: past
-      # that it reads at the throttle's rate (FfmpegArgs), however fast the
-      # disk let the burst go. A fixed count of GOPs, at twice real time,
-      # could mean a twelve-second wait; a burst's speed carried past the
-      # burst called a seek a minute ahead a second away.
-      sig { params(gop: Integer, plan: SegmentPlan).returns(T::Boolean) }
-      def reaches?(gop, plan)
-        return false if gop < start_gop
-
-        # Behind where it has got to: there, or swept (CacheSweep), and if
-        # swept this run will never come back for it.
-        return Cache.gop_ready?(session_id, gop, variant) if gop < advance_frontier(plan.gop_count)
-
-        start_ms = plan.gop_start_ms(start_gop)
-        done_ms = plan.gop_start_ms([ frontier, plan.gop_count - 1 ].min) - start_ms
-        target_ms = plan.gop_start_ms(gop) - start_ms
-        # Nothing made yet to measure: a request just past where it began is
-        # the next segment or two; anything further is a seek.
-        return target_ms <= STARTING_REACH_MS || gop - start_gop <= STARTING_REACH_GOPS if done_ms <= 0 || elapsed < 0.25
-
-        measured = [ done_ms / 1000.0 / elapsed, 0.01 ].max
-        # Unthrottled, it goes on as it has gone.
-        return (target_ms - done_ms) / 1000.0 / measured <= WAIT_FOR unless pace.throttled
-
-        burst_ms = pace.burst * 1000
-        in_burst_ms = [ [ target_ms, burst_ms ].min - done_ms, 0.0 ].max
-        throttled_ms = [ target_ms - [ done_ms, burst_ms ].max, 0.0 ].max
-        (in_burst_ms / 1000.0 / measured) + (throttled_ms / 1000.0 / pace.rate) <= WAIT_FOR
-      end
-    end
 
     # The last place a session (or one of its versions) asked for, and when.
     class Wanted < T::Struct
@@ -385,7 +304,7 @@ module Playback
     sig { params(run_key: String, run: Run, tail: T.nilable(String)).void }
     def refused(run_key, run, tail)
       RunRecord.close(run, log: @log, failure: TranscodeRun::Failure::Refused, tail: tail)
-      Lucid.increment("transcoder.failures", tags: { failure: TranscodeRun::Failure::Refused.serialize })
+      Glass.increment("transcoder.failures", tags: { failure: TranscodeRun::Failure::Refused.serialize })
       @failed_at[run_key] = monotonic
     end
 
@@ -425,7 +344,7 @@ module Playback
       pace = Pace.for(session, converting: !smaller.nil? || !session.video_copy?)
       handle =
         if node
-          Runner.start_remote(node, session: session) do |source|
+          Runner.start_remote(node, session: session, attributes: { encoder: node.profile.kind.serialize, start_gop: gop, variant: variant }) do |source|
             FfmpegArgs.build(session, plan, start_gop: gop, directory: Pathname.new(Runner::OUT), profile: node.profile, input: source, pace: pace)
           end
         else
@@ -444,9 +363,6 @@ module Playback
       # Its uploads are published as they arrive (NodeLink), from here.
       staging ||= Cache.staging(session.id, handle.run_id, variant)
       publisher = handle.remote? ? nil : Publisher.new(session_id: session.id, variant: variant, plan: plan)
-      if node
-        TranscodeRun.where(id: handle.run_id).update_all(encoder: node.profile.kind.serialize, start_gop: gop, variant: variant) # rubocop:disable Rails/SkipsModelValidations
-      end
       @runs[key(session.id, variant)] = Run.new(session_id: session.id, variant: variant, handle: handle, start_gop: gop,
         video: !smaller.nil? || session.method_enum == PlaybackSession::Method::VideoTranscode,
         frontier: gop, clock: monotonic, staging: staging, publisher: publisher,
@@ -609,7 +525,7 @@ module Playback
     end
     def fail_run(run_key, run, failure, detail, status: nil, signal: nil, tail: nil)
       RunRecord.close(run, log: @log, failure: failure, status: status, signal: signal, tail: tail)
-      Lucid.increment("transcoder.failures", tags: { failure: failure.serialize })
+      Glass.increment("transcoder.failures", tags: { failure: failure.serialize })
       now = monotonic
       last = @failed_at[run_key]
       @failed_at[run_key] = now
@@ -657,9 +573,12 @@ module Playback
       # session ends, untouched for half an hour (end_abandoned_standby).
       # Stopping it after IDLE made switching to it a cold start
       # (docs/APPLETV_STALLS.md › R3).
-      quiet = PlaybackSession.unscoped.where(id: ids)
-        .where("state = ? OR (last_seen_at < ? AND NOT standby)", PlaybackSession::State::Ended.serialize, IDLE.ago).pluck(:id)
-      gone = ids - PlaybackSession.unscoped.where(id: ids).pluck(:id)
+      # One read: which are still there, and of those which have gone quiet.
+      found = PlaybackSession.unscoped.where(id: ids)
+        .pluck(:id, Arel.sql(PlaybackSession.sanitize_sql_array([ "state = ? OR (last_seen_at < ? AND NOT standby)",
+          PlaybackSession::State::Ended.serialize, IDLE.ago ])))
+      quiet = found.filter_map { |id, idle| id if idle }
+      gone = ids - found.map(&:first)
       (quiet + gone).each do |session_id|
         @log.call("session #{session_id}: stopping idle run")
         stop(session_id)

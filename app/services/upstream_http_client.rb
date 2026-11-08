@@ -48,13 +48,50 @@ module UpstreamHttpClient
     # and retry — where an application-level error deserves louder handling.
     sig { returns(T::Boolean) }
     def connection? = @connection
+
+    # This error class's rate-limited kind: still one of its own (a
+    # `rescue Nba::Schedule::Error` catches it), and tagged
+    # UpstreamHttpClient::RateLimitError for whoever treats a rate limit
+    # as the provider condition it is (`retry_on`, a budget).
+    sig { returns(T.class_of(Error)) }
+    def self.rate_limited = tagged(:RateLimited, RateLimitError)
+
+    # Likewise, its rejected-credentials kind, tagged AuthError.
+    sig { returns(T.class_of(Error)) }
+    def self.unauthorized = tagged(:Unauthorized, AuthError)
+
+    TAGGED_LOCK = T.let(Mutex.new, Thread::Mutex)
+    TAGGED = T.let({}, T::Hash[[ T.class_of(Error), Symbol ], T.class_of(Error)])
+
+    # Defined once per error class, on first use, and named as a constant
+    # under it (Nba::Schedule::Error::RateLimited), so logs and Activity
+    # say whose it was.
+    sig { params(name: Symbol, tag: T::Module[T.anything]).returns(T.class_of(Error)) }
+    def self.tagged(name, tag)
+      TAGGED_LOCK.synchronize do
+        TAGGED[[ self, name ]] ||= begin
+          klass = Class.new(self)
+          klass.include(tag)
+          const_set(name, klass)
+          klass
+        end
+      end
+    end
+    private_class_method :tagged
   end
 
-  # Distinct from Error so callers can zero a provider's budget without
-  # marking every source under it as failing (manor's scheduler lesson:
-  # a rate limit is a provider condition, not a per-source one).
-  class RateLimitError < Error; end
-  class AuthError < Error; end
+  # Tags, not classes, so a rate limit or a refusal can be an instance of
+  # the including client's own error_class (which its callers rescue) and
+  # still be told apart from every other failure: `rescue
+  # UpstreamHttpClient::RateLimitError` and `retry_on` match a module as
+  # they do a class. Raise them through `error_class.rate_limited` /
+  # `error_class.unauthorized`, never directly.
+  #
+  # RateLimitError is distinct so callers can zero a provider's budget
+  # without marking every source under it as failing (manor's scheduler
+  # lesson: a rate limit is a provider condition, not a per-source one).
+  module RateLimitError; end
+  module AuthError; end
 
   # read_timeout bounds the wait for each individual read; nothing bounded
   # their sum, so a connection trickling one byte every 25 seconds never
@@ -492,11 +529,11 @@ module UpstreamHttpClient
         redirects_left: redirects_left - 1, max_bytes: max_bytes)
     when ::Net::HTTPTooManyRequests
       detail = upstream_detail(error_body, response)
-      raise RateLimitError.new("#{service_name} rate limited this request#{suffix(detail)}",
+      raise error_class.rate_limited.new("#{service_name} rate limited this request#{suffix(detail)}",
         status: 429, detail: detail)
     when ::Net::HTTPUnauthorized, ::Net::HTTPForbidden
       detail = upstream_detail(error_body, response)
-      raise AuthError.new("#{service_name} rejected our credentials#{suffix(detail)}",
+      raise error_class.unauthorized.new("#{service_name} rejected our credentials#{suffix(detail)}",
         status: response.code.to_i, detail: detail)
     else
       detail = upstream_detail(error_body, response)

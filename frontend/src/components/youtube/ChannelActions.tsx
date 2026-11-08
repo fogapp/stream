@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Ban, Bell, BellOff, ExternalLink, Eye, EyeOff, RefreshCw, UserMinus, UserRound } from "lucide-react";
-import { api, apiErrorMessage } from "@/api/client";
+import { api } from "@/api/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMenuAction, type MenuAction } from "@/hooks/useMenuAction";
 import { keys } from "@/lib/queryKeys";
 import { refreshWatched } from "@/lib/watched";
 import { useHideFromProfile } from "@/components/viewing/HideFromProfile";
 import { ActionMenu, ActionMenuItem, ActionMenuSeparator } from "@/components/ui/ActionMenu";
-import { toast } from "@/components/ui/Toast";
 import type { ChannelListItem } from "@/types";
 
 /**
@@ -26,23 +25,15 @@ export function ChannelActions({ channel, onHidden, className }: { channel: Chan
 
 function ChannelActionList({ channel, onHidden, close }: { channel: ChannelListItem; onHidden?: () => void; close: () => void }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { user } = useAuth();
   const hiding = useHideFromProfile({ kind: "channel", id: channel.id, title: channel.title }, onHidden);
   const [confirmingHide, setConfirmingHide] = useState(false);
   const admin = user?.role === "admin";
 
-  // `refresh`: the keys the change moves, or "watched" for everything a
-  // watched change can (lib/watched).
-  const run = (work: Promise<unknown>, done: string, refresh: ReadonlyArray<readonly string[]> | "watched") => {
+  const act = useMenuAction();
+  const run = (action: MenuAction) => {
     close();
-    work
-      .then(() => {
-        if (refresh === "watched") refreshWatched(queryClient);
-        else for (const key of refresh) void queryClient.invalidateQueries({ queryKey: key });
-        toast.info(done);
-      })
-      .catch((error: unknown) => toast.error(apiErrorMessage(error, "That didn't go through.")));
+    act(action);
   };
 
   if (confirmingHide && hiding) {
@@ -77,11 +68,12 @@ function ChannelActionList({ channel, onHidden, close }: { channel: ChannelListI
       <ActionMenuItem
         icon={allWatched ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
         onSelect={() =>
-          run(
-            api.post(`/channels/${channel.id}/watched`, { watched: !allWatched }),
-            `${channel.title}: every video marked ${allWatched ? "unwatched" : "watched"}`,
-            "watched",
-          )
+          run({
+            work: () => api.post(`/channels/${channel.id}/watched`, { watched: !allWatched }),
+            done: `${channel.title}: every video marked ${allWatched ? "unwatched" : "watched"}`,
+            // Everything a watched change can move (lib/watched).
+            refresh: (queryClient) => refreshWatched(queryClient),
+          })
         }
       >
         {allWatched ? "Mark all as unwatched" : "Mark all as watched"}
@@ -89,7 +81,9 @@ function ChannelActionList({ channel, onHidden, close }: { channel: ChannelListI
       {admin && channel.tracked ? (
         <ActionMenuItem
           icon={<RefreshCw className="h-4 w-4" aria-hidden />}
-          onSelect={() => run(api.post(`/channels/${channel.id}/tracking/poll`), `Checking ${channel.title} for new videos`, [keys.youtube.all])}
+          onSelect={() =>
+            run({ work: () => api.post(`/channels/${channel.id}/tracking/poll`), done: `Checking ${channel.title} for new videos`, refresh: [keys.youtube.all] })
+          }
         >
           Check for new videos
         </ActionMenuItem>
@@ -97,11 +91,11 @@ function ChannelActionList({ channel, onHidden, close }: { channel: ChannelListI
       <ActionMenuItem
         icon={channel.subscribed ? <BellOff className="h-4 w-4" aria-hidden /> : <Bell className="h-4 w-4" aria-hidden />}
         onSelect={() =>
-          run(
-            channel.subscribed ? api.delete(`/channels/${channel.id}/subscription`) : api.post(`/channels/${channel.id}/subscription`),
-            channel.subscribed ? `Unsubscribed from ${channel.title}` : `Subscribed to ${channel.title}`,
-            [keys.channels.all, keys.subscriptions.all, keys.home.all],
-          )
+          run({
+            work: () => (channel.subscribed ? api.delete(`/channels/${channel.id}/subscription`) : api.post(`/channels/${channel.id}/subscription`)),
+            done: channel.subscribed ? `Unsubscribed from ${channel.title}` : `Subscribed to ${channel.title}`,
+            refresh: [keys.channels.all, keys.subscriptions.all, keys.home.all],
+          })
         }
       >
         {channel.subscribed ? "Unsubscribe" : "Subscribe"}
@@ -122,11 +116,11 @@ function ChannelActionList({ channel, onHidden, close }: { channel: ChannelListI
         <ActionMenuItem
           icon={<UserMinus className="h-4 w-4" aria-hidden />}
           onSelect={() =>
-            run(
-              api.patch(`/channels/${channel.id}/tracking`, { tracked: false }),
-              `Stopped following ${channel.title}. What's downloaded stays.`,
-              [keys.channels.all, keys.youtube.all],
-            )
+            run({
+              work: () => api.patch(`/channels/${channel.id}/tracking`, { tracked: false }),
+              done: `Stopped following ${channel.title}. What's downloaded stays.`,
+              refresh: [keys.channels.all, keys.youtube.all],
+            })
           }
         >
           Unfollow

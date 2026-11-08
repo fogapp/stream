@@ -50,7 +50,7 @@ class QueueOptimizationsJob < ApplicationJob
   # Whether a stamp changed: one already due stays as it was while it's
   # still due. "Now" is a new time every pass, and re-stamping every airing
   # under way and every next episode with it was a write per row an hour
-  # (Lucid, 2026-10-20) that changed no file's place in the queue.
+  # (Glass, 2026-10-20) that changed no file's place in the queue.
   sig { params(was: T.nilable(ActiveSupport::TimeWithZone), now: T.nilable(ActiveSupport::TimeWithZone)).returns(T::Boolean) }
   def moved?(was, now)
     return was != now if was.nil? || now.nil?
@@ -71,15 +71,24 @@ class QueueOptimizationsJob < ApplicationJob
     Airing.unscoped.where(household_id: household.id).where("ends_at > ?", Time.current).where.not(media_file_id: nil)
       .group(:media_file_id).minimum(:starts_at)
       .each { |id, starts| needed[id] = [ [ starts, Time.current ].max, OptimizedVersion::Reason::Airing ] }
-    Profile.unscoped.where(household_id: household.id).find_each do |profile|
-      show_ids = Episode.where(id: WatchState.where(profile: profile, playable_type: "Episode", last_watched_at: WATCHING.ago..)
-        .select(:playable_id)).distinct.pluck(:show_id)
-      next if show_ids.empty?
+    # Next up for every profile from one read of the shows they're
+    # watching: the episodes once, every profile's states of them once.
+    profiles = Profile.unscoped.where(household_id: household.id).to_a
+    watching = WatchState.where(profile_id: profiles.map(&:id), playable_type: "Episode", last_watched_at: WATCHING.ago..)
+      .joins("JOIN episodes ON episodes.id = watch_states.playable_id").distinct.pluck(:profile_id, "episodes.show_id")
+      .group_by(&:first).transform_values { |pairs| pairs.map(&:last) }
+    return needed if watching.empty?
 
-      picks = Viewing::NextUp.for_shows(Show.where(id: show_ids).to_a, profile).values.compact
-      files = Edition.where(playable_type: "Episode", playable_id: picks.map { |pick| pick.episode.id }).pluck(:media_file_id)
-      files.each { |id| needed[id] = [ Time.current, OptimizedVersion::Reason::NextUp ] }
+    episodes = Episode.where(show_id: watching.values.flatten.uniq, id: Viewing::Catalog.readable_ids("Episode"))
+      .reorder(:season_number, :episode_number, :air_date).to_a
+    by_show = episodes.group_by(&:show_id)
+    states = WatchState.where(profile_id: watching.keys, playable_type: "Episode", playable_id: episodes.map(&:id)).to_a
+      .group_by(&:profile_id).transform_values { |rows| rows.index_by(&:playable_id) }
+    picks = profiles.flat_map do |profile|
+      watching.fetch(profile.id, []).filter_map { |show_id| Viewing::NextUp.pick(by_show.fetch(show_id, []), states.fetch(profile.id, {})) }
     end
+    Edition.where(playable_type: "Episode", playable_id: picks.map { |pick| pick.episode.id }).pluck(:media_file_id)
+      .each { |id| needed[id] = [ Time.current, OptimizedVersion::Reason::NextUp ] }
     needed
   end
 end

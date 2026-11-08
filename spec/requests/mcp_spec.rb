@@ -67,6 +67,20 @@ RSpec.describe "MCP surface", type: :request do
     ])
   end
 
+  it "answers subscriptions/listen as unimplemented, since it can't hold a stream open" do
+    # The modern lifecycle (MCP 2026-07-28) is where a client opens one: no
+    # initialize, the version in a header and in each request's _meta.
+    version = MCP::Configuration::LATEST_MODERN_PROTOCOL_VERSION
+    meta = { MCP::RequestEnvelope::PROTOCOL_VERSION_META_KEY => version,
+             MCP::RequestEnvelope::CLIENT_CAPABILITIES_META_KEY => {} }
+    post "/mcp", params: { jsonrpc: "2.0", id: 1, method: "subscriptions/listen", params: { _meta: meta } }.to_json,
+      headers: { "Authorization" => "Bearer #{token}", "Content-Type" => "application/json",
+                 "Accept" => "application/json, text/event-stream",
+                 "MCP-Protocol-Version" => version, "Mcp-Method" => "subscriptions/listen" }
+    expect(response).to have_http_status(:not_found)
+    expect(json.dig("error", "code")).to eq(-32_601)
+  end
+
   it "tells only an admin what the household is watching, as the Stats page does" do
     expect(tool_json("now_playing")).to eq([])
 

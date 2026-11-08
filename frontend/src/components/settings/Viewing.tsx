@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDraft } from "@/hooks/useDraft";
 import { useFormMutation } from "@/hooks/useFormMutation";
 import { Button } from "@/components/ui/Button";
 import { FormError } from "@/components/ui/Form";
@@ -49,7 +50,7 @@ function NotificationsCard() {
     queryKey: keys.notificationPreferences.current(),
     queryFn: ({ signal }) => api.get<NotificationPreferences>("/notification_preferences", { signal }),
   });
-  const [topic, setTopic] = useState<string | null>(null);
+  const draft = useDraft(preferences.data, { ntfy_topic: "" });
   const save = useFormMutation({
     fallback: "Couldn't save.",
     mutationFn: (change: Partial<NotificationPreferences>) => api.patch<NotificationPreferences>("/notification_preferences", change),
@@ -69,11 +70,12 @@ function NotificationsCard() {
                   className="flex max-w-xl items-end gap-2"
                   onSubmit={(event) => {
                     event.preventDefault();
-                    save.mutate({ ntfy_topic: topic ?? data.ntfy_topic });
+                    // Untouched, the stored topic goes back as it is (none stays none).
+                    save.mutate({ ntfy_topic: draft.dirty ? draft.value("ntfy_topic") : data.ntfy_topic });
                   }}
                 >
                   <div className="flex-1">
-                    <Input label="ntfy topic" value={topic ?? data.ntfy_topic ?? ""} onChange={(event) => setTopic(event.target.value)} placeholder="e.g. stream-alex" />
+                    <Input label="ntfy topic" value={draft.value("ntfy_topic")} onChange={(event) => draft.set("ntfy_topic", event.target.value)} placeholder="e.g. stream-alex" />
                   </div>
                   <Button type="submit" variant="secondary" disabled={save.isPending}>
                     Save
@@ -198,7 +200,7 @@ function AdaptiveToggle() {
 function ThisBrowserCard() {
   const queryClient = useQueryClient();
   const device = useQuery({ queryKey: keys.remote.thisDevice(), queryFn: ({ signal }) => api.get<RemoteDevice>("/remote/this_device", { signal }) });
-  const [label, setLabel] = useState<string | null>(null);
+  const draft = useDraft(device.data, { label: "" });
   const save = useFormMutation({
     fallback: "Couldn't save.",
     mutationFn: (change: { label?: string; remote_control?: boolean }) => api.patch<RemoteDevice>("/remote/this_device", change),
@@ -223,11 +225,11 @@ function ThisBrowserCard() {
                 className="flex items-end gap-2"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  save.mutate({ label: label ?? current.label ?? "" });
+                  save.mutate({ label: draft.value("label") });
                 }}
               >
                 <div className="flex-1">
-                  <Input label="Its name" placeholder="Living room" value={label ?? current.label ?? ""} onChange={(event) => setLabel(event.target.value)} />
+                  <Input label="Its name" placeholder="Living room" value={draft.value("label")} onChange={(event) => draft.set("label", event.target.value)} />
                 </div>
                 <Button type="submit" variant="secondary" disabled={save.isPending}>
                   Save

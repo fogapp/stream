@@ -68,12 +68,6 @@ module Api
         render json: OptimizedVersionSerializer.json(version), status: :created
       end
 
-      sig { void }
-      def retry
-        optimized_version.requeue!(run_now: bool_param(:now))
-        render json: OptimizedVersionSerializer.json(optimized_version)
-      end
-
       # Deleting stops an encode in progress too: the transcoder notices
       # its row is gone on its next tick.
       sig { void }

@@ -16,9 +16,14 @@ export function useChannelDeck(
 ) {
   const [deck] = useState(() => new ChannelDeck(activeId));
   useSyncExternalStore(deck.subscribe, deck.getVersion);
-  // Read when they're needed, as the page is then.
-  deck.toGuide = toGuide;
-  deck.resume = resume;
+  // Read when they're needed, as the page last committed them: written after
+  // each commit, not during render, and before the effects below read them
+  // (a layout effect runs ahead of the passive ones, and parkForGuide's
+  // cleanup reads what the last commit left).
+  useLayoutEffect(() => {
+    deck.toGuide = toGuide;
+    deck.resume = resume;
+  });
 
   const wantedKey = [activeId, ...neighbours].filter((id): id is string => Boolean(id)).join(",");
   useEffect(() => deck.setLineup(activeId, wantedKey ? wantedKey.split(",") : []), [deck, activeId, wantedKey]);

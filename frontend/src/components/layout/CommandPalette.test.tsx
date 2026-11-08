@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import type { HookHit, HookShow } from "@/types";
 import { CommandPalette } from "./CommandPalette";
@@ -10,8 +10,9 @@ vi.mock("@/api/client", async (original) => ({
   ...(await original<typeof import("@/api/client")>()),
   api: { get: vi.fn(), post: vi.fn(), postForm: vi.fn(), delete: vi.fn() },
 }));
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "u", role: "member" } }) }));
-vi.mock("@/hooks/useProfile", () => ({ useProfile: () => ({ profile: { kind: "standard" } }) }));
+const who = vi.hoisted(() => ({ role: "member", kind: "standard" }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "u", role: who.role } }) }));
+vi.mock("@/hooks/useProfile", () => ({ useProfile: () => ({ profile: { kind: who.kind } }) }));
 
 const hit = (overrides: Partial<HookHit>): HookHit => ({
   kind: "movie", provider: "tmdb", external_id: "1", title: "Arrival", year: 2016, overview: "Linguist meets heptapods.",
@@ -96,5 +97,65 @@ describe("CommandPalette, looking further in Hook", () => {
     );
     expect(await screen.findByText("Hook is looking for 10 episodes and will keep the show coming.")).toBeInTheDocument();
     expect(screen.getByText(/Following — New episodes from today/)).toBeInTheDocument();
+  });
+});
+
+describe("CommandPalette, when search fails", () => {
+  it("says the search failed rather than that nothing matches, and retries", async () => {
+    let fail = true;
+    vi.mocked(api.get).mockReset().mockImplementation(async (path: string) => {
+      if (path === "/hook") return { available: false };
+      if (path.startsWith("/search")) {
+        if (fail) throw new Error("Search is down");
+        return { movies: [], shows: [], episodes: [], people: [], collections: [], channels: [], videos: [], said: [], clips: [] };
+      }
+      return [];
+    });
+    renderPalette();
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "zzqx" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Search isn't answering right now.");
+    expect(screen.queryByText("Nothing matches “zzqx”.")).not.toBeInTheDocument();
+
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Nothing matches “zzqx”.")).toBeInTheDocument();
+  });
+});
+
+describe("CommandPalette, going somewhere", () => {
+  beforeEach(() => {
+    vi.mocked(api.get).mockReset().mockImplementation(async (path: string) => {
+      if (path === "/hook") return { available: false };
+      if (path === "/baseball") return { available: true };
+      if (path === "/basketball") return { available: false };
+      if (path === "/libraries") return [{ id: "l1", name: "Movies", kind: "movies" }];
+      return [];
+    });
+  });
+  afterEach(() => Object.assign(who, { role: "member", kind: "standard" }));
+
+  const goTo = async () => {
+    renderPalette();
+    const group = await screen.findByRole("group", { name: "Go to" });
+    await within(group).findByText("Baseball");
+    return within(group).getAllByRole("option").map((option) => option.textContent);
+  };
+
+  it("offers the sidebar's destinations, in its order, after Home and the libraries", async () => {
+    expect(await goTo()).toEqual([
+      "Home", "Movies", "Grid", "Baseball", "Subscriptions", "Collections", "Playlists", "Needs match", "Activity", "Notifications", "Settings",
+    ]);
+  });
+
+  it("offers an admin Stats and the Playback decisions", async () => {
+    who.role = "admin";
+    const shown = await goTo();
+    expect(shown).toContain("Stats");
+    expect(shown).toContain("Playback decisions");
+  });
+
+  it("keeps the running from a kid profile", async () => {
+    Object.assign(who, { role: "admin", kind: "kid" });
+    expect(await goTo()).toEqual(["Home", "Movies", "Grid", "Baseball", "Subscriptions", "Collections", "Playlists", "Notifications"]);
   });
 });

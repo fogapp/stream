@@ -71,13 +71,19 @@ module Stations
       @cursor = T.let(start, ActiveSupport::TimeWithZone)
       @problem = T.let(nil, T.nilable(String))
       @notes = T.let([], T::Array[T.untyped])
-      @filler = T.let(Source.filler(station), T::Array[Candidate])
+      # Filler by id, the order a pick among it is drawn from.
+      @filler = T.let(Source.filler(station).sort_by(&:playable_id), T::Array[Candidate])
       @chapters = T.let({}, T::Hash[String, T::Array[Float]])
       # A block's pool sorted, and split by series: a pool never changes
       # while a plan is made, and a week's plan picks hundreds of times.
       @sequences = T.let({}, T::Hash[[ String, Symbol ], T::Array[Candidate]])
       @by_series = T.let({}, T::Hash[[ String, Symbol ], T::Hash[String, T::Array[Candidate]]])
       @series_order = T.let({}, T::Hash[String, T::Array[String]])
+      # A block's pool by id, the order a shuffle draws from.
+      @by_id = T.let({}, T::Hash[String, T::Array[Candidate]])
+      # Where each program is in a sorted list, so the one after the last
+      # aired is found without searching the list every pick.
+      @positions = T.let({}.compare_by_identity, T::Hash[T::Array[Candidate], T::Hash[String, Integer]])
       @games = T.let([], T::Array[Games::Slot])
       @team_streams = T.let({}, T::Hash[Integer, LiveStream])
     end
@@ -242,10 +248,11 @@ module Stations
         fits = @filler.select { |candidate| candidate.duration <= room }
         break if fits.empty?
 
+        # Already by id (@filler is sorted once).
         fresh = fits.reject { |candidate| @history.aired_recently?(candidate.playable_id) }
         fresh = fits if fresh.empty?
         rng = Random.new(Digest::SHA256.hexdigest("#{@station.id}:filler:#{at.to_i}").first(15).to_i(16))
-        pick = T.must(fresh.sort_by(&:playable_id)[rng.rand(fresh.size)])
+        pick = T.must(fresh[rng.rand(fresh.size)])
         planned << Airing.new(household_id: @station.household_id, station_id: @station.id, playable_type: pick.playable_type,
           playable_id: pick.playable_id, media_file_id: pick.media_file_id, series_key: pick.series_key, starts_at: at,
           ends_at: at + pick.duration.seconds, reason: "Between programs", filler: true, created_at: @now)
@@ -324,11 +331,13 @@ module Stations
       fits = pool.select { |candidate| candidate.duration <= room }
       return nil if fits.empty?
 
-      fresh = fits.reject { |candidate| @history.aired_recently?(candidate.playable_id) }
+      # Drawn by id, from the pool sorted once.
+      fresh = (@by_id[block.id] ||= pool.sort_by(&:playable_id))
+        .select { |candidate| candidate.duration <= room && !@history.aired_recently?(candidate.playable_id) }
       # Everything has been on lately: the one least recently aired.
       return fits.min_by { |candidate| @history.last_aired(candidate.playable_id) || @now } if fresh.empty?
 
-      fresh.sort_by(&:playable_id)[random(block).rand(fresh.size)]
+      fresh[random(block).rand(fresh.size)]
     end
 
     # One show after another in turn, each where it left off.
@@ -389,7 +398,7 @@ module Stations
       index =
         if last.nil? then 0
         else
-          position = list.index { |candidate| candidate.playable_id == last.playable_id }
+          position = positions(list)[last.playable_id]
           position ? position + 1 : (list.index { |candidate| (sort_key(candidate, by) <=> sort_key(last, by)).to_i.positive? } || list.size)
         end
       if index >= list.size
@@ -401,6 +410,13 @@ module Stations
       end
       candidate = list.fetch(index)
       candidate.duration <= room ? candidate : nil
+    end
+
+    # Each program's first place in a sorted list (lists are the plan's
+    # own, made once: `sequence_of` and `next_of_series`).
+    sig { params(list: T::Array[Candidate]).returns(T::Hash[String, Integer]) }
+    def positions(list)
+      @positions[list] ||= list.each_with_index.with_object({}) { |(candidate, index), found| found[candidate.playable_id] ||= index }
     end
 
     sig { params(block: StationBlock, pool: T::Array[Candidate], by: Symbol).returns(T::Array[Candidate]) }

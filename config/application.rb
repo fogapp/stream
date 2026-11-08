@@ -52,7 +52,7 @@ module Stream
     # The middleware stack is built before Zeitwerk runs, so this is required
     # by hand (see the require above) and lib/middleware stays out of autoload.
     config.middleware.insert_before ActionDispatch::Static, Middleware::StaticCacheControl
-    # Above Rack::Sendfile, below the lucid agent's middleware.
+    # Above Rack::Sendfile, below the glass agent's middleware.
     config.middleware.insert_before Rack::Sendfile, Middleware::InlineHtml
   end
 end

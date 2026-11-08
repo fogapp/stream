@@ -23,6 +23,15 @@ class WatchState < ApplicationRecord
     type ? done.where(playable_type: type) : done
   }
 
+  # A profile's state of each of these, found in one query, or a new one
+  # for each it has none of: what an import reads a page at a time.
+  sig { params(profile: Profile, playables: T::Array[T.any(Movie, Episode)]).returns(T::Hash[[ String, String ], WatchState]) }
+  def self.index_for(profile, playables)
+    found = playables.empty? ? {} : where(profile: profile, playable: playables.uniq).index_by { |row| [ row.playable_type.to_s, row.playable_id.to_s ] }
+    playables.each { |playable| found[[ playable.class.polymorphic_name, playable.id ]] ||= new(profile: profile, playable: playable) }
+    found
+  end
+
   # Dismissed from Home. An episode takes its show off Next up too: that
   # card is the next episode, which usually has no state of its own yet,
   # so the show's latest one carries the flag, and Next up skips a show

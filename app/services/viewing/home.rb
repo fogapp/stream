@@ -86,12 +86,12 @@ module Viewing
       in_progress = continue_watching
       continuing = T.let(in_progress.map(&:playable), T::Array[T.any(Movie, Episode, Video)])
       libraries = Library.order(:name).to_a
-      movies_by_library = libraries.select { |library| library.kind == "movies" }
+      movies_by_library = libraries.select { |library| library.kind_enum == Library::Kind::Movies }
         .to_h { |library| [ library.id, Catalog.watchable_movies.where(library: library).order(created_at: :desc).limit(HUB_SIZE).to_a ] }
-      show_libraries = libraries.select { |library| library.kind == "shows" }
+      show_libraries = libraries.select { |library| library.kind_enum == Library::Kind::Shows }
       arrivals_by_library = show_libraries.to_h { |library| [ library.id, arrivals(library) ] }
       recent_by_library = arrivals_by_library.transform_values { |list| recently_added(list) }
-      videos_by_library = libraries.select { |library| library.kind == "channels" }.to_h do |library|
+      videos_by_library = libraries.select { |library| library.kind_enum == Library::Kind::Channels }.to_h do |library|
         [ library.id, Channels::Catalog.watchable_videos(Video.where(library: library)).order(created_at: :desc).limit(HUB_SIZE)
           .includes(:channel).to_a ]
       end
@@ -119,7 +119,7 @@ module Viewing
           items: continuing.map { |playable| @cards.card(playable) }),
         Hub.new(key: "next_up", title: "Next up", kind: "wide", items: next_up.map { |episode| @cards.card(episode) })
       ]
-      libraries.select { |library| library.kind == "channels" }.each do |library|
+      libraries.select { |library| library.kind_enum == Library::Kind::Channels }.each do |library|
         hubs << Hub.new(key: "recently_added:#{library.id}", title: "New in #{library.name}", kind: "videos",
           items: videos_by_library.fetch(library.id, []).map { |video| @cards.card(video) })
       end
@@ -136,7 +136,7 @@ module Viewing
       hubs.concat(pinned.map { |row| hub(row) })
       hubs << Hub.new(key: "subscriptions", title: "New from your subscriptions", kind: "videos",
         items: subscribed.map { |video| @cards.card(video) })
-      libraries.select { |library| library.kind == "movies" }.each do |library|
+      libraries.select { |library| library.kind_enum == Library::Kind::Movies }.each do |library|
         hubs << Hub.new(key: "recently_added:#{library.id}", title: "Recently added in #{library.name}", kind: "poster",
           items: movies_by_library.fetch(library.id, []).map { |movie| @cards.card(movie) })
       end
@@ -243,8 +243,10 @@ module Viewing
     sig { params(library: Library).returns(T::Array[Arrival]) }
     def arrivals(library)
       episodes = episode_editions(library)
-      latest = episodes.group("episodes.show_id").maximum("editions.created_at")
-      ids = latest.sort_by { |_, at| at }.reverse.first(HUB_SIZE).map(&:first)
+      # The HUB_SIZE shows with the newest arrivals, chosen by the database.
+      latest = episodes.group("episodes.show_id").order(Arel.sql("MAX(editions.created_at) DESC")).limit(HUB_SIZE)
+        .maximum("editions.created_at")
+      ids = latest.keys
       return [] if ids.empty?
 
       # Newest first, so an episode with two files keeps the later one.

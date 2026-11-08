@@ -9,7 +9,7 @@ module AboutSerializer
 
   sig { returns(T::Hash[Symbol, T.untyped]) }
   def self.about_json
-    state_dir = Rails.root.join("storage")
+    state_dir = StreamPaths.storage
     state = StorageLocation.inspect_path(state_dir.to_s)
     {
       git_sha: StreamVersion.sha,

@@ -25,7 +25,7 @@ module Catalog
       end
       CollectionItem.find_or_create_by!(collection: collection, item: movie)
       # Its films in more than one library: it's the household's.
-      if collection.library_id && collection.library_id != movie.library_id && !collection.locked_fields.include?("library_id")
+      if collection.library_id && collection.library_id != movie.library_id && !collection.locked?("library_id")
         collection.update!(library_id: nil)
       end
       refreshed = collection.metadata_refreshed_at

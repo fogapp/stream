@@ -7,6 +7,7 @@
 class Episode < ApplicationRecord
   extend T::Sig
   include Playable
+  include LockedFields
 
   belongs_to :show, inverse_of: :episodes
   belongs_to :season, inverse_of: :episodes

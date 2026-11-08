@@ -1,7 +1,7 @@
 # Apple TV stalls — what was found, and what was built
 
 Written after the first sessions of the tvOS app on a real Apple TV against
-a production Stream. The evidence came from Lucid traces, the transcoder and
+a production Stream. The evidence came from Glass traces, the transcoder and
 Thruster logs, read-only queries of `playback_sessions`, `playback_events`
 and `transcode_runs`, and timed reads from inside the transcoder container.
 Code cites the steps below as `docs/APPLETV_STALLS.md › R<n>`.

@@ -25,6 +25,7 @@ module Api
         end
         setting.assign_attributes(changes)
         setting.save!
+        saved(setting)
         render json: json_for(setting)
       end
 
@@ -37,7 +38,7 @@ module Api
       sig { void }
       def test
         setting = setting_class.find_by(household: current_household!)
-        return render json: { ok: false, message: unsaved_message } if setting.nil?
+        return render json: { ok: false, message: unsaved_message } if setting.nil? || !testable?(setting)
 
         ok, message = client(setting).test_connection
         setting.record_test!(ok, message)
@@ -60,6 +61,14 @@ module Api
 
       sig { params(setting: T.untyped).returns(T::Hash[Symbol, T.untyped]) }
       def json_for(setting) = raise NotImplementedError
+
+      # What follows a save (its saved_changes still readable).
+      sig { params(setting: T.untyped).void }
+      def saved(setting); end
+
+      # Whether a saved setting has enough to test; unsaved_message if not.
+      sig { params(setting: T.untyped).returns(T::Boolean) }
+      def testable?(setting) = true
 
       # What answers test_connection for it.
       sig { params(setting: T.untyped).returns(T.untyped) }

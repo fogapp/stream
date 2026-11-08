@@ -24,7 +24,7 @@ module Mcp
           profiles: Profile.unscoped.where(household_id: household.id).order(:position, :created_at).map do |profile|
             { name: profile.name, kid: profile.kid?, pin: profile.pin?, default: profile.id == default.id }
           end,
-          screens: Device.unscoped.where(household_id: household.id).listening.map { |device| ListScreens.screen_json(device) }
+          screens: ListScreens.screens_json(Device.unscoped.where(household_id: household.id).listening.to_a)
         )
       end
     end

@@ -32,12 +32,13 @@ RSpec.describe "VideoToolbox arguments" do
   end
 
   it "scales on the media engine, tone-mapping as it goes when asked" do
-    plain = Playback::FfmpegArgs.encoder_args([], 1080, "expr:gte(t,n_forced*6)", Playback::Encoders::Kind::Videotoolbox)
-    expect(vf(plain)).to eq("hwupload,scale_vt=w=-2:h=1080")
-    expect(plain).to include("h264_videotoolbox")
+    live = Playback::EncoderArgs::Quality::Live
+    plain = Playback::EncoderArgs.for(Playback::Encoders::Kind::Videotoolbox, height: 1080, keyframes: "expr:gte(t,n_forced*6)", quality: live)
+    expect(plain.filters.join(",")).to eq("hwupload,scale_vt=w=-2:h=1080")
+    expect(plain.codec).to include("h264_videotoolbox")
 
-    hdr = Playback::FfmpegArgs.encoder_args([ "bwdif=mode=send_frame" ], 720, "source", Playback::Encoders::Kind::Videotoolbox, tonemap: true)
-    expect(vf(hdr)).to eq("bwdif=mode=send_frame,hwupload,scale_vt=w=-2:h=720#{bt709}")
+    hdr = Playback::EncoderArgs.for(Playback::Encoders::Kind::Videotoolbox, height: 720, keyframes: "source", quality: live, tonemap: true)
+    expect(hdr.filters.join(",")).to eq("hwupload,scale_vt=w=-2:h=720#{bt709}")
   end
 
   def plan_of(video) = Playback::FfmpegArgs::VideoPlan.from(video)

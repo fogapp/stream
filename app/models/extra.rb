@@ -38,6 +38,10 @@ class Extra < ApplicationRecord
     MediaFile.where(id: media_file_id)
   end
 
+  # Its file, if it can be played (Playable#best_file).
+  sig { returns(T.nilable(MediaFile)) }
+  def best_file = media_files.playable.first
+
   sig { returns(String) }
   def kind_label
     case kind_enum

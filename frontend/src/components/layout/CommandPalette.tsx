@@ -1,24 +1,26 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Bell, Quote, LibraryBig, ListVideo, Rss, CornerDownLeft, FileQuestion, Film, Gauge, Home as HomeIcon, Search, Settings, Telescope, UserRound } from "lucide-react";
+import { Quote, CornerDownLeft, Film, Search, Telescope, UserRound } from "lucide-react";
 import { api, apiErrorMessage } from "@/api/client";
 import { LIBRARY_KIND_ICONS } from "@/lib/libraries";
 import { keys } from "@/lib/queryKeys";
-import { hookQuery, librariesQuery } from "@/lib/queries";
+import { HOME_NAV, type NavEntry } from "@/lib/nav";
+import { hookQuery, librariesQuery, searchQuery } from "@/lib/queries";
 import { cn } from "@/lib/cn";
 import { isTypingTarget } from "@/lib/keys";
 import { formatCaptured, formatClock } from "@/lib/format";
 import { posterAt, wantLabel } from "@/lib/hook";
-import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useFormMutation } from "@/hooks/useFormMutation";
+import { useVisibleNav } from "@/hooks/useVisibleNav";
 import { ArtworkImage } from "@/components/viewing/ArtworkImage";
 import { HookShowForm } from "@/components/hook/HookShowForm";
 import { Badge } from "@/components/ui/Badge";
 import { FormError } from "@/components/ui/Form";
 import { IconButton } from "@/components/ui/IconButton";
+import { Button } from "@/components/ui/Button";
 import type { HookHit, HookRequestKind, HookWant, ImageInfo, LibraryKind, SearchResults } from "@/types";
 
 interface Item {
@@ -56,6 +58,12 @@ function posterImage(url: string | null): ImageInfo | null {
 function LibraryIcon({ kind }: { kind: LibraryKind }) {
   const Icon = LIBRARY_KIND_ICONS[kind];
   return <Icon className={ICON} aria-hidden />;
+}
+
+/** A destination from lib/nav, as a "Go to" row. */
+function goTo(entry: NavEntry): Item {
+  const Icon = entry.icon;
+  return { id: `go-${entry.key}`, group: "Go to", label: entry.paletteLabel ?? entry.label, to: entry.to, icon: <Icon className={ICON} aria-hidden /> };
 }
 
 /** What a search found, as rows, in the order they're listed. */
@@ -135,13 +143,17 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
 
 function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const kid = useProfile().profile?.kind === "kid";
+  const { entries: destinations } = useVisibleNav();
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
   const [pendingEnter, setPendingEnter] = useState(false);
   const [mode, setMode] = useState<Mode>("stream");
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Changing where it looks closes whatever show was open to choose seasons.
+  const switchMode = useCallback((next: Mode) => {
+    setMode(next);
+    setExpanded(null);
+  }, []);
   const [asked, setAsked] = useState<Record<string, string>>({});
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
@@ -160,8 +172,7 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
 
   const { data: libraries } = useQuery(librariesQuery());
   const search = useQuery({
-    queryKey: keys.search.results(q),
-    queryFn: ({ signal }) => api.get<SearchResults>(`/search?q=${encodeURIComponent(q)}`, { signal }),
+    ...searchQuery(q),
     enabled: mode === "stream" && q.length >= 2,
     placeholderData: (previous) => previous,
   });
@@ -207,8 +218,9 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
       return [...(hookMovies.data ?? []).map((hit) => row(hit, "Movies")), ...(hookShows.data ?? []).map((hit) => row(hit, "Shows"))];
     }
 
+    // Home, each library, then the sidebar's destinations (lib/nav).
     const commands: Item[] = [
-      { id: "go-home", group: "Go to", label: "Home", to: "/", icon: <HomeIcon className={ICON} aria-hidden /> },
+      goTo(HOME_NAV),
       ...(libraries ?? []).map((library) => ({
         id: `go-library-${library.id}`,
         group: "Go to",
@@ -216,17 +228,8 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
         to: `/library/${library.id}`,
         icon: <LibraryIcon kind={library.kind} />,
       })),
-      { id: "go-collections", group: "Go to", label: "Collections", to: "/collections", icon: <LibraryBig className={ICON} aria-hidden /> },
-      { id: "go-subscriptions", group: "Go to", label: "Subscriptions", to: "/subscriptions", icon: <Rss className={ICON} aria-hidden /> },
-      { id: "go-playlists", group: "Go to", label: "Playlists", to: "/playlists", icon: <ListVideo className={ICON} aria-hidden /> },
-      { id: "go-needs-match", group: "Go to", label: "Needs match", to: "/needs-match", icon: <FileQuestion className={ICON} aria-hidden /> },
-      ...(user?.role === "admin"
-        ? [{ id: "go-playback", group: "Go to", label: "Playback decisions", to: "/playback", icon: <Gauge className={ICON} aria-hidden /> }]
-        : []),
-      { id: "go-activity", group: "Go to", label: "Activity", to: "/activity", icon: <Activity className={ICON} aria-hidden /> },
-      { id: "go-notifications", group: "Go to", label: "Notifications", to: "/notifications", icon: <Bell className={ICON} aria-hidden /> },
-      { id: "go-settings", group: "Go to", label: "Settings", to: "/settings", icon: <Settings className={ICON} aria-hidden /> },
-    ].filter((command) => !kid || !["go-needs-match", "go-playback", "go-activity", "go-settings"].includes(command.id));
+      ...destinations.map(goTo),
+    ];
     const shown = text ? commands.filter((command) => matches(command.label, text)) : commands;
     // Last, whatever Stream finds: the same words, asked of Hook.
     const further: Item[] =
@@ -236,7 +239,7 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
               id: "ask-hook",
               group: "Not in Stream?",
               label: `Look for “${text}” in Hook`,
-              run: () => setMode("hook"),
+              run: () => switchMode("hook"),
               icon: <Telescope className={ICON} aria-hidden />,
               trailing: <kbd className="hidden rounded border border-border px-1.5 text-xs text-muted sm:inline">⇧↵</kbd>,
             },
@@ -250,10 +253,16 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
       ...searchItems(found),
       ...further,
     ];
-  }, [libraries, user?.role, query, search.data, kid, mode, hookMovies.data, hookShows.data, asked, canAskHook, request, requesting]);
+  }, [libraries, destinations, switchMode, query, search.data, mode, hookMovies.data, hookShows.data, asked, canAskHook, request, requesting]);
 
-  useEffect(() => setActive(0), [items.length, q, mode]);
-  useEffect(() => setExpanded(null), [mode]);
+  // The highlighted row goes back to the first whenever the list is a new
+  // one — other words, another mode, results arriving — kept with the list
+  // it was chosen in rather than reset by an effect after the fact.
+  const listKey = `${mode}|${q}|${items.length}`;
+  const [cursor, setCursor] = useState({ listKey, index: 0 });
+  const active = cursor.listKey === listKey ? cursor.index : 0;
+  const setActive = (next: number | ((index: number) => number)) =>
+    setCursor({ listKey, index: typeof next === "function" ? next(active) : next });
 
   // Enter pressed before the results for what's typed arrived: the last
   // query's results are still on screen, so wait for these.
@@ -272,20 +281,16 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
     }
   };
 
+  // Enter, once what it was pressed for has come: the first row, as then.
+  const chooseFirst = useEffectEvent(() => choose(items[0]));
   useEffect(() => {
     if (!pendingEnter || !settled) return;
     setPendingEnter(false);
-    const first = items[0];
-    if (first?.to) {
-      onOpenChange(false);
-      navigate(first.to);
-    } else {
-      first?.run?.();
-    }
-  }, [pendingEnter, settled, items, navigate, onOpenChange]);
+    chooseFirst();
+  }, [pendingEnter, settled]);
 
   const lookFurther = () => {
-    setMode("hook");
+    switchMode("hook");
     input.current?.focus();
   };
 
@@ -298,7 +303,7 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
       else setPendingEnter(true);
     } else if (event.key === "Escape") {
       if (expanded) setExpanded(null);
-      else if (mode === "hook") setMode("stream");
+      else if (mode === "hook") switchMode("stream");
       else onOpenChange(false);
     } else return;
     event.preventDefault();
@@ -323,11 +328,18 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
           .filter(([, error]) => error)
           .map(([what, error]) => apiErrorMessage(error, `Hook couldn't search ${what}.`))
       : [];
+  // A failed search is said as one, never as "nothing matches".
+  const searchFailure =
+    mode === "stream" && typed.length >= 2 && search.isError && !search.isFetching
+      ? apiErrorMessage(search.error, "Search isn't answering right now.")
+      : null;
   const empty =
     mode === "stream"
       ? searching
         ? "Searching…"
-        : `Nothing matches “${typed}”.`
+        : searchFailure
+          ? null
+          : `Nothing matches “${typed}”.`
       : typed.length < 2
         ? "Type the name of a film or a show, and Hook looks for it."
         : searching
@@ -369,7 +381,7 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
               label={mode === "hook" ? "Back to Stream's results" : "Look for it in Hook"}
               title={mode === "hook" ? "Back to Stream (esc)" : "Look for it in Hook (⇧↵)"}
               aria-pressed={mode === "hook"}
-              onClick={() => (mode === "hook" ? setMode("stream") : lookFurther())}
+              onClick={() => (mode === "hook" ? switchMode("stream") : lookFurther())}
               className={cn("-mr-1 p-1.5", mode === "hook" && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary")}
             >
               <Telescope className="h-4 w-4" aria-hidden />
@@ -459,6 +471,14 @@ function CommandPaletteDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
               {failure}
             </p>
           ))}
+          {searchFailure ? (
+            <div role="alert" className="flex items-center justify-between gap-3 px-2 py-2 text-sm text-negative">
+              <span>{searchFailure}</span>
+              <Button variant="secondary" size="sm" onClick={() => void search.refetch()}>
+                Try again
+              </Button>
+            </div>
+          ) : null}
           {items.length === 0 && empty ? <p className="px-2 py-6 text-center text-sm text-muted">{empty}</p> : null}
         </div>
       </div>

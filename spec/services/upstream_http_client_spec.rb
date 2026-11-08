@@ -142,6 +142,26 @@ RSpec.describe UpstreamHttpClient do
         .to raise_error(UpstreamHttpClient::AuthError, /Missing permission: library_upload/)
     end
 
+    it "raises a refusal as the client's own error, tagged AuthError" do
+      stub_request(:get, "https://api.test/thing").to_return(status: 401, body: "")
+
+      expect { client.http_get("https://api.test/thing") }.to raise_error(Boom) do |raised|
+        expect(raised).to be_a(UpstreamHttpClient::AuthError)
+        expect(raised).not_to be_a(UpstreamHttpClient::RateLimitError)
+        expect(raised.class.name).to eq("#{Boom.name}::Unauthorized")
+      end
+    end
+
+    it "raises a rate limit as the client's own error, tagged RateLimitError" do
+      stub_request(:get, "https://api.test/thing").to_return(status: 429, body: "")
+
+      expect { client.http_get("https://api.test/thing") }.to raise_error(Boom) do |raised|
+        expect(raised).to be_a(UpstreamHttpClient::RateLimitError)
+        expect(raised.status).to eq(429)
+      end
+      expect(Boom.rate_limited).to equal(Boom.rate_limited)
+    end
+
     it "joins the list of field errors a validating API sends" do
       stub_request(:patch, "https://api.test/thing")
         .to_return(status: 400, body: '{"message":["seriesIndex must be a number","title should not be empty"]}',

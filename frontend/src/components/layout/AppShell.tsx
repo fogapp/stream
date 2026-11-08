@@ -1,15 +1,17 @@
 import { Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Activity, BarChart3, Bell, Download, LibraryBig, ListVideo, Rss, FileQuestion, Gauge, Home as HomeIcon, RadioTower, Tv, LogOut, Menu as MenuIcon, Moon, PanelLeftClose, PanelLeftOpen, Search, Settings as SettingsIcon, Sun, X } from "lucide-react";
+import { Bell, Tv, LogOut, Menu as MenuIcon, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { LIBRARY_KIND_ICONS } from "@/lib/libraries";
 import { keys } from "@/lib/queryKeys";
-import { baseballQuery, basketballQuery, librariesQuery } from "@/lib/queries";
+import { HOME_NAV, navFor } from "@/lib/nav";
+import { librariesQuery } from "@/lib/queries";
 import { useAuth } from "@/hooks/useAuth";
 import { useCatalogVersion } from "@/hooks/useCatalogVersion";
 import { BREAKPOINTS, useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTheme } from "@/hooks/useTheme";
+import { useVisibleNav } from "@/hooks/useVisibleNav";
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
@@ -21,33 +23,11 @@ import { useProfile } from "@/hooks/useProfile";
 import { TV_KEY } from "@/lib/tv";
 import type { NotificationsResponse } from "@/types";
 import { IconButton } from "@/components/ui/IconButton";
-import { offlineSupported } from "@/lib/offline/downloads";
 import { BrandMark } from "@/components/layout/BrandMark";
-import { BaseballIcon } from "@/components/baseball/BaseballIcon";
-import { BasketballIcon } from "@/components/basketball/BasketballIcon";
 import { SidebarCollapsed, SidebarLink, SidebarNav, type SidebarItem } from "@/components/layout/SidebarNav";
 
 /** How often the bell re-asks for the unread count. */
 const UNREAD_POLL_MS = 120_000;
-
-const HOME = { key: "home", to: "/", label: "Home", icon: HomeIcon, end: true } as const;
-
-const NAV = [
-  { key: "live", to: "/live", label: "Grid", icon: RadioTower, end: false },
-  // Only once the household has an MLB.tv account (Settings › Integrations).
-  { key: "baseball", to: "/baseball", label: "Baseball", icon: BaseballIcon, end: false, baseball: true },
-  // Only once the household turns on NBA League Pass (Settings › Integrations).
-  { key: "basketball", to: "/basketball", label: "Basketball", icon: BasketballIcon, end: false, basketball: true },
-  { key: "subscriptions", to: "/subscriptions", label: "Subscriptions", icon: Rss, end: false },
-  { key: "collections", to: "/collections", label: "Collections", icon: LibraryBig, end: false },
-  { key: "playlists", to: "/playlists", label: "Playlists", icon: ListVideo, end: false },
-  { key: "downloads", to: "/downloads", label: "Downloads", icon: Download, end: false, offline: true },
-  { key: "needs_match", to: "/needs-match", label: "Needs match", icon: FileQuestion, end: false, grownUps: true },
-  { key: "stats", to: "/stats", label: "Stats", icon: BarChart3, end: false, admin: true, grownUps: true },
-  { key: "playback", to: "/playback", label: "Playback", icon: Gauge, end: false, admin: true, grownUps: true },
-  { key: "activity", to: "/activity", label: "Activity", icon: Activity, end: false, grownUps: true },
-  { key: "settings", to: "/settings", label: "Settings", icon: SettingsIcon, end: false, grownUps: true },
-] as const;
 
 /**
  * The app frame. Phase 0 keeps hook's sidebar; the cinematic home and the
@@ -80,11 +60,7 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
-  // The bell's page is not in NAV (it lives on the bell), but it still names
-  // the tab.
-  const sectionLabel =
-    [HOME, ...NAV].find(({ to, end }) => (end ? pathname === to : pathname.startsWith(to)))?.label ??
-    (pathname.startsWith("/notifications") ? "Notifications" : undefined);
+  const sectionLabel = navFor(pathname)?.label;
   useEffect(() => {
     document.title = sectionLabel ? `Stream › ${sectionLabel}` : "Stream";
   }, [sectionLabel]);
@@ -126,8 +102,7 @@ export function AppShell() {
 
   // Each library is a destination of its own, the way Plex lists them.
   const { data: libraries, isPending: librariesPending } = useQuery(librariesQuery());
-  const baseball = useQuery(baseballQuery());
-  const basketball = useQuery(basketballQuery());
+  const nav = useVisibleNav();
   const navItems: SidebarItem[] = [
     ...(libraries ?? []).map((library) => ({
       key: `library:${library.id}`,
@@ -137,15 +112,8 @@ export function AppShell() {
       end: false,
       library,
     })),
-    // A kid profile gets the watching, not the running (PROPOSAL §7.4).
-    ...NAV.filter(
-      (item) =>
-        (!("admin" in item) || user?.role === "admin") &&
-        !(kid && "grownUps" in item) &&
-        (!("offline" in item) || offlineSupported()) &&
-        (!("baseball" in item) || baseball.data?.available === true) &&
-        (!("basketball" in item) || basketball.data?.available === true),
-    ),
+    // The bell's page has the bell.
+    ...nav.entries.filter((entry) => entry.sidebar !== false),
   ];
 
   const bell = (
@@ -262,8 +230,8 @@ export function AppShell() {
 
         <SidebarCollapsed.Provider value={collapsed}>
           <nav className={cn("flex-1 space-y-0.5 overflow-y-auto", collapsed ? "px-2" : "px-3")}>
-            <SidebarLink item={HOME} />
-            <SidebarNav items={navItems} loading={librariesPending || baseball.isPending || basketball.isPending} />
+            <SidebarLink item={HOME_NAV} />
+            <SidebarNav items={navItems} loading={librariesPending || nav.pending} />
           </nav>
         </SidebarCollapsed.Provider>
 

@@ -20,10 +20,11 @@ module RuboCop
         end
       end
 
-      # The only error envelope is { errors: [...] } via render_errors.
-      # { ok: false, error: } is allowed — it's the test_connection contract.
+      # The only error envelope is { errors: [...] } via render_errors. A
+      # test_connection answers { ok:, message: } — never an error: key.
       class NoSingularErrorRender < Base
-        MSG = "Use render_errors ({ errors: [...] }) — a bare { error: ... } render fragments the client's error handling."
+        MSG = "Use render_errors ({ errors: [...] }), or { ok:, message: } for a test_connection — " \
+              "a bare { error: ... } render fragments the client's error handling."
 
         def on_send(node)
           return unless node.method?(:render)
@@ -36,7 +37,7 @@ module RuboCop
           return unless payload&.hash_type?
 
           keys = payload.pairs.filter_map { |p| p.key.sym_type? ? p.key.value : nil }
-          add_offense(node) if keys.include?(:error) && !keys.include?(:ok)
+          add_offense(node) if keys.include?(:error)
         end
       end
 

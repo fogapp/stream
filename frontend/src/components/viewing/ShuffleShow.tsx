@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Shuffle } from "lucide-react";
-import { api, apiErrorMessage } from "@/api/client";
-import { usePlayback } from "@/hooks/usePlayback";
-import { keys } from "@/lib/queryKeys";
+import { apiErrorMessage } from "@/api/client";
+import { usePlaybackActions } from "@/hooks/usePlayback";
+import { seasonQuery } from "@/lib/queries";
 import { shuffled } from "@/lib/shuffle";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
-import type { NextItem, SeasonDetail, ShowDetail } from "@/types";
+import type { NextItem, ShowDetail } from "@/types";
 
 /**
  * Every episode here, in a random order, one after another: the first
@@ -18,7 +18,7 @@ import type { NextItem, SeasonDetail, ShowDetail } from "@/types";
 export function ShuffleShow({ show }: { show: ShowDetail }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { replaceQueue } = usePlayback();
+  const { replaceQueue } = usePlaybackActions();
   const [loading, setLoading] = useState(false);
   const available = show.seasons.filter((season) => season.available_count > 0);
   const regular = available.filter((season) => season.season_number > 0);
@@ -30,10 +30,7 @@ export function ShuffleShow({ show }: { show: ShowDetail }) {
     try {
       const details = await Promise.all(
         seasons.map((season) =>
-          queryClient.fetchQuery({
-            queryKey: keys.shows.season(show.id, season.season_number),
-            queryFn: ({ signal }) => api.get<SeasonDetail>(`/shows/${show.id}/seasons/${season.season_number}`, { signal }),
-          }),
+          queryClient.fetchQuery(seasonQuery(show.id, season.season_number)),
         ),
       );
       const episodes = shuffled(details.flatMap((season) => season.episodes).filter((episode) => episode.available));

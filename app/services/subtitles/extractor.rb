@@ -19,7 +19,7 @@ module Subtitles
 
     sig { returns(Pathname) }
     def self.root
-      Pathname.new(ENV.fetch("STREAM_STORAGE_DIR") { Rails.root.join("storage").to_s }).join("subtitles")
+      StreamPaths.storage.join("subtitles")
     end
 
     sig { params(file: MediaFile, track: Tracks::Track, extension: String).returns(Pathname) }
@@ -148,7 +148,7 @@ module Subtitles
     # viewer to pick that track waiting on a whole-file read.
     sig { void }
     def self.requeue_missing!
-      MediaFile.unscoped.where(state: MediaFile::State::Probed.serialize).includes(:media_streams).find_each do |file|
+      MediaFile.unscoped.playable.includes(:media_streams).find_each do |file|
         pgs_missing = Tracks.embedded(file).any? { |track| track.format == Tracks::Format::Pgs && !path_for(file, track, "sup").file? }
         fonts_missing = font_attachments(file).any? && fonts(file).empty?
         AnalyzeMediaFileJob.perform_later(file.id) if pgs_missing || fonts_missing

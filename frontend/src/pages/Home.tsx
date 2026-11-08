@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ArrowDown, ArrowUp, Info, SlidersHorizontal } from "lucide-react";
 import { api } from "@/api/client";
 import { keys } from "@/lib/queryKeys";
+import { homeHubsQuery } from "@/lib/queries";
 import { useAuth } from "@/hooks/useAuth";
 import { PosterCard, WideCard } from "@/components/viewing/cards";
 import { Hero } from "@/components/viewing/Hero";
@@ -25,7 +26,7 @@ import type { HomeHero, HomeHub, HomeHubs } from "@/types";
  * this profile chose.
  */
 export function Home() {
-  const hubs = useQuery({ queryKey: keys.home.hubs(), queryFn: ({ signal }) => api.get<HomeHubs>("/home", { signal }) });
+  const hubs = useQuery(homeHubsQuery());
   const { user } = useAuth();
 
   return (

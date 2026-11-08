@@ -36,7 +36,31 @@ class AppSetting < ApplicationRecord
 
   after_commit { self.class.bust_cache! }
 
+  # The outgoing webhook's address (Settings › General) usually carries its
+  # secret in the path (Home Assistant's webhook id): kept encrypted, and
+  # never serialized back — only that it's set, and where it goes.
+  encrypts :webhook_url
+
   validate :known_time_zone
+  validate :webhook_url_is_web, if: :webhook_url_changed?
+  validate :ntfy_url_is_web, if: :ntfy_url_changed?
+  validate :optimize_settings_in_range
+
+  # Settings › General's limits, each with what the form says when one's
+  # outside them.
+  OPTIMIZE_HEIGHTS = T.let([ 720, 1080, 2160 ].freeze, T::Array[Integer])
+
+  # Where the webhook goes, without the path that is its secret.
+  sig { returns(T.nilable(String)) }
+  def webhook_host
+    url = webhook_url
+    return nil if url.blank?
+
+    uri = URI.parse(url)
+    uri.port == uri.default_port ? uri.host : "#{uri.host}:#{uri.port}"
+  rescue URI::InvalidURIError
+    nil
+  end
 
   # Whether optimized versions may be encoded now (PROPOSAL §5.5): inside
   # the quiet hours, which may wrap past midnight. Equal start and end mean
@@ -76,6 +100,40 @@ class AppSetting < ApplicationRecord
   def optimize_budget_bytes = optimize_budget_gb * 1.gigabyte
 
   private
+
+  sig { void }
+  def webhook_url_is_web
+    url = webhook_url
+    return if url.nil?
+
+    uri = begin
+      URI.parse(url)
+    rescue URI::InvalidURIError
+      nil
+    end
+    return if uri.is_a?(URI::HTTP) && uri.host.present?
+
+    errors.add(:base, "The webhook's address starts with http:// or https://")
+  end
+
+  sig { void }
+  def ntfy_url_is_web
+    url = ntfy_url
+    errors.add(:base, "ntfy's address starts with http:// or https://") if url && !url.match?(%r{\Ahttps?://\S+\z})
+  end
+
+  # A blank transcode cap is the encoder's own default (Encoders.default_cap).
+  sig { void }
+  def optimize_settings_in_range
+    cap = max_video_transcodes
+    errors.add(:base, "The limit must be between 1 and 8") if cap && !cap.between?(1, 8)
+    if [ optimize_quiet_start_hour, optimize_quiet_end_hour ].any? { |hour| hour.nil? || !hour.between?(0, 23) }
+      errors.add(:base, "Quiet hours run from one hour of the day (0–23) to another")
+    end
+    errors.add(:base, "Optimized versions are 720p, 1080p or 2160p") unless OPTIMIZE_HEIGHTS.include?(optimize_max_height)
+    budget = optimize_budget_gb
+    errors.add(:base, "The space for optimized versions is between 1 and 100000 GB") if budget.nil? || !budget.between?(1, 100_000)
+  end
 
   sig { void }
   def known_time_zone

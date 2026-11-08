@@ -17,12 +17,18 @@ module Mcp
       sig { params(server_context: T.untyped, _extra: T.untyped).returns(MCP::Tool::Response) }
       def self.call(server_context:, **_extra)
         household = context_household(server_context)
-        json_response(Device.unscoped.where(household_id: household.id).listening.map { |device| screen_json(device) })
+        json_response(screens_json(Device.unscoped.where(household_id: household.id).listening.to_a))
       end
 
-      sig { params(device: Device).returns(T::Hash[Symbol, T.untyped]) }
-      def self.screen_json(device)
-        session = Remote::Control.now_playing(device)
+      # Every screen, with what each is playing read at once.
+      sig { params(screens: T::Array[Device]).returns(T::Array[T::Hash[Symbol, T.untyped]]) }
+      def self.screens_json(screens)
+        playing = Remote::Control.now_playing_on(screens)
+        screens.map { |device| screen_json(device, playing[device.id]) }
+      end
+
+      sig { params(device: Device, session: T.nilable(PlaybackSession)).returns(T::Hash[Symbol, T.untyped]) }
+      def self.screen_json(device, session)
         { name: device.display_name, browser: device.name,
           now_playing: session && playable_json(session.playable).merge(position_seconds: session.position_seconds.round,
             profile: session.profile&.name) }

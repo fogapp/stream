@@ -88,15 +88,15 @@ class AnalysisRun < ApplicationRecord
   def succeed!(duration_ms:, tool_version: nil)
     update!(status: Status::Succeeded.serialize, finished_at: Time.current, duration_ms: duration_ms,
       tool_version: self.class.short_version(tool_version), error: nil, consecutive_failures: 0)
-    Lucid.increment("analysis.runs", tags: { step: step_enum.serialize, status: Status::Succeeded.serialize })
-    Lucid.timing("analysis.duration", duration_ms, tags: { step: step_enum.serialize })
+    Glass.increment("analysis.runs", tags: { step: step_enum.serialize, status: Status::Succeeded.serialize })
+    Glass.timing("analysis.duration", duration_ms, tags: { step: step_enum.serialize })
   end
 
   sig { params(error: Exception).void }
   def fail!(error)
     update!(status: Status::Failed.serialize, error: "#{error.class}: #{error.message}".truncate(500),
       consecutive_failures: consecutive_failures + 1)
-    Lucid.increment("analysis.runs", tags: { step: step_enum.serialize, status: Status::Failed.serialize })
+    Glass.increment("analysis.runs", tags: { step: step_enum.serialize, status: Status::Failed.serialize })
   end
 
   # Runs the block as `step` for a file (or a live stream), recording the

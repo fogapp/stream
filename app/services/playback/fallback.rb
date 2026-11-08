@@ -67,7 +67,7 @@ module Playback
       Learned.failed!(failed) unless passing?(failed, failure)
       PlaybackEvent.create!(playback_session: failed, kind: PlaybackEvent::Kind::Error.serialize, position_seconds: position,
         detail: { "message" => "fell back (#{failure.serialize})", "cause" => cause }.compact, created_at: Time.current)
-      Lucid.increment("playback.fallbacks", tags: { method: failed.method, failure: failure.serialize })
+      Glass.increment("playback.fallbacks", tags: { method: failed.method, failure: failure.serialize })
     end
 
     # A failure about the evening rather than the file: a stall, the

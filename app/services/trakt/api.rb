@@ -73,8 +73,8 @@ module Trakt
         end
         begin
           Trakt::Api.store_tokens(@account, @client.refresh(refresh_token))
-        rescue UpstreamHttpClient::AuthError, Client::Error => e
-          raise if e.is_a?(Client::Error) && e.status != 400 && e.status != 401
+        rescue Client::Error => e
+          raise if !e.is_a?(UpstreamHttpClient::AuthError) && e.status != 400 && e.status != 401
 
           refused = "Trakt no longer accepts this profile's link. Link it again in Settings › Viewing."
         end

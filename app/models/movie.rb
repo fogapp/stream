@@ -18,4 +18,8 @@ class Movie < ApplicationRecord
   has_many :playlist_items, as: :item, dependent: :delete_all, inverse_of: :item
 
   validates :title, presence: true
+
+  # The title as Catalog::FileMatcher compares titles, so finding a film by
+  # name is a lookup (index on library_id, normalized_title).
+  before_save { self.normalized_title = Media::NameParser.normalize(title.to_s) if title_changed? || normalized_title.nil? }
 end

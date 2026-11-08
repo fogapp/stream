@@ -74,8 +74,12 @@ module Catalog
       Show.transaction do
         show.save!
         replace_credits(show, details.fetch("credits", {}), creators: Array(details["created_by"]))
+        # Every season read once, matched by number; a row is written only
+        # when something about it changed.
+        seasons = show.seasons.reload.index_by(&:season_number)
         Array(details["seasons"]).each do |season|
-          row = show.seasons.find_or_initialize_by(season_number: season.fetch("season_number").to_i)
+          number = season.fetch("season_number").to_i
+          row = seasons[number] ||= show.seasons.build(season_number: number)
           row.update!(title: season["name"], overview: season["overview"].presence, air_date: season["air_date"],
             episode_count: season["episode_count"], poster_path: season["poster_path"], tmdb_id: season["id"])
         end
@@ -93,16 +97,17 @@ module Catalog
       season.update!(title: season_details["name"], overview: season_details["overview"].presence,
         air_date: season_details["air_date"], poster_path: season_details["poster_path"],
         tmdb_id: season_details["id"], episode_count: Array(season_details["episodes"]).size)
+      # The season's episodes read once, matched by number.
+      episodes = show.episodes.where(season_number: number).index_by(&:episode_number)
       Array(season_details["episodes"]).each do |details|
-        episode = show.episodes.find_or_initialize_by(season_number: number,
-          episode_number: details.fetch("episode_number").to_i)
-        locked = episode.locked_fields.to_set
-        attributes = {
+        episode_number = details.fetch("episode_number").to_i
+        episode = episodes[episode_number] ||= show.episodes.build(season_number: number, episode_number: episode_number)
+        episode.assign_unlocked(
           season: season, title: details["name"], overview: details["overview"].presence,
           air_date: details["air_date"], runtime_minutes: details["runtime"], still_path: details["still_path"],
           vote_average: details["vote_average"], tmdb_id: details["id"]
-        }.reject { |key, _| locked.include?(key.to_s) }
-        episode.update!(attributes)
+        )
+        episode.save!
       end
       jobs = [ SyncArtworkJob.new("Season", season.id) ] + season.episodes.map { |episode| SyncArtworkJob.new("Episode", episode.id) }
       ActiveJob.perform_all_later(jobs)
@@ -154,27 +159,38 @@ module Catalog
       creators.each { |member| rows << [ member, Credit::Role::Creator, nil, "Creator", rows.size ] }
 
       creditable.credits.delete_all
-      rows.uniq { |row| [ row[0]["id"], row[1] ] }.each do |member, role, character, job, order|
-        person = upsert_person(member)
-        next if person.nil?
-
-        Credit.create!(person: person, creditable: creditable, role: role.serialize, character: character, job: job,
-          order: order)
+      rows = rows.uniq { |row| [ row[0]["id"], row[1] ] }.select { |row| row[0]["id"] && row[0]["name"].present? }
+      people = upsert_people(rows.map(&:first))
+      now = Time.current
+      credits = rows.map do |member, role, character, job, order|
+        { person_id: people.fetch(member["id"].to_i), creditable_type: creditable.class.polymorphic_name, creditable_id: creditable.id,
+          role: role.serialize, character: character, job: job, order: order, created_at: now, updated_at: now }
       end
+      Credit.insert_all!(credits) if credits.any?
+      creditable.credits.reset
     end
     private_class_method :replace_credits
 
-    sig { params(member: T::Hash[String, T.untyped]).returns(T.nilable(Person)) }
-    def self.upsert_person(member)
-      tmdb_id = member["id"]
-      return nil if tmdb_id.nil? || member["name"].blank?
+    # Everyone credited, written in one statement: their name as TMDB has
+    # it now, and their picture unless TMDB has none (a known one is never
+    # blanked). Someone listed twice takes their last name and last
+    # picture, as writing them one at a time did. Ids by TMDB id.
+    sig { params(members: T::Array[T::Hash[String, T.untyped]]).returns(T::Hash[Integer, String]) }
+    def self.upsert_people(members)
+      return {} if members.empty?
 
-      person = Person.find_or_initialize_by(tmdb_id: tmdb_id.to_i)
-      person.update!(name: member["name"], profile_path: member["profile_path"].presence || person.profile_path)
-      person
-    rescue ActiveRecord::RecordNotUnique
-      Person.find_by(tmdb_id: tmdb_id.to_i)
+      now = Time.current
+      rows = members.group_by { |member| member["id"].to_i }.map do |tmdb_id, listed|
+        { tmdb_id: tmdb_id, name: T.must(listed.last)["name"], profile_path: listed.filter_map { |member| member["profile_path"].presence }.last,
+          created_at: now, updated_at: now }
+      end
+      picture = "COALESCE(EXCLUDED.profile_path, people.profile_path)"
+      written = Person.upsert_all(rows, unique_by: :tmdb_id, returning: %w[tmdb_id id], record_timestamps: false, on_duplicate: Arel.sql(
+        "name = EXCLUDED.name, profile_path = #{picture}, updated_at = CASE WHEN people.name IS DISTINCT FROM EXCLUDED.name " \
+        "OR people.profile_path IS DISTINCT FROM #{picture} THEN EXCLUDED.updated_at ELSE people.updated_at END"
+      ))
+      written.rows.to_h { |tmdb_id, id| [ tmdb_id.to_i, id.to_s ] }
     end
-    private_class_method :upsert_person
+    private_class_method :upsert_people
   end
 end

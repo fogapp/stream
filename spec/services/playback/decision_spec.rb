@@ -20,10 +20,9 @@ RSpec.describe Playback::Decision do
   SAFARI_SDR = Playback::Capabilities.from_json(SAFARI.to_json_hash.merge("hdr" => []))
 
   def file(path, container, *streams, tags: {})
-    media = MediaFile.new(path: path, container: container,
-      probe: { "streams" => tags.map { |index, tag| { "index" => index, "codec_tag_string" => tag } } })
+    media = MediaFile.new(path: path, container: container)
     streams.each_with_index do |attributes, index|
-      media.media_streams.build({ index: index, default: index == 1 }.merge(attributes))
+      media.media_streams.build({ index: index, default: index == 1, codec_tag: tags[index] }.merge(attributes))
     end
     media
   end
@@ -203,12 +202,8 @@ RSpec.describe Playback::Decision do
 
   describe "Dolby Vision (R6)" do
     def dv(profile, compatibility: nil)
-      media = file("/m/a.mkv", MKV, video("hevc", bit_depth: 10, hdr: "dolby_vision", dv: profile), audio("aac"))
-      if compatibility
-        media.probe = { "streams" => [ { "index" => 0, "side_data_list" => [ { "side_data_type" => "DOVI configuration record",
-          "dv_bl_signal_compatibility_id" => compatibility } ] } ] }
-      end
-      media
+      file("/m/a.mkv", MKV, video("hevc", bit_depth: 10, hdr: "dolby_vision", dv: profile).merge(dolby_vision_compatibility: compatibility),
+        audio("aac"))
     end
 
     let(:hdr10) { Playback::Capabilities.from_json(SAFARI.to_json_hash.merge("hdr" => %w[hdr10])) }

@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api } from "@/api/client";
 import { GameCard } from "@/components/baseball/GameCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DayPicker } from "@/components/sports/DayPicker";
 import { GameGroup } from "@/components/sports/Scoreboard";
 import { EmptyState, QueryState } from "@/components/ui/PageState";
 import { useWatchGame } from "@/hooks/useWatchGame";
-import { BASEBALL_STATE_LABELS, groupGames, refreshEvery } from "@/lib/baseball";
-import { keys } from "@/lib/queryKeys";
-import type { BaseballDay, BaseballSide } from "@/types";
+import { BASEBALL_STATE_LABELS, groupGames } from "@/lib/baseball";
+import { baseballDayQuery } from "@/lib/queries";
+import type { BaseballSide } from "@/types";
 
 /**
  * Baseball (PROPOSAL §7.8): a day of MLB games from MLB's schedule, as a
@@ -23,11 +22,7 @@ export function Baseball() {
   const [params, setParams] = useSearchParams();
   const asked = params.get("date");
   const navigate = useNavigate();
-  const day = useQuery({
-    queryKey: keys.baseball.day(asked),
-    queryFn: ({ signal }) => api.get<BaseballDay>(`/baseball/games${asked ? `?date=${encodeURIComponent(asked)}` : ""}`, { signal }),
-    refetchInterval: (query) => refreshEvery(query.state.data),
-  });
+  const day = useQuery(baseballDayQuery(asked));
   const [starting, setStarting] = useState<{ gameId: number; side: BaseballSide } | null>(null);
   const watch = useWatchGame((answer) => navigate(`/stream/${answer.live_stream_id}`));
   const go = (date: string | null) => setParams(date ? { date } : {});

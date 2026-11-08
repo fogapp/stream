@@ -11,7 +11,8 @@ module SettingsSerializer
   sig { params(setting: AppSetting, profiles: T::Array[Profile]).returns(T::Hash[Symbol, T.untyped]) }
   def self.general_json(setting, profiles: [])
     {
-      webhook_url: setting.webhook_url,
+      # Write-only, like any credential: the path is the webhook's secret.
+      webhook_url_set: setting.webhook_url.present?, webhook_host: setting.webhook_host,
       # Where profiles' pushes go (each profile picks its own topic), and
       # each topic, so whoever subscribes knows what to subscribe to.
       ntfy_url: setting.ntfy_url,

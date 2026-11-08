@@ -8,7 +8,7 @@ module Api
     # making, changing and removing them.
     class ProfilesController < BaseController
       finds :profile, from: -> { Profile.all }
-      skip_before_action :set_profile, only: %i[index create current device_default]
+      skip_before_action :set_profile, only: %i[index create current]
       before_action :require_admin!, only: %i[create destroy]
 
       # Wrong PINs allowed per profile in a window before it waits.
@@ -84,21 +84,6 @@ module Api
 
         profile.destroy!
         head :no_content
-      end
-
-      # This device's default profile: { profile_id } or none to clear.
-      sig { void }
-      def device_default
-        device = current_device(create: true)
-        return render_errors("This browser hasn't said which device it is") if device.nil?
-
-        target = params[:profile_id].presence && Profile.find(params[:profile_id].to_s)
-        if target && target.pin? && chosen_profile != target
-          return render_errors("Choose that profile (with its PIN) on this device first", status: :forbidden)
-        end
-
-        device.update!(default_profile: target || nil)
-        render json: { device_default_id: device.default_profile_id }
       end
 
       private

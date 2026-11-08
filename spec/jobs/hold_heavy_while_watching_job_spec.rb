@@ -56,7 +56,7 @@ RSpec.describe HoldHeavyWhileWatchingJob do
 
   # A job runs with the query cache on, and a held read writes nothing that
   # would clear it: the pause has to be read afresh every time, or a hold
-  # lifted by another process is never seen (Lucid, 2026-10-21/22: both
+  # lifted by another process is never seen (Glass, 2026-10-21/22: both
   # heavy threads held for 12 h, until a deploy killed them).
   it "sees a pause lifted elsewhere while the query cache is on" do
     heavy.pause

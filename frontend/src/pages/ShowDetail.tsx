@@ -6,6 +6,7 @@ import { api } from "@/api/client";
 import { formatRuntime } from "@/lib/format";
 import { MEDIA_FILE_STATE_LABELS } from "@/lib/libraries";
 import { keys } from "@/lib/queryKeys";
+import { seasonQuery } from "@/lib/queries";
 import { refreshWatched } from "@/lib/watched";
 import { ArtworkImage } from "@/components/viewing/ArtworkImage";
 import { CastRow } from "@/components/viewing/CastRow";
@@ -29,7 +30,7 @@ import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { EmptyState, QueryState } from "@/components/ui/PageState";
 import { Tabs } from "@/components/ui/Tabs";
-import type { SeasonDetail, SeasonEpisode, ShowDetail as Show } from "@/types";
+import type { SeasonEpisode, ShowDetail as Show } from "@/types";
 
 /** A show's page: Play next, seasons, episodes (PROPOSAL §7.2). */
 export function ShowDetail() {
@@ -137,10 +138,7 @@ function ShowPage({ show }: { show: Show }) {
 }
 
 function Season({ showId, number }: { showId: string; number: number }) {
-  const season = useQuery({
-    queryKey: keys.shows.season(showId, number),
-    queryFn: ({ signal }) => api.get<SeasonDetail>(`/shows/${showId}/seasons/${number}`, { signal }),
-  });
+  const season = useQuery(seasonQuery(showId, number));
   return (
     <QueryState query={season} errorMessage="Could not load this season.">
       {(detail) => (

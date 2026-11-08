@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Expand, FoldHorizontal, ListVideo, Minimize2, Square, UnfoldHorizontal, X, RotateCcw, RotateCw, VolumeX } from "lucide-react";
 import { FullscreenButton, PlayPauseButton, SubtitleMenu, VolumeControl } from "@/components/player/controls";
 import { MiniTransport } from "@/components/player/MiniTransport";
@@ -11,7 +12,7 @@ import { useSeekBatch } from "@/components/player/useSeekBatch";
 import { useSessionEvents, useSessionReporting } from "@/components/player/useSessionReporting";
 import { useStallWatch } from "@/components/player/useStallWatch";
 import { useAutoHide } from "@/components/player/useAutoHide";
-import { AtPlayhead, usePlayhead, usePlayheadValue } from "@/components/player/playhead";
+import { AtPlayhead, AtProgress, usePlayhead, usePlayheadValue } from "@/components/player/playhead";
 import { attachSource } from "@/components/player/source";
 import { failureMessage, mediaErrorFailure, type PlayFailure } from "@/components/player/failure";
 import { needsAudioGraph, playOrMute, useAudioLevelling, volumeScale } from "@/components/player/audio";
@@ -39,6 +40,8 @@ import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { cn } from "@/lib/cn";
 import { formatClock } from "@/lib/format";
+import { keys } from "@/lib/queryKeys";
+import { useLatest } from "@/hooks/useLatest";
 import { useProfile } from "@/hooks/useProfile";
 import { useDocumentFullscreen } from "@/hooks/useDocumentFullscreen";
 import { notAShortcut } from "@/lib/keys";
@@ -191,7 +194,9 @@ export function Player({
   // was attached from: detaching resets the element to 0, so it's kept here.
   const detachedAt = useRef<{ startAt: number; at: number } | null>(null);
   const [duration, setDuration] = useState(session.duration_seconds ?? 0);
-  const [buffered, setBuffered] = useState(0);
+  // How far it has loaded: a store like the playhead, so a progress event
+  // re-renders only the seek bar.
+  const buffered = usePlayhead(0);
   // A profile that autoplays videos (Settings › Viewing): if the browser
   // won't start one with sound, it starts muted and says so.
   const { profile } = useProfile();
@@ -223,8 +228,6 @@ export function Player({
   const next = session.next_up;
   const creditsAt = session.markers.find((marker) => marker.kind === "credits")?.start ?? (duration > 120 ? duration - 20 : Infinity);
   const inCredits = usePlayheadValue(playhead, (seconds) => seconds >= creditsAt);
-  // The corner's bar moves in thousandths: enough to see, few enough renders.
-  const progress = usePlayheadValue(playhead, (seconds) => (duration > 0 ? Math.round(Math.min(seconds / duration, 1) * 1000) / 1000 : 0));
   // Credits are left to Up next when there's something next.
   const skippable = useMemo(() => session.markers.filter((marker) => !(next && marker.kind === "credits")), [session.markers, next]);
   const showUpNext = next !== null && !upNextDismissed && duration > 0 && inCredits;
@@ -251,12 +254,19 @@ export function Player({
     }
   }, [showUpNext, next, onPrefetch]);
 
+  // "Always skip" is the show's preference from now on: saved, and its page's
+  // copy refreshed. A failure gets the shared toast; this session skips anyway.
+  const queryClient = useQueryClient();
+  const { mutate: saveSkip } = useMutation({
+    mutationFn: ({ showId, kind }: { showId: string; kind: MarkerKind }) => api.patch(`/shows/${showId}/preferences`, { [`skip_${kind}`]: true }),
+    onSuccess: (_data, { showId }) => void queryClient.invalidateQueries({ queryKey: keys.shows.detail(showId) }),
+  });
   const alwaysSkip = useCallback(
     (kind: MarkerKind) => {
       setAutoSkip((current) => ({ ...current, [kind]: true }));
-      if (session.show_id) void api.patch(`/shows/${session.show_id}/preferences`, { [`skip_${kind}`]: true }).catch(() => undefined);
+      if (session.show_id) saveSkip({ showId: session.show_id, kind });
     },
-    [session.show_id],
+    [session.show_id, saveSkip],
   );
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const [subtitleId, setSubtitleId] = useState<string | null>(() => initialSubtitle(session.subtitles));
@@ -325,14 +335,12 @@ export function Player({
   // the server records why. Only when
   // there's no rung left does the viewer see why it stopped.
   const fellBack = useRef(false);
-  // Read when it's needed: the provider passes a new one every render, and
-  // the source must not be attached again for that.
-  const onFallbackRef = useRef(onFallback);
-  onFallbackRef.current = onFallback;
-  const onUpgradeRef = useRef(onUpgrade);
-  onUpgradeRef.current = onUpgrade;
-  const onFailedRef = useRef(onFailed);
-  onFailedRef.current = onFailed;
+  // Read when they're needed: the provider passes new ones every render, and
+  // the source must not be attached again for that. (Not Effect Events: a
+  // media event and a seek call these, not an Effect.)
+  const onFallbackRef = useLatest(onFallback);
+  const onUpgradeRef = useLatest(onUpgrade);
+  const onFailedRef = useLatest(onFailed);
   const fallBack = useCallback(
     (failure: PlayFailure) => {
       if (fellBack.current) return;
@@ -350,7 +358,7 @@ export function Player({
         onFailedRef.current(reason instanceof Error ? reason.message : failureMessage(failure));
       });
     },
-    [note, flushEvents],
+    [note, flushEvents, onFallbackRef, onFailedRef],
   );
   const stall = useStallWatch(note, fallBack);
   // A carried-on play says so for a moment, then gets out of the way.
@@ -411,7 +419,7 @@ export function Player({
       recovered.flush();
       attached.detach();
     };
-  }, [session.source, startAt, note, flushEvents, nativeHls, milestone, fallBack]);
+  }, [session.source, startAt, note, flushEvents, nativeHls, milestone, fallBack, onFailedRef]);
 
   // While playing, every ten seconds; and a final report however we leave.
   const report = useSessionReporting({ video, url: session.progress_url, playing, flushEvents, onReport });
@@ -449,7 +457,7 @@ export function Player({
       playhead.set(target);
       reveal();
     },
-    [reveal, session.fallback, playhead, seek],
+    [reveal, session.fallback, playhead, seek, onUpgradeRef],
   );
 
   // With an inset up, full screen is the whole page so it shows too; a
@@ -487,13 +495,13 @@ export function Player({
   );
 
   // A timestamp on the page: jump there without starting over.
+  // Only for a new request, with the player as it is then.
+  const jumpTo = useEffectEvent((at: number) => {
+    seekTo(at, { now: true });
+    void video.current?.play().catch(() => undefined);
+  });
   useEffect(() => {
-    if (seekRequest) {
-      seekTo(seekRequest.at, { now: true });
-      void video.current?.play().catch(() => undefined);
-    }
-    // Only for a new request.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (seekRequest) jumpTo(seekRequest.at);
   }, [seekRequest]);
 
   // A key, read with the player as it is now: the listener below is added
@@ -655,7 +663,7 @@ export function Player({
         onPlaying={(event) => stall.onPlaying(event.currentTarget)}
         onProgress={(event) => {
           const ranges = event.currentTarget.buffered;
-          setBuffered(ranges.length > 0 ? ranges.end(ranges.length - 1) : 0);
+          buffered.set(ranges.length > 0 ? ranges.end(ranges.length - 1) : 0);
         }}
         onPlay={() => {
           setPlaying(true);
@@ -708,21 +716,25 @@ export function Player({
         </Button>
       ) : null}
       {asInset && inset ? (
-        <PipControls
-          title={session.title}
-          subtitle={session.subtitle}
-          audio={inset.audio}
-          heard={!silenced}
-          onAudio={inset.onAudio}
-          onSwap={inset.onSwap}
-          onClose={() => {
-            report();
-            onClose?.();
-          }}
-          progress={progress}
-        >
-          <MiniTransport playing={playing} onToggle={togglePlay} onStep={(seconds) => seekTo(playhead.get() + seconds)} />
-        </PipControls>
+        <AtProgress playhead={playhead} duration={duration}>
+          {(progress) => (
+            <PipControls
+              title={session.title}
+              subtitle={session.subtitle}
+              audio={inset.audio}
+              heard={!silenced}
+              onAudio={inset.onAudio}
+              onSwap={inset.onSwap}
+              onClose={() => {
+                report();
+                onClose?.();
+              }}
+              progress={progress}
+            >
+              <MiniTransport playing={playing} onToggle={togglePlay} onStep={(seconds) => seekTo(playhead.get() + seconds)} />
+            </PipControls>
+          )}
+        </AtProgress>
       ) : chrome ? null : (
         <div className="pointer-events-none absolute inset-0 flex flex-col justify-between bg-gradient-to-b from-background/90 via-background/20 to-background/90 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
           <div className="pointer-events-auto flex items-center gap-1 p-2">
@@ -748,7 +760,9 @@ export function Player({
             <MiniTransport playing={playing} onToggle={togglePlay} onStep={(seconds) => seekTo(playhead.get() + seconds)} />
           </div>
           <div className="h-0.5 bg-foreground/20">
-            <div className="h-full bg-primary" style={{ width: `${progress * 100}%` }} />
+            <AtProgress playhead={playhead} duration={duration}>
+              {(progress) => <div className="h-full bg-primary" style={{ width: `${progress * 100}%` }} />}
+            </AtProgress>
           </div>
         </div>
       )}
@@ -863,7 +877,11 @@ export function Player({
         <div className={cn("pointer-events-auto space-y-2 bg-gradient-to-t from-background/90 to-transparent px-4 pb-4 pt-12 sm:px-6", over && endScreen && "invisible")}>
           <AtPlayhead playhead={playhead}>
             {(current) => (
-              <SeekBar current={current} duration={duration} buffered={buffered} chapters={session.chapters} segments={session.segments} trickplay={session.trickplay} onSeek={(seconds) => seekTo(seconds, { now: true })} />
+              <AtPlayhead playhead={buffered}>
+                {(loaded) => (
+                  <SeekBar current={current} duration={duration} buffered={loaded} chapters={session.chapters} segments={session.segments} trickplay={session.trickplay} onSeek={(seconds) => seekTo(seconds, { now: true })} />
+                )}
+              </AtPlayhead>
             )}
           </AtPlayhead>
           <div className="flex items-center gap-1 sm:gap-2">

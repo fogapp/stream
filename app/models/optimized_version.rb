@@ -74,7 +74,7 @@ class OptimizedVersion < ApplicationRecord
 
   sig { returns(Pathname) }
   def self.root
-    Pathname.new(ENV.fetch("STREAM_CACHE_DIR") { Rails.root.join("tmp", "cache", "stream").to_s }).join("optimized")
+    StreamPaths.cache.join("optimized")
   end
 
   # Bytes held by ready versions, against the budget in Settings.

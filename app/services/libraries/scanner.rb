@@ -100,7 +100,7 @@ module Libraries
     # Each video's sidecar subtitles, as this walk found them, so pressing
     # Play needn't list its folder (Subtitles::Tracks.sidecars). Written
     # only where they changed, compared with what the walk already read —
-    # not read again in batches, ~30 queries a scan (Lucid, 2026-10-10). A
+    # not read again in batches, ~30 queries a scan (Glass, 2026-10-10). A
     # file new to this walk has nothing to compare with.
     sig { params(paths: T::Array[String], rows: T::Hash[String, Row]).void }
     def remember_subtitles(paths, rows)

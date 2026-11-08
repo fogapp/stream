@@ -36,13 +36,16 @@ module Playback
         .returns(T.nilable([ MediaFile, Decision ]))
     end
     def self.choose(playable, client, max_height, wanted:)
-      files = playable.media_files.where(state: MediaFile::State::Probed.serialize).includes(:media_streams, :optimized_version).to_a
-      decide = ->(file) do
-        learned, why = Learned.constraints_for(file, client.client_class)
-        Decision.new(file, client.capabilities, audio_index: client.audio_index, max_height: max_height, device_name: client.device_name,
-          burn_subtitle: client.burn_subtitle, constraints: learned, fell_back: why)
-      end
+      files = playable.media_files.playable.includes(:media_streams, :optimized_version).to_a
       pinned = files.find { |file| file.id == wanted.to_s }
+      # What plays taught, read once for every file weighed here; `place`
+      # starts from the chosen decision's copy rather than asking again.
+      learned = Learned.constraints_for_all(pinned ? [ pinned ] : files, client.client_class)
+      decide = ->(file) do
+        constraints, why = learned.fetch(file.id)
+        Decision.new(file, client.capabilities, audio_index: client.audio_index, max_height: max_height, device_name: client.device_name,
+          burn_subtitle: client.burn_subtitle, constraints: constraints, fell_back: why)
+      end
       return [ pinned, decide.call(pinned) ] if pinned
 
       files.map { |file| [ file, decide.call(file) ] }
@@ -51,13 +54,15 @@ module Playback
 
     # The chosen decision, put where it runs. A copy that would wait on a
     # keyframe index is converted now instead; the index is made meanwhile
-    # and the next play repackages.
+    # and the next play repackages. What plays taught (Learned) comes with
+    # `chosen`, which `choose` decided from it.
     # Nothing waits on it.
     sig { params(file: MediaFile, chosen: Decision, client: Client, max_height: Integer).returns(Plan::Placed) }
     def self.place(file, chosen, client, max_height)
       unindexed = chosen.video&.copy && chosen.method.streamed? &&
         !ActiveSupport::Notifications.instrument("keyframes.stream") { Media::KeyframeIndex.ready_for_play!(file) }
-      learned, learned_why = Learned.constraints_for(file, client.client_class)
+      learned = chosen.constraints
+      learned_why = chosen.fell_back
       plan = Plan.new(file, client.capabilities, audio_index: client.audio_index, device_name: client.device_name,
         burn_subtitle: client.burn_subtitle, constraints: unindexed ? learned | Constraints.new(no_direct: true, convert_video: true) : learned,
         fell_back: unindexed ? INDEXING_REASON : learned_why)
@@ -66,7 +71,7 @@ module Playback
     end
 
     # A session of a file, warming if it's a stream. `live` says how the
-    # play counts in Lucid.
+    # play counts in Glass.
     sig do
       params(decision: Decision, position: Float, live: String, attributes: T::Hash[Symbol, T.untyped], note: T::Hash[String, T.untyped],
         announce: T::Boolean).returns(PlaybackSession)
@@ -99,8 +104,8 @@ module Playback
         audio_stream_index: decision.audio&.index, started_at: now, last_seen_at: now))
       # How the household's plays go: the share that isn't direct is what
       # the transcoder costs (media invariant 3).
-      Lucid.increment("playback.sessions", tags: { method: method, live: live })
-      Lucid.tag(playback_method: method)
+      Glass.increment("playback.sessions", tags: { method: method, live: live })
+      Glass.tag(playback_method: method)
       session
     end
     private_class_method :create

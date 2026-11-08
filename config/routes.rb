@@ -86,7 +86,6 @@ Rails.application.routes.draw do
         post :progress, on: :member
       end
       resources :optimized_versions, only: %i[index create destroy] do
-        post :retry, on: :member
         get :status, on: :collection
         post :bulk, on: :collection
         post :scan, on: :collection
@@ -97,7 +96,7 @@ Rails.application.routes.draw do
         delete "markers/:kind" => "media_files#clear_marker", on: :member
       end
 
-      resource :tmdb_setting, only: %i[show update] do
+      resource :tmdb_setting, only: %i[show update destroy] do
         post :test
       end
       resource :home, only: %i[show update], controller: "home" do
@@ -277,7 +276,6 @@ Rails.application.routes.draw do
 
       resources :profiles, only: %i[index create update destroy] do
         get :current, on: :collection
-        put :device_default, on: :collection
         post :select, on: :member
         resource :content, only: :show, controller: "profile_content" do
           put :hidden

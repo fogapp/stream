@@ -26,7 +26,7 @@ module Api
           end
         render json: {
           current: current && ArtworkSerializer.image_json(current).merge(source: current.source_enum, path: current.source_ref),
-          locked: owner.locked_fields.include?("#{kind.serialize}_path"), choices: choices
+          locked: owner.locked?("#{kind.serialize}_path"), choices: choices
         }
       rescue UpstreamHttpClient::Error => e
         render_errors("TMDB didn't answer: #{e.message}", status: :bad_gateway)

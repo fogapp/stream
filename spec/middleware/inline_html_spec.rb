@@ -16,10 +16,10 @@ RSpec.describe Middleware::InlineHtml do
     Rack::Sendfile.new(app, "X-Sendfile")
   end
 
-  it "sits between the lucid agent and Rack::Sendfile" do
+  it "sits between the glass agent and Rack::Sendfile" do
     stack = Rails.application.middleware.map(&:klass)
     expect(stack.index(described_class)).to eq(stack.index(Rack::Sendfile) - 1)
-    expect(stack.index(Lucid::Middleware)).to be < stack.index(described_class)
+    expect(stack.index(Glass::Middleware)).to be < stack.index(described_class)
   end
 
   it "answers `/` with the shell itself, not an X-Sendfile header" do
@@ -34,13 +34,13 @@ RSpec.describe Middleware::InlineHtml do
 
   # The 502 of 2026-09-30: the agent wrote its tag into the empty body
   # Rack::Sendfile left, and Thruster's file didn't fit that length.
-  it "lets the lucid agent inject its tag into the whole page" do
-    status, headers, body = Lucid::Relay.inject(Rack::MockRequest.env_for("/"),
+  it "lets the glass agent inject its tag into the whole page" do
+    status, headers, body = Glass::Relay.inject(Rack::MockRequest.env_for("/"),
       described_class.new(sendfile).call(Rack::MockRequest.env_for("/")))
 
     html = body.to_enum(:each).to_a.join
     expect(status).to eq(200)
-    expect(html).to include(%(<script defer src="/_lucid/lucid.js"></script>), '<div id="root">')
+    expect(html).to include(%(<script defer src="/_glass/glass.js"></script>), '<div id="root">')
     expect(headers["content-length"]).to eq(html.bytesize.to_s)
   end
 

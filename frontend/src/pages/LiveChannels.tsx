@@ -1,16 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { api } from "@/api/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, QueryState } from "@/components/ui/PageState";
-import { keys } from "@/lib/queryKeys";
-import type { Station } from "@/types";
+import { stationsQuery } from "@/lib/queries";
 
 /** Grid's channels, for an admin to make and program (PROPOSAL §7.7). */
 export function LiveChannels() {
-  const stations = useQuery({ queryKey: keys.live.stations(true), queryFn: ({ signal }) => api.get<Station[]>("/stations?hidden=1", { signal }) });
+  const stations = useQuery(stationsQuery(true));
   const newButton = (
     <Link to="/live/channels/new">
       <Button>

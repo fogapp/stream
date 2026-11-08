@@ -9,7 +9,7 @@ module Playback
 
     sig { returns(Pathname) }
     def self.root
-      Pathname.new(ENV.fetch("STREAM_CACHE_DIR") { Rails.root.join("tmp", "cache", "stream").to_s }).join("sessions")
+      StreamPaths.cache.join("sessions")
     end
 
     # A session's own stream in its directory; a smaller version of it

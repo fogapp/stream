@@ -53,7 +53,7 @@ module Stations
     sig { params(household_id: String, ids: T.untyped).returns(T::Array[Candidate]) }
     def self.extras(household_id, ids)
       Extra.unscoped.where(household_id: household_id, id: ids).joins(:media_file)
-        .where(media_files: { state: MediaFile::State::Probed.serialize, missing_since: nil })
+        .where(media_files: { state: MediaFile::State::Probed.serialize })
         .where("media_files.duration_seconds BETWEEN ? AND ?", 10, FILLER_MAX)
         .pluck("extras.id", "media_files.id", "media_files.duration_seconds", "extras.title").map do |id, file_id, duration, title|
           Candidate.new(playable_type: "Extra", playable_id: id, media_file_id: file_id, duration: duration.to_f, series_key: "filler",
@@ -67,12 +67,11 @@ module Stations
       scope = titles(Movie.unscoped.where(household_id: household_id), rules, "Movie")
       return [] if scope.nil?
 
-      scope = scope.where("movies.studios && ARRAY[?]::varchar[]", rules["studios"]) if rules["studios"]
+      scope = scope.where(Movie.overlap(:studios, rules["studios"])) if rules["studios"]
       # Networks choose shows; without studios a network channel airs no films.
       return [] if rules["networks"] && !rules["studios"]
 
-      scope = scope.where(year: rules["year_from"]..) if rules["year_from"]
-      scope = scope.where(year: ..rules["year_to"]) if rules["year_to"]
+      scope = Catalog::TitleFilter.years(scope, rules)
       scope = unwatched(scope, "Movie", household_id, rules)
       rows = files("Movie", scope.select(:id), rules)
         .joins("JOIN movies ON movies.id = editions.playable_id")
@@ -91,7 +90,7 @@ module Stations
       return [] if shows.nil?
       return [] if rules["studios"] && !rules["networks"]
 
-      shows = shows.where("shows.networks && ARRAY[?]::varchar[]", rules["networks"]) if rules["networks"]
+      shows = shows.where(Show.overlap(:networks, rules["networks"])) if rules["networks"]
       episodes = Episode.where(show_id: shows.select(:id))
       episodes = episodes.where("episodes.season_number > 0") unless rules["include_specials"]
       aired = "COALESCE(EXTRACT(YEAR FROM episodes.air_date)::int, (SELECT year FROM shows s WHERE s.id = episodes.show_id))"
@@ -159,8 +158,7 @@ module Stations
     # A readable file for each playable, largest first, the right length.
     sig { params(type: String, ids: T.untyped, rules: T::Hash[String, T.untyped]).returns(T.untyped) }
     def self.files(type, ids, rules)
-      scope = Edition.joins(:media_file).where(playable_type: type, playable_id: ids)
-        .where(media_files: { state: MediaFile::State::Probed.serialize, missing_since: nil })
+      scope = Edition.readable.where(playable_type: type, playable_id: ids)
         .where("media_files.duration_seconds >= ?", MIN_SECONDS)
       scope = scope.where("media_files.duration_seconds >= ?", rules["min_minutes"].to_i * 60) if rules["min_minutes"]
       scope = scope.where("media_files.duration_seconds <= ?", rules["max_minutes"].to_i * 60) if rules["max_minutes"]
@@ -172,7 +170,7 @@ module Stations
     # of this kind can match (only the other kind was picked).
     sig { params(scope: T.untyped, rules: T::Hash[String, T.untyped], type: String).returns(T.untyped) }
     def self.titles(scope, rules, type)
-      table = scope.klass.table_name
+      model = scope.klass
       picked = picked_ids(rules, type)
       unless picked.nil?
         return nil if picked.empty?
@@ -181,15 +179,13 @@ module Stations
       end
       excluded = Array(rules[type == "Movie" ? "exclude_movie_ids" : "exclude_show_ids"])
       scope = scope.where.not(id: excluded) if excluded.any?
-      scope = scope.where(library_id: rules["library_ids"]) if rules["library_ids"]
-      scope = scope.where("#{table}.genres && ARRAY[?]::varchar[]", rules["genres"]) if rules["genres"]
-      scope = scope.where.not("#{table}.genres && ARRAY[?]::varchar[]", rules["exclude_genres"]) if rules["exclude_genres"]
-      scope = scope.where("#{table}.keywords && ARRAY[?]::varchar[]", rules["keywords"]) if rules["keywords"]
-      scope = scope.where.not("#{table}.keywords && ARRAY[?]::varchar[]", rules["exclude_keywords"]) if rules["exclude_keywords"]
-      scope = scope.where("#{table}.vote_average >= ?", rules["min_rating"]) if rules["min_rating"]
+      scope = Catalog::TitleFilter.call(scope, rules)
+      scope = scope.where.not(model.overlap(:genres, rules["exclude_genres"])) if rules["exclude_genres"]
+      scope = scope.where(model.overlap(:keywords, rules["keywords"])) if rules["keywords"]
+      scope = scope.where.not(model.overlap(:keywords, rules["exclude_keywords"])) if rules["exclude_keywords"]
       if rules["max_rating_age"]
-        allowed = scope.klass.arel_table[:rating_age].lteq(rules["max_rating_age"])
-        allowed = allowed.or(scope.klass.arel_table[:rating_age].eq(nil)) if rules["allow_unrated"]
+        allowed = model.arel_table[:rating_age].lteq(rules["max_rating_age"])
+        allowed = allowed.or(model.arel_table[:rating_age].eq(nil)) if rules["allow_unrated"]
         scope = scope.where(allowed)
       end
       if rules["person_ids"]

@@ -8,6 +8,7 @@ module Api
     # as the home or away team's stream (Mlb::TeamStreams).
     class BaseballController < BaseController
       before_action :require_account!, except: :show
+      answers_upstream_errors Mlb::Schedule::Error
 
       # Whether there's an account, so whether the sidebar shows Baseball.
       sig { void }
@@ -25,8 +26,6 @@ module Api
         game_days = schedule.game_days(asked || today)
         date = asked || (game_days.include?(today) ? today : game_days.select { |day| day > today }.min || game_days.max || today)
         render json: BaseballSerializer.day_json(date: date, games: schedule.games(date), game_days: game_days, today: today)
-      rescue Mlb::Schedule::Error => e
-        render_errors(e.message, status: :bad_gateway)
       end
 
       # The stream of the team whose broadcast to watch (side: home or
@@ -45,8 +44,6 @@ module Api
 
         stream = Mlb::TeamStreams.for(current_household!.id, team["id"].to_i, team["name"].to_s)
         render json: { live_stream_id: stream.id, name: stream.name }
-      rescue Mlb::Schedule::Error => e
-        render_errors(e.message, status: :bad_gateway)
       end
 
       private

@@ -1,5 +1,5 @@
 import { ListEnd } from "lucide-react";
-import { usePlayback } from "@/hooks/usePlayback";
+import { usePlaybackActions, usePlayingTitle } from "@/hooks/usePlayback";
 import { toast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
@@ -7,7 +7,9 @@ import type { NextItem } from "@/types";
 
 /** Queue it after what's playing (PROPOSAL §5.4). Only there while something plays. */
 export function PlayNextButton({ item, compact = false, className }: { item: NextItem; compact?: boolean; className?: string }) {
-  const { current, enqueue } = usePlayback();
+  // One on every tile: it re-renders when the title playing changes, not as it plays.
+  const current = usePlayingTitle();
+  const { enqueue } = usePlaybackActions();
   if (!current || current.id === item.id) return null;
   const add = () => {
     enqueue(item);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CircleAlert, RotateCw } from "lucide-react";
 import { ChannelBar } from "@/components/live/ChannelBar";
@@ -11,10 +11,13 @@ import type { EndedVia } from "@/components/live/channelDeck";
 import { useChannelDeck } from "@/components/live/useChannelDeck";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/PageState";
-import { usePlayback } from "@/hooks/usePlayback";
+import { useNow } from "@/hooks/useNow";
+import { useLatest } from "@/hooks/useLatest";
+import { useOnNow } from "@/hooks/useOnNow";
+import { usePlaybackActions } from "@/hooks/usePlayback";
 import { cn } from "@/lib/cn";
 import { notAShortcut } from "@/lib/keys";
-import { adjacentStation, clockSkew, onAt } from "@/lib/live";
+import { adjacentStation, clockSkew } from "@/lib/live";
 import { useNowGuide } from "@/lib/liveGuide";
 import { livePlace } from "@/lib/livePlace";
 import { liveHandoff } from "@/lib/liveHandoff";
@@ -57,6 +60,11 @@ function usePicture(element: HTMLVideoElement | null): boolean {
   return ready;
 }
 
+/** The server's clock, ticking each second, for only what shows it (a countdown, the guide's line). */
+function Ticking({ skew, children }: { skew: number; children: (now: number) => ReactNode }) {
+  return children(useNow(1_000, skew));
+}
+
 /**
  * A Grid channel, full screen (PROPOSAL §7.7). The channel on screen and
  * its neighbours — up, down, and the last one watched — are each tuned and
@@ -70,7 +78,7 @@ export function LiveWatch() {
   const { number = "" } = useParams();
   const navigate = useNavigate();
   const guide = useNowGuide();
-  const { close, registerLiveMain } = usePlayback();
+  const { close, registerLiveMain } = usePlaybackActions();
   const [shown, setShown] = useState(number);
   const [last, setLast] = useState<string | null>(null);
   const [entry, setEntry] = useState("");
@@ -82,7 +90,6 @@ export function LiveWatch() {
     setGuideOpen(true);
   }, []);
   const toggleNow = useCallback(() => setNowOpen((open) => !open), []);
-  const [now, setNow] = useState(Date.now());
   const settle = useRef<number | undefined>(undefined);
   // Back to the guide it came from: the TV's, or the desktop's.
   const guidePath = fromTv() ? "/tv/live" : "/live";
@@ -135,10 +142,6 @@ export function LiveWatch() {
       }, 0);
     };
   }, []);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   // The channel in the address is the one on screen; the one before it is Last.
   const committed = useRef(number);
@@ -150,8 +153,7 @@ export function LiveWatch() {
 
   const commit = useCallback((target: string) => navigate(`/live/${encodeURIComponent(target)}`, { replace: true }), [navigate]);
   // Read through a ref: the slots change every render, and timers mustn't restart with them.
-  const slotsRef = useRef(deck.slots);
-  slotsRef.current = deck.slots;
+  const slotsRef = useLatest(deck.slots);
   const choose = useCallback(
     (target: GuideStation | null) => {
       if (!target) return;
@@ -161,7 +163,7 @@ export function LiveWatch() {
       if (ready) commit(target.number);
       else settle.current = window.setTimeout(() => commit(target.number), SETTLE_MS);
     },
-    [commit],
+    [commit, slotsRef],
   );
   const flip = useCallback((step: 1 | -1) => choose(adjacentStation(stations, shown, step)), [choose, stations, shown]);
   useEffect(() => () => window.clearTimeout(settle.current), []);
@@ -197,8 +199,8 @@ export function LiveWatch() {
     return () => window.clearTimeout(timer);
   }, [entry, byNumber, choose]);
 
-  const serverNow = now + skew;
-  const { current, next } = shownStation ? onAt(shownStation, serverNow) : { current: null, next: null };
+  const { current, next } = useOnNow(shownStation, skew);
+  const toGuide = useCallback(() => navigate(guidePath), [navigate, guidePath]);
   const playing: Airing | null = station?.airings.find((airing) => airing.id === active?.session?.live?.airing_id) ?? null;
   const upcoming = playing ? (station?.airings.find((airing) => Date.parse(airing.starts_at) >= Date.parse(playing.ends_at) - 1000) ?? null) : next;
 
@@ -254,6 +256,7 @@ export function LiveWatch() {
     );
   }
 
+  const guideData = guide.data;
   const switching = shown !== number;
   const message =
     active?.state === "failed" ? "This channel couldn't be tuned." : active?.state === "unavailable" ? "This channel can't play here right now." : undefined;
@@ -277,25 +280,29 @@ export function LiveWatch() {
       )}
       {showCard ? (
         <>
-          <TuningCard
-            station={shownStation}
-            airing={active?.state === "gap" && !switching ? null : current}
-            next={next}
-            timeZone={timeZone}
-            now={serverNow}
-            message={switching ? undefined : message}
-            action={
-              !switching && active?.state === "failed" ? (
-                <Button variant="secondary" onClick={deck.retry}>
-                  <RotateCw className="h-4 w-4" aria-hidden />
-                  Try again
-                </Button>
-              ) : null
-            }
-          />
+          <Ticking skew={skew}>
+            {(now) => (
+              <TuningCard
+                station={shownStation}
+                airing={active?.state === "gap" && !switching ? null : current}
+                next={next}
+                timeZone={timeZone}
+                now={now}
+                message={switching ? undefined : message}
+                action={
+                  !switching && active?.state === "failed" ? (
+                    <Button variant="secondary" onClick={deck.retry}>
+                      <RotateCw className="h-4 w-4" aria-hidden />
+                      Try again
+                    </Button>
+                  ) : null
+                }
+              />
+            )}
+          </Ticking>
           {/* Without a picture there's no player: the channel can still be changed. */}
           <div className="absolute inset-x-0 top-0 z-10">
-            <ChannelBar onBack={() => navigate(guidePath)} onChannel={flip} onGuide={openGuide} onNow={toggleNow} nowOpen={nowOpen} />
+            <ChannelBar onBack={toGuide} onChannel={flip} onGuide={openGuide} onNow={toggleNow} nowOpen={nowOpen} />
           </div>
         </>
       ) : null}
@@ -305,9 +312,9 @@ export function LiveWatch() {
           video={deck.activeElement}
           session={active.session}
           keys={!guideOpen}
-          onBack={() => navigate(guidePath)}
+          onBack={toGuide}
           playing={{ kind: "station", stationId: active.stationId, number, title: shownStation?.name ?? number }}
-          top={<ChannelBar onBack={() => navigate(guidePath)} onChannel={flip} onGuide={openGuide} onNow={toggleNow} nowOpen={nowOpen} />}
+          top={<ChannelBar onBack={toGuide} onChannel={flip} onGuide={openGuide} onNow={toggleNow} nowOpen={nowOpen} />}
         />
       ) : null}
       {!showCard && active?.session && !active.session.live_stream && deck.activeElement ? (
@@ -322,7 +329,7 @@ export function LiveWatch() {
           keys={!guideOpen}
           onEnded={onEnded}
           onRestart={onRestart}
-          onBack={() => navigate(guidePath)}
+          onBack={toGuide}
           onChannel={flip}
           onGuide={openGuide}
           onNow={toggleNow}
@@ -331,22 +338,28 @@ export function LiveWatch() {
         />
       ) : null}
       {guideOpen && guide.data ? (
-        <MiniGuide
-          guide={guide.data}
-          stationId={station?.id ?? null}
-          now={serverNow}
-          onChoose={(target, airing) => {
-            if (Date.parse(airing.starts_at) <= serverNow && Date.parse(airing.ends_at) > serverNow) {
-              setGuideOpen(false);
-              choose(target);
-            }
-          }}
-          onClose={() => setGuideOpen(false)}
-        />
+        <Ticking skew={skew}>
+          {(now) => (
+            <MiniGuide
+              guide={guideData}
+              stationId={station?.id ?? null}
+              now={now}
+              onChoose={(target, airing) => {
+                if (Date.parse(airing.starts_at) <= now && Date.parse(airing.ends_at) > now) {
+                  setGuideOpen(false);
+                  choose(target);
+                }
+              }}
+              onClose={() => setGuideOpen(false)}
+            />
+          )}
+        </Ticking>
       ) : null}
       {/* Outside the fading controls: open, it stays until closed. */}
       {nowOpen && guide.data ? (
-        <OnNowPanel guide={guide.data} stationId={shownStation?.id ?? null} now={serverNow} onChoose={choose} onClose={() => setNowOpen(false)} />
+        <Ticking skew={skew}>
+          {(now) => <OnNowPanel guide={guideData} stationId={shownStation?.id ?? null} now={now} onChoose={choose} onClose={() => setNowOpen(false)} />}
+        </Ticking>
       ) : null}
       {entryOverlay}
     </div>

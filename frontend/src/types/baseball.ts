@@ -1,6 +1,3 @@
-import type { MovieCard, SearchPerson, ShowCard } from "@/types/catalog";
-import type { Testable } from "@/types/core";
-
 // Baseball (app/serializers/baseball_serializer.rb, PROPOSAL §7.8).
 
 /** GET /baseball: whether the household has an MLB.tv account, so whether Baseball is in the sidebar. */
@@ -93,60 +90,3 @@ export interface BaseballWatch {
   name: string;
 }
 
-export type OpenSubtitlesSettings =
-  | { configured: false }
-  | ({
-      configured: true;
-      username: string | null;
-      languages: string[];
-      enabled: boolean;
-      remaining_downloads: number | null;
-      resets_at: string | null;
-    } & Testable);
-
-export type TraktSettings =
-  | { configured: false }
-  | ({
-      configured: true;
-      client_id: string;
-    } & Testable);
-
-export const TRAKT_LINK_STATES = ["pending", "linked", "needs_relink"] as const;
-
-export type TraktLinkState = (typeof TRAKT_LINK_STATES)[number];
-
-export interface TraktLink {
-  state: TraktLinkState;
-  username: string | null;
-  linked_at: string | null;
-  last_synced_at: string | null;
-  last_error: string | null;
-  last_error_at: string | null;
-  user_code: string | null;
-  verification_url: string | null;
-  code_expires_at: string | null;
-  poll_interval: number | null;
-}
-
-export interface TraktAccountInfo {
-  available: boolean;
-  account: TraktLink | null;
-}
-
-export interface TranscriptInfo {
-  available: boolean;
-  source?: "subtitles" | "whisper";
-  language?: string | null;
-  lines: { start: number; end: number; text: string }[];
-}
-
-export interface PersonDetail extends SearchPerson {
-  tmdb_id: number;
-  movies: MovieCard[];
-  shows: ShowCard[];
-}
-
-/** How a live stream's relay is going (Playback::LiveCache status). */
-export const LIVE_RELAY_STATES = ["starting", "live", "reconnecting"] as const;
-
-export type LiveRelayState = (typeof LIVE_RELAY_STATES)[number];

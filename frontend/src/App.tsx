@@ -10,8 +10,6 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Home } from "@/pages/Home";
 import { Library } from "@/pages/Library";
 import { MovieDetail } from "@/pages/MovieDetail";
-import { Login } from "@/pages/Login";
-import { SigninComplete, SigninLink } from "@/pages/SigninHandoff";
 import { Notifications } from "@/pages/Notifications";
 import { ShowDetail } from "@/pages/ShowDetail";
 import { PersonDetail } from "@/pages/PersonDetail";
@@ -23,11 +21,7 @@ import { ChannelDetail } from "@/pages/ChannelDetail";
 import { VideoDetail } from "@/pages/VideoDetail";
 import { Subscriptions } from "@/pages/Subscriptions";
 import { ClipDetail } from "@/pages/ClipDetail";
-import { Pair } from "@/pages/Pair";
 import { Watch } from "@/pages/Watch";
-import { Live } from "@/pages/Live";
-import { LiveWatch } from "@/pages/LiveWatch";
-import { StreamWatch } from "@/pages/StreamWatch";
 import { Downloads, OfflineDownloads } from "@/pages/Downloads";
 import { OfflineWatch } from "@/pages/OfflineWatch";
 import { RemoteListener } from "@/components/remote/RemoteListener";
@@ -36,7 +30,17 @@ import { RouteErrorBoundary } from "@/components/layout/RouteErrorBoundary";
 import { LoadingState } from "@/components/ui/PageState";
 
 // The admin pages and the TV layout load when they're opened: most visits
-// (and every kid profile) never need them.
+// (and every kid profile) never need them. So do the Grid and live streams,
+// and signing in (with its passkey library): a signed-in visit never needs that.
+// Downloads stay in the first load — they play with no network to fetch a page.
+// (Live and Pair wait in the shell's own Suspense, as Settings does.)
+const Login = lazy(() => import("@/pages/Login").then((module) => ({ default: module.Login })));
+const SigninComplete = lazy(() => import("@/pages/SigninHandoff").then((module) => ({ default: module.SigninComplete })));
+const SigninLink = lazy(() => import("@/pages/SigninHandoff").then((module) => ({ default: module.SigninLink })));
+const Pair = lazy(() => import("@/pages/Pair").then((module) => ({ default: module.Pair })));
+const Live = lazy(() => import("@/pages/Live").then((module) => ({ default: module.Live })));
+const LiveWatch = lazy(() => import("@/pages/LiveWatch").then((module) => ({ default: module.LiveWatch })));
+const StreamWatch = lazy(() => import("@/pages/StreamWatch").then((module) => ({ default: module.StreamWatch })));
 const ActivityLog = lazy(() => import("@/pages/ActivityLog").then((module) => ({ default: module.ActivityLog })));
 const FileDetail = lazy(() => import("@/pages/FileDetail").then((module) => ({ default: module.FileDetail })));
 const NeedsMatch = lazy(() => import("@/pages/NeedsMatch").then((module) => ({ default: module.NeedsMatch })));
@@ -55,11 +59,22 @@ const TvLibrary = lazy(() => import("@/pages/tv/TvLibrary").then((module) => ({ 
 const TvChannel = lazy(() => import("@/pages/tv/TvLibraryKinds").then((module) => ({ default: module.TvChannel })));
 const TvLive = lazy(() => import("@/pages/tv/TvLive").then((module) => ({ default: module.TvLive })));
 
-/** A page outside the shell that loads when opened: its own boundary and wait. */
-function Deferred({ children }: { children: ReactElement }) {
+/**
+ * A page outside the shell that loads when opened: its own boundary and
+ * wait. A full-screen one (`screen`, the wait's words) waits as it will
+ * load, dark over the whole window.
+ */
+function Deferred({ children, screen }: { children: ReactElement; screen?: string }) {
+  const fallback = screen ? (
+    <div data-theme="dark" className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <LoadingState label={screen} />
+    </div>
+  ) : (
+    <LoadingState />
+  );
   return (
     <RouteErrorBoundary>
-      <Suspense fallback={<LoadingState />}>{children}</Suspense>
+      <Suspense fallback={fallback}>{children}</Suspense>
     </RouteErrorBoundary>
   );
 }
@@ -128,8 +143,8 @@ function ProfileRoutes() {
       <Routes>
       {/* The player takes the whole screen: no shell around it. */}
       <Route path="watch/:kind/:id" element={<Watch />} />
-      <Route path="live/:number" element={<LiveWatch />} />
-      <Route path="stream/:id" element={<StreamWatch />} />
+      <Route path="live/:number" element={<Deferred screen="Tuning…"><LiveWatch /></Deferred>} />
+      <Route path="stream/:id" element={<Deferred screen="Connecting…"><StreamWatch /></Deferred>} />
       {/* The 10-foot layout for a TV browser. */}
       <Route path="tv" element={<Deferred><TvHome /></Deferred>} />
       <Route path="tv/movie/:id" element={<Deferred><TvTitle kind="movie" /></Deferred>} />
@@ -194,10 +209,10 @@ export function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<Deferred><Login /></Deferred>} />
             {/* Sign in with fog: where its callback hands the browser back. */}
-            <Route path="/auth/complete" element={<SigninComplete />} />
-            <Route path="/auth/link" element={<SigninLink />} />
+            <Route path="/auth/complete" element={<Deferred><SigninComplete /></Deferred>} />
+            <Route path="/auth/link" element={<Deferred><SigninLink /></Deferred>} />
             <Route path="/tv/pair" element={<Deferred><TvPair /></Deferred>} />
             <Route path="/offline" element={<OfflineRoute><OfflineDownloads /></OfflineRoute>} />
             <Route path="/downloads/:id" element={<OfflineRoute><OfflineWatch /></OfflineRoute>} />

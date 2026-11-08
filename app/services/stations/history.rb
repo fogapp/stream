@@ -9,12 +9,16 @@ module Stations
   class History
     extend T::Sig
 
-    Entry = Struct.new(:block_id, :candidate, :starts_at)
-
     sig { params(station: Station, since: ActiveSupport::TimeWithZone).void }
     def initialize(station, since:)
       @since = since
-      @entries = T.let([], T::Array[T.untyped])
+      # Kept as airings are added (in the order they air), so a pick asks
+      # in constant time rather than scanning a week of entries: each
+      # block's last, the last of each series in it, and how many of the
+      # same series it has aired in a row.
+      @last_in = T.let({}, T::Hash[String, Candidate])
+      @last_of = T.let({}, T::Hash[[ String, String ], Candidate])
+      @runs = T.let({}, T::Hash[String, [ String, Integer ]])
       @recent = T.let({}, T::Hash[String, ActiveSupport::TimeWithZone])
       airings = Airing.unscoped.where(station_id: station.id)
       Airing.unscoped.where(station_id: station.id).where(starts_at: since..).pluck(:playable_id, :starts_at).each do |id, at|
@@ -31,25 +35,19 @@ module Stations
 
     sig { params(block_id: String, candidate: Candidate, starts_at: ActiveSupport::TimeWithZone).void }
     def add(block_id, candidate, starts_at)
-      @entries << Entry.new(block_id, candidate, starts_at)
+      record(block_id, candidate)
       @recent[candidate.playable_id] = starts_at
     end
 
     sig { params(block_id: String).returns(T.nilable(Candidate)) }
-    def last_in(block_id) = @entries.reverse_each.find { |entry| entry.block_id == block_id }&.candidate
+    def last_in(block_id) = @last_in[block_id]
 
     sig { params(block_id: String, series_key: String).returns(T.nilable(Candidate)) }
-    def last_of(block_id, series_key)
-      @entries.reverse_each.find { |entry| entry.block_id == block_id && entry.candidate.series_key == series_key }&.candidate
-    end
+    def last_of(block_id, series_key) = @last_of[[ block_id, series_key ]]
 
     # How many of the block's latest airings in a row are the same series.
     sig { params(block_id: String).returns(Integer) }
-    def run_length(block_id)
-      mine = @entries.select { |entry| entry.block_id == block_id }
-      key = mine.last&.candidate&.series_key
-      mine.reverse.take_while { |entry| entry.candidate.series_key == key }.size
-    end
+    def run_length(block_id) = @runs[block_id]&.last || 0
 
     sig { params(playable_id: String).returns(T::Boolean) }
     def aired_recently?(playable_id) = @recent.key?(playable_id)
@@ -77,8 +75,17 @@ module Stations
           series_key: row.series_key, series_title: episode&.show&.title || video&.channel&.title || movie_title.to_s,
           season: episode&.season_number.to_i, episode: episode&.episode_number.to_i,
           aired_on: episode&.air_date || video&.upload_date || released)
-        @entries << Entry.new(row.station_block_id, candidate, row.starts_at)
+        record(T.must(row.station_block_id), candidate)
       end
+    end
+
+    sig { params(block_id: String, candidate: Candidate).void }
+    def record(block_id, candidate)
+      key = candidate.series_key
+      @last_in[block_id] = candidate
+      @last_of[[ block_id, key ]] = candidate
+      series, count = @runs[block_id]
+      @runs[block_id] = [ key, series == key && count ? count + 1 : 1 ]
     end
   end
 end

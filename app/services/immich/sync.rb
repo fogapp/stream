@@ -107,7 +107,7 @@ module Immich
         city: exif["city"].presence, country: exif["country"].presence, latitude: exif["latitude"], longitude: exif["longitude"],
         description: exif["description"].presence, favorite: asset["isFavorite"] == true
       )
-      if local && !clip.locked_fields.include?("captured_at")
+      if local && !clip.locked?("captured_at")
         clip.assign_attributes(captured_at: local.utc, captured_source: Clip::CapturedSource::Immich.serialize, captured_floating: true)
       end
       clip.save! if clip.changed?

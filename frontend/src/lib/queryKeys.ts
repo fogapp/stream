@@ -232,6 +232,7 @@ export const keys = {
     all: ["remote"] as const,
     thisDevice: () => [...keys.remote.all, "thisDevice"] as const,
     devices: () => [...keys.remote.all, "devices"] as const,
+    commands: () => [...keys.remote.all, "commands"] as const,
   },
   transcodeNodes: {
     all: ["transcodeNodes"] as const,

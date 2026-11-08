@@ -42,7 +42,7 @@ module Markers
 
     sig { params(episode: Episode).returns(Result) }
     def self.for(episode)
-      file = readable_file(episode)
+      file = episode.best_file
       mine = file && AudioFingerprint.find_by(media_file: file, segment: AudioFingerprint::Segment::Head.serialize)
       return unknown if file.nil? || mine.nil?
 
@@ -70,14 +70,6 @@ module Markers
     sig { params(compared: Integer).returns(Result) }
     def self.unknown(compared = 0) = Result.new(intro: Verdict::Unknown, confidence: 0.0, compared: compared)
     private_class_method :unknown
-
-    # The episode's largest readable file, as marker detection takes it.
-    sig { params(episode: Episode).returns(T.nilable(MediaFile)) }
-    def self.readable_file(episode)
-      MediaFile.playable.where(id: Edition.where(playable: episode).select(:media_file_id))
-        .order(size: :desc).first
-    end
-    private_class_method :readable_file
 
     # Other episodes of the show with a readable file whose intro is known
     # and whose opening was fingerprinted: same season first, then nearest.

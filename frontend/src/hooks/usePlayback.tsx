@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { api, apiErrorMessage } from "@/api/client";
 import { prefetchedSessions, pressedTitle } from "@/lib/prefetch";
@@ -10,6 +10,7 @@ import { leavePlayer, reportFallingBehind, reportPlayFailure } from "@/component
 import { fromTv, tvPath } from "@/lib/tv";
 import { installAudioPriming } from "@/components/player/audio";
 import { markRequested, requestedAt, type StartMark } from "@/components/player/timing";
+import { useLatest } from "@/hooks/useLatest";
 import { usePlayQueue } from "@/hooks/usePlayQueue";
 import { useResumeOffer } from "@/hooks/useResumeOffer";
 import { isTypingTarget } from "@/lib/keys";
@@ -44,43 +45,56 @@ function pipSource(pip: Pip): PipSource {
 /** A session asked for this soon before it's played was asked for by the press itself. */
 const PRESS_WINDOW_MS = 5_000;
 
-interface Playback {
+/** What's playing, and how: changes as playback does. */
+interface PlaybackState {
   current: Current | null;
   pending: boolean;
   /** The server is getting the title ready to stream (its keyframe index): it's asked again by itself. */
   preparing: boolean;
   error: string | null;
+  /** Play next (PROPOSAL §5.4): what plays after this, ahead of Up next. */
+  queue: NextItem[];
+  size: PlayerSize;
+  /** What's in the inset over the main picture (picture in picture), if anything. */
+  pip: PipSource | null;
+  /** Whose sound plays while there's an inset. */
+  pipAudio: PipAudio;
+  /** The main picture is quiet because the inset's sound was chosen. */
+  mainSilenced: boolean;
+}
+
+/** What can be asked of playback: the same functions for the provider's whole life. */
+interface PlaybackActions {
   /** Start (or keep) playing this title. A title already playing just carries on. */
   play: (kind: PlayableKind, id: string, options?: PlayOptions) => void;
   close: () => void;
-  /** Play next (PROPOSAL §5.4): what plays after this, ahead of Up next. */
-  queue: NextItem[];
   enqueue: (item: NextItem) => void;
   /** Everything queued, replaced by these, in this order (Shuffle). */
   replaceQueue: (items: NextItem[]) => void;
   dequeue: (id: string) => void;
-  size: PlayerSize;
   setSize: (size: PlayerSize) => void;
   /** A page's place for this video's player; the player is laid over it while it plays. */
   setSlot: (id: string, element: HTMLElement | null) => void;
   /** Jump what's playing to here, if it's this title. */
   seek: (id: string, at: number) => boolean;
-  /** What's in the inset over the main picture (picture in picture), if anything. */
-  pip: PipSource | null;
   /** Something else in the inset, over whatever plays: it starts silent. */
   openPip: (source: PipSource, options?: { keepSound?: boolean }) => void;
   closePip: () => void;
   /** The inset and the main picture trade places. */
   swapPip: () => void;
-  /** Whose sound plays while there's an inset. */
-  pipAudio: PipAudio;
   setPipAudio: (audio: PipAudio) => void;
-  /** The main picture is quiet because the inset's sound was chosen. */
-  mainSilenced: boolean;
   /** The main picture was unmuted while silenced: both, then. */
   hearMain: () => void;
   /** A channel's or a stream's page, saying it's the main picture; the returned function says it's gone. */
   registerLiveMain: (source: LiveSource) => () => void;
+}
+
+type Playback = PlaybackState & PlaybackActions;
+
+/** The title playing as the main picture, by identity alone. */
+interface PlayingTitle {
+  kind: PlayableKind;
+  id: string;
 }
 
 interface PlayOptions {
@@ -93,7 +107,11 @@ interface PlayOptions {
   startAt?: number;
 }
 
-const PlaybackContext = createContext<Playback | null>(null);
+// Split so that what only acts (a Play next button on every tile) doesn't
+// re-render each time playback changes.
+const PlaybackStateContext = createContext<PlaybackState | null>(null);
+const PlaybackActionsContext = createContext<PlaybackActions | null>(null);
+const PlayingTitleContext = createContext<PlayingTitle | null | undefined>(undefined);
 
 /** Prefetched sessions are for a title in a context: alone, or in a playlist. */
 function prefetchKey(kind: PlayableKind, id: string, playlistId?: string | null) {
@@ -164,10 +182,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   const retryTimer = useRef<number | undefined>(undefined);
   // Read when a start fails: whether the viewer is on its full-screen route, and the way off it.
-  const pathname = useRef(location.pathname);
-  pathname.current = location.pathname;
-  const navigateRef = useRef(navigate);
-  navigateRef.current = navigate;
+  const pathname = useLatest(location.pathname);
+  const navigateRef = useLatest(navigate);
   useEffect(() => () => window.clearTimeout(retryTimer.current), []);
 
   /** Whatever was being started, forgotten: its answer is dropped when it comes. */
@@ -237,7 +253,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           setPreparing(false);
         });
     },
-    [],
+    [pathname, navigateRef],
   );
 
   const play = useCallback(
@@ -282,20 +298,19 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   // then, while the page changes (docs/PERF_PROPOSAL.md › P6): the watch
   // page takes it up as a prefetched session. The same press is the
   // gesture that starts the shared AudioContext (P22).
-  const currentRef = useRef(current);
-  currentRef.current = current;
+  const prefetchPressed = useEffectEvent((title: NonNullable<ReturnType<typeof pressedTitle>>) => {
+    if (current && current.kind === title.kind && current.id === title.id) return;
+    const key = prefetchKey(title.kind, title.id, title.playlistId);
+    if (prefetchedSessions.has(key)) return;
+    prefetchedSessions.put(key, startSession(title.kind, title.id, { playlistId: title.playlistId }));
+  });
   useEffect(() => {
     const stopPriming = installAudioPriming();
     const onPress = (event: Event) => {
       if (event instanceof KeyboardEvent && event.key !== "Enter" && event.key !== " ") return;
       if (event instanceof PointerEvent && event.button !== 0) return;
       const title = pressedTitle(event.target);
-      if (!title) return;
-      const playing = currentRef.current;
-      if (playing && playing.kind === title.kind && playing.id === title.id) return;
-      const key = prefetchKey(title.kind, title.id, title.playlistId);
-      if (prefetchedSessions.has(key)) return;
-      prefetchedSessions.put(key, startSession(title.kind, title.id, { playlistId: title.playlistId }));
+      if (title) prefetchPressed(title);
     };
     document.addEventListener("pointerdown", onPress, true);
     document.addEventListener("keydown", onPress, true);
@@ -509,33 +524,38 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [pip, swapPip]);
 
-  const value = useMemo(
-    () => ({
-      current,
-      pending,
-      preparing,
-      error,
-      play,
-      close,
-      queue,
-      enqueue,
-      replaceQueue: keepQueue,
-      dequeue,
-      size,
-      setSize,
-      setSlot,
-      seek,
-      pip: insetSource,
-      openPip,
-      closePip,
-      swapPip,
-      pipAudio,
-      setPipAudio,
-      mainSilenced,
-      hearMain,
-      registerLiveMain,
-    }),
-    [current, pending, preparing, error, play, close, queue, enqueue, keepQueue, dequeue, size, setSize, setSlot, seek, insetSource, openPip, closePip, swapPip, pipAudio, mainSilenced, hearMain, registerLiveMain],
+  const state = useMemo<PlaybackState>(
+    () => ({ current, pending, preparing, error, queue, size, pip: insetSource, pipAudio, mainSilenced }),
+    [current, pending, preparing, error, queue, size, insetSource, pipAudio, mainSilenced],
+  );
+  // The actions as they are this render, called through stable functions:
+  // a consumer's identity never changes, and each call reaches the latest.
+  const latest = useRef<PlaybackActions | null>(null);
+  latest.current = { play, close, enqueue, replaceQueue: keepQueue, dequeue, setSize, setSlot, seek, openPip, closePip, swapPip, setPipAudio, hearMain, registerLiveMain };
+  const [actions] = useState<PlaybackActions>(() => {
+    const now = () => latest.current as PlaybackActions;
+    return {
+      play: (...args) => now().play(...args),
+      close: () => now().close(),
+      enqueue: (item) => now().enqueue(item),
+      replaceQueue: (items) => now().replaceQueue(items),
+      dequeue: (id) => now().dequeue(id),
+      setSize: (next) => now().setSize(next),
+      setSlot: (id, element) => now().setSlot(id, element),
+      seek: (id, at) => now().seek(id, at),
+      openPip: (source, options) => now().openPip(source, options),
+      closePip: () => now().closePip(),
+      swapPip: () => now().swapPip(),
+      setPipAudio: (audio) => now().setPipAudio(audio),
+      hearMain: () => now().hearMain(),
+      registerLiveMain: (source) => now().registerLiveMain(source),
+    };
+  });
+  const playingKind = current?.kind ?? null;
+  const playingId = current?.id ?? null;
+  const playingTitle = useMemo<PlayingTitle | null>(
+    () => (playingKind && playingId ? { kind: playingKind, id: playingId } : null),
+    [playingKind, playingId],
   );
   // What's queued plays before whatever the session would have offered.
   const upNext = queue.find((item) => item.id !== current?.id) ?? null;
@@ -558,7 +578,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <PlaybackContext.Provider value={value}>
+    <PlaybackActionsContext.Provider value={actions}>
+    <PlaybackStateContext.Provider value={state}>
+    <PlayingTitleContext.Provider value={playingTitle}>
       {children}
       {titles.map(({ place, playing }) =>
         place === "pip" ? (
@@ -643,12 +665,30 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       {pip && pip.kind !== "title" ? (
         <LivePicture key={handoffKey(pip)} source={pip} audio={pipAudio} heard={pipHeard} onAudio={setPipAudio} onSwap={swapPip} onClose={closePip} area={insetArea} />
       ) : null}
-    </PlaybackContext.Provider>
+    </PlayingTitleContext.Provider>
+    </PlaybackStateContext.Provider>
+    </PlaybackActionsContext.Provider>
   );
 }
 
+/** What's playing and everything that can be asked of it: re-renders as playback changes. */
 export function usePlayback(): Playback {
-  const context = useContext(PlaybackContext);
-  if (!context) throw new Error("usePlayback outside PlaybackProvider");
-  return context;
+  const state = useContext(PlaybackStateContext);
+  const actions = useContext(PlaybackActionsContext);
+  if (!state || !actions) throw new Error("usePlayback outside PlaybackProvider");
+  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
+}
+
+/** Only what can be asked of playback: stable functions, never a re-render. */
+export function usePlaybackActions(): PlaybackActions {
+  const actions = useContext(PlaybackActionsContext);
+  if (!actions) throw new Error("usePlaybackActions outside PlaybackProvider");
+  return actions;
+}
+
+/** The main picture's title (kind and id), re-rendering only when that changes. */
+export function usePlayingTitle(): PlayingTitle | null {
+  const playing = useContext(PlayingTitleContext);
+  if (playing === undefined) throw new Error("usePlayingTitle outside PlaybackProvider");
+  return playing;
 }

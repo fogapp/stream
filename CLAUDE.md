@@ -79,8 +79,8 @@ on disk. Query with `Enum::Value.serialize`; parse params with
 
 - Controllers are thin: params in, service/serializer out. Use
   `BaseController` helpers — `finds`, `paginate`, `render_errors`,
-  `bool_param`, `parse_param_time/date`, `require_admin!`. The only error
-  envelope is `{ errors: [...] }` (cop-enforced); `{ ok:, error: }` is
+  `bool_param`, `parse_param_time/date`, `require_admin!`, `answers_upstream_errors`. The only error
+  envelope is `{ errors: [...] }` (cop-enforced); `{ ok:, message: }` is
   reserved for integration `test_connection`.
 - Upstream HTTP goes through `UpstreamHttpClient` (timeouts, circuit breaker,
   typed errors). Raw `Net::HTTP` is cop-banned outside it. Sibling apps on the
@@ -128,7 +128,7 @@ on disk. Query with `Enum::Value.serialize`; parse params with
 Env vars are for what fog must inject to boot: database connection,
 encryption keys, `STREAM_TOKEN_KEY`, `GIT_SHA`, `STREAM_HOST`,
 `STREAM_CACHE_DIR` — and what a fog-integration/1 offer sets when an app is
-connected on fog's Integrations tab (`LUCID_*`, `HOOK_URL`/`HOOK_API_TOKEN`).
+connected on fog's Integrations tab (`GLASS_*`, `HOOK_URL`/`HOOK_API_TOKEN`).
 Nothing a person would want to change afterwards.
 
 ## Deployment

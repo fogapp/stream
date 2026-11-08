@@ -1,4 +1,4 @@
-import type { Ref, Testable } from "@/types/core";
+import type { Ref } from "@/types/core";
 import type { OptimizedVersionRow } from "@/types/optimized";
 
 // Remote transcoders (app/serializers/transcode_node_serializer.rb).
@@ -62,11 +62,6 @@ export type OptimizeAction = (typeof OPTIMIZE_ACTIONS)[number];
 export interface OptimizeActionResult {
   changed: number;
   unchanged: Record<string, number>;
-}
-
-/** Settings › Integrations › TMDB (TmdbSettingSerializer). Never the key. */
-export interface TmdbSettings extends Testable {
-  configured: boolean;
 }
 
 export const MATCH_STATES = ["matched", "needs_review", "unmatched"] as const;

@@ -4,16 +4,16 @@ import { Check, PictureInPicture2, Play, Tv } from "lucide-react";
 import { api } from "@/api/client";
 import { BaseballIcon } from "@/components/baseball/BaseballIcon";
 import { ActionMenu, ActionMenuItem, ActionMenuSeparator } from "@/components/ui/ActionMenu";
-import { usePlayback } from "@/hooks/usePlayback";
+import { usePlayback, usePlaybackActions } from "@/hooks/usePlayback";
 import { useWatchGame } from "@/hooks/useWatchGame";
-import { refreshEvery, watchChoices } from "@/lib/baseball";
+import { watchChoices } from "@/lib/baseball";
 import { onAt } from "@/lib/live";
 import { LIVE_STREAM_KIND_OPTIONS } from "@/lib/liveStreams";
 import { useNowGuide } from "@/lib/liveGuide";
 import { sameSource, type PipSource } from "@/lib/pip";
-import { baseballQuery } from "@/lib/queries";
+import { baseballDayQuery, baseballQuery, homeHubsQuery } from "@/lib/queries";
 import { keys } from "@/lib/queryKeys";
-import type { BaseballDay, EpisodeCard, HomeHubs, LiveStream, MovieCard, VideoCard } from "@/types";
+import type { EpisodeCard, LiveStream, MovieCard, VideoCard } from "@/types";
 
 /** Looks like the player's own buttons beside it. */
 const TRIGGER = "h-auto w-auto rounded-[var(--radius-control)] bg-transparent p-2.5 text-muted hover:bg-surface-raised hover:text-foreground";
@@ -30,7 +30,7 @@ function cardSource(card: MovieCard | EpisodeCard | VideoCard): PipSource {
  * on its own page, as Picture in picture beside Play.
  */
 export function PipPicker({ playing }: { playing: PipSource }) {
-  const { openPip } = usePlayback();
+  const { openPip } = usePlaybackActions();
   return (
     <ActionMenu label="Picture in picture" className={TRIGGER} icon={<PictureInPicture2 className="h-5 w-5" aria-hidden />}>
       {(close) => (
@@ -50,14 +50,12 @@ function PipChoices({ playing, onChoose }: { playing: PipSource; onChoose: (sour
   const { pip } = usePlayback();
   const streams = useQuery({ queryKey: keys.liveStreams.list(), queryFn: ({ signal }) => api.get<LiveStream[]>("/live_streams", { signal }) });
   const guide = useNowGuide();
-  const home = useQuery({ queryKey: keys.home.hubs(), queryFn: ({ signal }) => api.get<HomeHubs>("/home", { signal }) });
+  const home = useQuery(homeHubsQuery());
   // Baseball's games on now, once there's an MLB.tv account: a team's stream, found when it's chosen.
   const baseball = useQuery(baseballQuery());
   const day = useQuery({
-    queryKey: keys.baseball.day(null),
-    queryFn: ({ signal }) => api.get<BaseballDay>("/baseball/games", { signal }),
+    ...baseballDayQuery(null),
     enabled: baseball.data?.available === true,
-    refetchInterval: (query) => refreshEvery(query.state.data),
   });
   const games = (day.data?.games ?? []).filter((game) => game.watchable);
   const watch = useWatchGame((answer) => onChoose({ kind: "stream", id: answer.live_stream_id, title: answer.name }));

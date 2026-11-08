@@ -64,6 +64,18 @@ RSpec.describe Playback::Variants do
     expect(Playback::Segments.master(stream)).to be_nil
   end
 
+  # The transcoder asks for a version by index on every request: the
+  # original is known without reading the file to build the ladder.
+  it "finds the original without a query, and the same original the ladder starts with" do
+    stream = session
+    found = nil
+    expect(count_queries { found = described_class.find(stream, 0) }).to be_empty
+    expect(found).to have_attributes(index: 0, height: nil, original?: true)
+    expect(described_class.for(stream).first).to have_attributes(index: 0, height: nil)
+    expect(described_class.find(stream, 1)).to have_attributes(index: 1, height: 720)
+    expect(described_class.find(stream, 9)).to be_nil
+  end
+
   it "lists the original first, then smaller versions, in a master playlist" do
     stream = session
     expect(stream.method_enum).to eq(PlaybackSession::Method::Remux)

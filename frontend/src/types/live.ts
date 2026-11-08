@@ -176,3 +176,8 @@ export interface MediaFileDetail extends MediaFileSummary {
   streams: MediaStreamInfo[];
   analysis: AnalysisRunInfo[];
 }
+
+/** How a live stream's relay is going (Playback::LiveCache status). */
+export const LIVE_RELAY_STATES = ["starting", "live", "reconnecting"] as const;
+
+export type LiveRelayState = (typeof LIVE_RELAY_STATES)[number];

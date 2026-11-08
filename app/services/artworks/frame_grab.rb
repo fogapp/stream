@@ -19,7 +19,7 @@ module Artworks
     def call
       return if pictured?
 
-      file = @playable.media_files.playable.order(size: :desc).first
+      file = @playable.best_file
       return if file.nil?
 
       artwork = Artwork.find_or_initialize_by(owner: @playable, kind: Artwork::Kind::Thumb.serialize)

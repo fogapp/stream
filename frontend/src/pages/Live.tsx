@@ -19,7 +19,8 @@ import { notAShortcut } from "@/lib/keys";
 import { liveHandoff } from "@/lib/liveHandoff";
 import { usePlayback } from "@/hooks/usePlayback";
 import { keys } from "@/lib/queryKeys";
-import type { Airing, Guide, GuideStation, Station } from "@/types";
+import { stationsQuery } from "@/lib/queries";
+import type { Airing, Guide, GuideStation } from "@/types";
 
 const HOUR = 3_600_000;
 /** How far back the guide goes, and forward (the schedule's three days). */
@@ -326,7 +327,7 @@ export function Live() {
 
 /** Channels this profile hid, to bring back. */
 function HiddenStations({ onClose, onUnhide }: { onClose: () => void; onUnhide: (id: string) => void }) {
-  const [stations] = useQueries({ queries: [{ queryKey: keys.live.stations(true), queryFn: ({ signal }) => api.get<Station[]>("/stations?hidden=1", { signal }) }] });
+  const [stations] = useQueries({ queries: [stationsQuery(true)] });
   const hidden = (stations.data ?? []).filter((station) => station.hidden);
   return (
     <Dialog label="Hidden channels" onClose={onClose}>

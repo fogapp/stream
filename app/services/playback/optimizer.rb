@@ -234,11 +234,7 @@ module Playback
       path = progress_path(job.version_id)
       return 0.0 unless path.file?
 
-      tail = File.open(path, "rb") do |io|
-        io.seek([ io.size - 2048, 0 ].max)
-        io.read.to_s
-      end
-      tail.scan(/^out_time_us=(\d+)/).last&.first.to_i / 1_000_000.0
+      LogTail.read(path, bytes: 2048).scan(/^out_time_us=(\d+)/).last&.first.to_i / 1_000_000.0
     end
 
     sig { params(job: Job).returns(Encoders::Profile) }
@@ -263,7 +259,7 @@ module Playback
     sig { params(version_id: String).returns(String) }
     def log_tail(version_id)
       path = log_path(version_id)
-      path.file? ? File.readlines(path).last(3).join.strip : ""
+      path.file? ? LogTail.read(path, bytes: LogTail::LINES_WINDOW, lines: 3).strip : ""
     end
 
     sig { params(version_id: String).void }

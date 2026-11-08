@@ -261,35 +261,55 @@ module Playback
       # or misplaced fragments.
       args += %w[-fflags +genpts] if video.copy || GENPTS_CONTAINERS.any? { |name| file.container.to_s.include?(name) }
       args += input.args
-      coding = video_args(video, start, profile, plan.target_ms / 1000.0, trim_at: trim_at)
+      coding = video_coding(video, start, profile, plan.target_ms / 1000.0, trim_at: trim_at)
       burn = video.burn_subtitle
       if burn
         # A picture subtitle drawn in: the picture made SDR first (trimmed,
         # deinterlaced, tone-mapped — R6: overlaying first made 8-bit of HDR
         # and drew the subtitle in PQ), the subtitle scaled to it and laid
         # over, then the encoder's own scaling and upload.
-        at = T.must(coding.index("-vf"))
-        chain = coding.fetch(at + 1).split(",")
-        coding = coding[0...at].to_a + coding[(at + 2)..].to_a
-        before = chain.take_while { |filter| filter.start_with?("trim=", "bwdif", "tonemap", "zscale", "format=gbrpf32le", "libplacebo") }
-        after = chain.drop(before.size)
-        prepared = before.empty? ? "[0:#{T.must(video.index)}]null[picture]" : "[0:#{T.must(video.index)}]#{before.join(',')}[picture]"
-        graph = "#{prepared};[0:#{burn.to_i}][picture]scale2ref=w=main_w:h=main_h[sub][base];" \
-                "[base][sub]overlay=eof_action=pass:repeatlast=0#{after.empty? ? '' : ",#{after.join(',')}"}[burned]"
+        picture = coding.picture.empty? ? "null" : coding.picture.join(",")
+        output = coding.output.empty? ? "" : ",#{coding.output.join(',')}"
+        graph = "[0:#{T.must(video.index)}]#{picture}[picture];[0:#{burn.to_i}][picture]scale2ref=w=main_w:h=main_h[sub][base];" \
+                "[base][sub]overlay=eof_action=pass:repeatlast=0#{output}[burned]"
         args += [ "-filter_complex", graph, "-map", "[burned]" ]
       else
         args += [ "-map", "0:#{T.must(video.index)}" ]
       end
       args += [ "-map", "0:#{audio.fetch('index')}" ] if audio
-      args += coding
+      args += burn ? coding.codec : coding.args
       args += audio_args(audio, trim_at: trim_at) if audio
       args + output_args(audio, start_gop, directory)
+    end
+
+    # A run's video coding, kept in its parts so a burned-in subtitle can be
+    # laid over between them: what makes the picture (trimmed, deinterlaced,
+    # tone-mapped), then the encoder's own filters (upload, scale, pixel
+    # format), then the codec's arguments.
+    class Coding < T::Struct
+      extend T::Sig
+
+      const :picture, T::Array[String], default: []
+      const :output, T::Array[String], default: []
+      const :codec, T::Array[String]
+
+      # As one -vf chain, when nothing is laid over.
+      sig { returns(T::Array[String]) }
+      def args
+        filters = picture + output
+        filters.empty? ? codec : [ "-vf", filters.join(","), *codec ]
+      end
     end
 
     sig do
       params(video: VideoPlan, start: Float, profile: Encoders::Profile, every: Float, trim_at: T.nilable(Float)).returns(T::Array[String])
     end
-    def self.video_args(video, start, profile, every, trim_at: nil)
+    def self.video_args(video, start, profile, every, trim_at: nil) = video_coding(video, start, profile, every, trim_at: trim_at).args
+
+    sig do
+      params(video: VideoPlan, start: Float, profile: Encoders::Profile, every: Float, trim_at: T.nilable(Float)).returns(Coding)
+    end
+    def self.video_coding(video, start, profile, every, trim_at: nil)
       if video.copy
         args = %w[-c:v copy]
         # Dolby Vision to a client without it: the RPU stripped, the HDR10
@@ -297,53 +317,33 @@ module Playback
         # which is how it says so; every other HEVC, hvc1 for Safari.
         args += %w[-bsf:v dovi_rpu=strip=1] if video.dv_strip
         tag = video.dv_tag || (video.retag_hvc1 || video.codec == "hevc" ? "hvc1" : nil)
-        return tag ? args + [ "-tag:v", tag ] : args
+        return Coding.new(codec: tag ? args + [ "-tag:v", tag ] : args)
       end
 
       height = video.height.to_i
-      filters = []
+      picture = []
       # Started early (an unindexed container): from the slot's start on.
-      filters << format("trim=start=%.3f", trim_at) if trim_at
+      picture << format("trim=start=%.3f", trim_at) if trim_at
       # Fields woven into frames before anything else looks at them (R6):
       # one frame per frame, so the grid's keyframes stay where they were.
-      filters << "bwdif=mode=send_frame" if video.deinterlace
+      picture << "bwdif=mode=send_frame" if video.deinterlace
       # On VideoToolbox, scale_vt tone-maps as it scales, unless a subtitle
       # is drawn in: that has to land on the picture once it's SDR (R6), so
       # the picture is tone-mapped in software before it.
       hardware_tonemap = video.tonemap && profile.hardware_tonemap? && video.burn_subtitle.nil?
-      filters << profile.tonemap_filter if video.tonemap && !hardware_tonemap && profile.tonemap_filter
+      software_tonemap = profile.tonemap_filter
+      picture << software_tonemap if video.tonemap && !hardware_tonemap && software_tonemap
       # Keyframes on the plan's grid, so every GOP fragment is exactly one
       # planned segment; a smaller version copies the original's (and the
       # encoder adds none of its own), so its fragments are the original's GOPs.
       keyframes = video.variant_keyframes ? "source" : grid_keyframes(every)
-      encoder = profile.kind
-      args = encoder_args(filters, height, keyframes, encoder, tonemap: hardware_tonemap ? true : false)
-      args += %w[-g 1000000] if video.variant_keyframes
+      encoding = EncoderArgs.for(profile.kind, height: height, keyframes: keyframes, quality: EncoderArgs::Quality::Live,
+        tonemap: hardware_tonemap ? true : false)
+      codec = encoding.codec
+      codec += %w[-g 1000000] if video.variant_keyframes
       rate = video.variant_bitrate
-      rate ? args + [ "-b:v", "#{rate}k", "-maxrate", "#{rate}k", "-bufsize", "#{rate * 2}k" ] : args
-    end
-
-    sig do
-      params(filters: T::Array[T.nilable(String)], height: Integer, keyframes: String, encoder: Encoders::Kind, tonemap: T::Boolean)
-        .returns(T::Array[String])
-    end
-    def self.encoder_args(filters, height, keyframes, encoder, tonemap: false)
-      case encoder
-      when Encoders::Kind::Vaapi
-        filters += [ "format=nv12", "hwupload", "scale_vaapi=w=-2:h=#{height}" ]
-        [ "-vf", filters.compact.join(","), "-c:v", "h264_vaapi", "-qp", "22", "-force_key_frames", keyframes ]
-      when Encoders::Kind::Software
-        filters += [ "scale=-2:#{height}:flags=bicubic", "format=yuv420p" ]
-        [ "-vf", filters.compact.join(","), "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
-          "-maxrate", "#{bitrate_for(height)}k", "-bufsize", "#{bitrate_for(height) * 2}k", "-profile:v", "high",
-          "-sc_threshold", "0", "-force_key_frames", keyframes ]
-      when Encoders::Kind::Videotoolbox
-        filters += [ "hwupload", scale_vt(height, tonemap) ]
-        [ "-vf", filters.compact.join(","), "-c:v", "h264_videotoolbox", "-realtime", "1", "-profile:v", "high",
-          "-b:v", "#{bitrate_for(height) / 2}k", "-maxrate", "#{bitrate_for(height)}k", "-bufsize", "#{bitrate_for(height) * 2}k",
-          "-force_key_frames", keyframes ]
-      else T.absurd(encoder)
-      end
+      codec += [ "-b:v", "#{rate}k", "-maxrate", "#{rate}k", "-bufsize", "#{rate * 2}k" ] if rate
+      Coding.new(picture: picture, output: encoding.filters, codec: codec)
     end
 
     # Containers whose packets can come without timestamps.

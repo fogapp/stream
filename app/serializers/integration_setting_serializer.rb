@@ -13,7 +13,7 @@ module IntegrationSettingSerializer
 
     {
       configured: true, url: setting.url, api_kind: setting.api_kind_enum.serialize, model: setting.model, enabled: setting.enabled,
-      api_key_set: setting.api_key.present?, **tested(setting)
+      api_key_set: setting.api_key.present?, **ConnectionTestSerializer.tested(setting)
     }
   end
 
@@ -23,7 +23,7 @@ module IntegrationSettingSerializer
 
     {
       configured: true, username: setting.username, languages: setting.languages, enabled: setting.enabled,
-      remaining_downloads: setting.remaining_downloads, resets_at: setting.resets_at, **tested(setting)
+      remaining_downloads: setting.remaining_downloads, resets_at: setting.resets_at, **ConnectionTestSerializer.tested(setting)
     }
   end
 
@@ -31,14 +31,14 @@ module IntegrationSettingSerializer
   def self.mlb_json(setting)
     return { configured: false } if setting.nil?
 
-    { configured: true, username: setting.username, **tested(setting) }
+    { configured: true, username: setting.username, **ConnectionTestSerializer.tested(setting) }
   end
 
   sig { params(setting: T.nilable(NbaSetting)).returns(T::Hash[Symbol, T.untyped]) }
   def self.nba_json(setting)
     return { configured: false } if setting.nil?
 
-    { configured: true, **tested(setting) }
+    { configured: true, **ConnectionTestSerializer.tested(setting) }
   end
 
   sig { params(setting: T.nilable(ImmichSetting)).returns(T::Hash[Symbol, T.untyped]) }
@@ -47,14 +47,8 @@ module IntegrationSettingSerializer
 
     {
       configured: true, url: setting.url, immich_path_prefix: setting.immich_path_prefix, local_path_prefix: setting.local_path_prefix,
-      enabled: setting.enabled, **tested(setting), last_synced_at: setting.last_synced_at, last_sync_error: setting.last_sync_error,
+      enabled: setting.enabled, **ConnectionTestSerializer.tested(setting), last_synced_at: setting.last_synced_at, last_sync_error: setting.last_sync_error,
       last_sync_counts: setting.last_sync_counts
     }
   end
-
-  sig { params(setting: T.any(WhisperSetting, OpenSubtitlesSetting, ImmichSetting, MlbSetting, NbaSetting)).returns(T::Hash[Symbol, T.untyped]) }
-  def self.tested(setting)
-    { last_test_ok: setting.last_test_ok, last_test_message: setting.last_test_message, last_tested_at: setting.last_tested_at }
-  end
-  private_class_method :tested
 end

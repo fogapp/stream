@@ -71,6 +71,35 @@ RSpec.describe "Bringing Trakt into Stream", type: :request do
     expect(enqueued_jobs.map { |job| job["job_class"] }).to include("TraktPushJob")
   end
 
+  # A response's plays and resume points read the profile's states (and
+  # the films' lengths) once, not once a row.
+  it "reads what a first sync merges a response at a time, however long the response" do
+    films = (1..8).map do |n|
+      Movie.create!(household: household, library: library, title: "Film #{n}", year: 2000 + n, tmdb_id: 7000 + n).tap do |film|
+        MediaFile.create!(household: household, library: library, path: "/m/film-#{n}.mkv", size: 1, mtime: Time.current, state: "probed",
+          duration_seconds: 1000.0).tap { |file| film.editions.create!(media_file: file) }
+      end
+    end
+    sync = lambda do |count|
+      WatchState.delete_all
+      account.update!(last_activities: {})
+      trakt_get("/sync/last_activities", activities)
+      trakt_get("/sync/watched/movies", films.first(count).map { |film| { plays: 1, last_watched_at: t0.iso8601, movie: movie_ids(film) } })
+      trakt_get("/sync/watched/shows", [])
+      trakt_get("/sync/playback/movies", films.last(count).map { |film| { progress: 40.0, paused_at: (t0 + 1.day).iso8601, movie: movie_ids(film) } })
+      %w[/sync/playback/episodes /sync/ratings/movies /sync/ratings/shows /sync/ratings/episodes /sync/watchlist/movies
+        /sync/watchlist/episodes].each { |path| trakt_get(path, []) }
+      count_queries(matching: /\ASELECT .*(FROM "watch_states" WHERE .*"playable_id"|MAX\("media_files"."duration_seconds"\))/) do
+        Trakt::Pull.new(account.reload).call
+      end
+    end
+    small = sync.call(2)
+    large = sync.call(8)
+
+    expect(large.size).to eq(small.size), large.join("\n")
+    expect(WatchState.where(position_seconds: 400.0).count).to eq(8)
+  end
+
   context "once synced" do
     before do
       account.update!(last_activities: activities, last_synced_at: t0,

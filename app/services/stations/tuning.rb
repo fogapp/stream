@@ -135,9 +135,9 @@ module Stations
       elsif airing.ends_at <= @now - DVR_WINDOW then "too_late"
       else "tuned"
       end
-      # How the moves from one program to the next go (Lucid): a gap is a
+      # How the moves from one program to the next go (Glass): a gap is a
       # slate on purpose, "nothing" a schedule that ran out.
-      Lucid.increment("live.program_changes", tags: { outcome: outcome, standby: @standby.to_s })
+      Glass.increment("live.program_changes", tags: { outcome: outcome, standby: @standby.to_s })
       return T.must(airing) if outcome == "tuned"
       raise gap(station, "That hasn't started yet", until_time: airing&.starts_at) if outcome == "gap"
       raise gap(station, "Nothing's on this channel right now") if outcome == "nothing"

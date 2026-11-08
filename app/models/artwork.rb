@@ -92,7 +92,7 @@ class Artwork < ApplicationRecord
 
   sig { returns(Pathname) }
   def self.root
-    Pathname.new(ENV.fetch("STREAM_STORAGE_DIR") { Rails.root.join("storage").to_s }).join("artwork")
+    StreamPaths.storage.join("artwork")
   end
 
   sig { returns(Pathname) }

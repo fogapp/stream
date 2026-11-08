@@ -1169,6 +1169,51 @@ class MediaStream
     def default_will_change!; end
 
     sig { returns(T.nilable(::Integer)) }
+    def dolby_vision_compatibility; end
+
+    sig { params(value: T.nilable(::Integer)).returns(T.nilable(::Integer)) }
+    def dolby_vision_compatibility=(value); end
+
+    sig { returns(T::Boolean) }
+    def dolby_vision_compatibility?; end
+
+    sig { returns(T.nilable(::Integer)) }
+    def dolby_vision_compatibility_before_last_save; end
+
+    sig { returns(T.untyped) }
+    def dolby_vision_compatibility_before_type_cast; end
+
+    sig { returns(T::Boolean) }
+    def dolby_vision_compatibility_came_from_user?; end
+
+    sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
+    def dolby_vision_compatibility_change; end
+
+    sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
+    def dolby_vision_compatibility_change_to_be_saved; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def dolby_vision_compatibility_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable(::Integer)) }
+    def dolby_vision_compatibility_in_database; end
+
+    sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
+    def dolby_vision_compatibility_previous_change; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def dolby_vision_compatibility_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable(::Integer)) }
+    def dolby_vision_compatibility_previously_was; end
+
+    sig { returns(T.nilable(::Integer)) }
+    def dolby_vision_compatibility_was; end
+
+    sig { void }
+    def dolby_vision_compatibility_will_change!; end
+
+    sig { returns(T.nilable(::Integer)) }
     def dolby_vision_profile; end
 
     sig { params(value: T.nilable(::Integer)).returns(T.nilable(::Integer)) }
@@ -2060,6 +2105,9 @@ class MediaStream
     def restore_default!; end
 
     sig { void }
+    def restore_dolby_vision_compatibility!; end
+
+    sig { void }
     def restore_dolby_vision_profile!; end
 
     sig { void }
@@ -2346,6 +2394,12 @@ class MediaStream
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def saved_change_to_default?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
+    def saved_change_to_dolby_vision_compatibility; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def saved_change_to_dolby_vision_compatibility?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
     def saved_change_to_dolby_vision_profile; end
@@ -2769,6 +2823,9 @@ class MediaStream
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_default?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def will_save_change_to_dolby_vision_compatibility?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_dolby_vision_profile?(from: T.unsafe(nil), to: T.unsafe(nil)); end

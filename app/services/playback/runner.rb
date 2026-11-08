@@ -199,7 +199,7 @@ module Playback
       params(argv: T::Array[String], log: Pathname, redact: T.nilable(T.proc.params(text: String).returns(String))).returns(LocalHandle)
     end
     def self.spawn_local(argv, log:, redact: nil)
-      Lucid.increment("transcoder.runs", tags: { placement: "local" })
+      Glass.increment("transcoder.runs", tags: { placement: "local" })
       if redact.nil?
         return LocalHandle.new(pid: T.unsafe(Process).spawn(*ToolRunner.exec_argv(argv), out: File::NULL, err: [ log.to_s, "a" ], pgroup: true))
       end
@@ -222,20 +222,23 @@ module Playback
       LocalHandle.new(pid: pid)
     end
 
-    # A run for a node; the argv is built once its id (and so its source
-    # URL) exists.
+    # A run for a node; the argv is built from its id (which its source URL
+    # signs), and the row written once, whole — a worker never sees it
+    # pending without its argv. `attributes`: what else the row records
+    # (a session's run: its encoder, first GOP and version).
     sig do
       params(node: TranscodeNode, session: T.nilable(PlaybackSession), version: T.nilable(OptimizedVersion),
-        argv: T.proc.params(source: FfmpegArgs::Input).returns(T::Array[String])).returns(RemoteHandle)
+        attributes: T::Hash[Symbol, T.untyped], argv: T.proc.params(source: FfmpegArgs::Input).returns(T::Array[String])).returns(RemoteHandle)
     end
-    def self.start_remote(node, session: nil, version: nil, &argv)
-      run = TranscodeRun.create!(transcode_node: node, playback_session: session, optimized_version: version)
-      Lucid.increment("transcoder.runs", tags: { placement: "remote" })
+    def self.start_remote(node, session: nil, version: nil, attributes: {}, &argv)
+      run = TranscodeRun.new(id: SecureRandom.uuid, transcode_node: node, playback_session: session, optimized_version: version, **attributes)
       # A fog transcoder's machine reaches only Stream's /fog/compute/ through
       # fog's data route; a worker reads /media/n directly.
       prefix = node.fog? ? "fog/compute/runs" : "media/n"
       source = FfmpegArgs::Input.remote("#{SERVER}/#{prefix}/#{RunToken.issue(run)}/source")
-      run.update!(argv: argv.call(source))
+      run.argv = argv.call(source)
+      run.save!
+      Glass.increment("transcoder.runs", tags: { placement: "remote" })
       RemoteHandle.new(run_id: run.id, node_id: node.id)
     end
 

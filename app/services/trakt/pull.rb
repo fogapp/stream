@@ -36,6 +36,10 @@ module Trakt
       @profile = T.let(T.must(account.profile), Profile)
       @counts = T.let({}, T::Hash[String, Integer])
       @catalog = T.let(nil, T.nilable(Catalog))
+      # The profile's states of the batch in hand (a response, a page),
+      # and the longest file of each: read for the batch, not per row.
+      @states = T.let({}, T::Hash[[ String, String ], WatchState])
+      @durations = T.let({}, T::Hash[[ String, String ], T.nilable(Float)])
     end
 
     sig { params(api: Api).returns(T::Hash[String, Integer]) }
@@ -80,15 +84,17 @@ module Trakt
     sig { returns(T::Set[String]) }
     def pull_all_watched
       seen = T.let(Set.new, T::Set[String])
-      Array(api.get("/sync/watched/movies")).each do |row|
-        movie = catalog.movie(row["movie"])
-        next if movie.nil?
-
+      movies = Array(api.get("/sync/watched/movies")).filter_map { |row| (movie = catalog.movie(row["movie"])) && [ movie, row ] }
+      batch(movies.map(&:first))
+      movies.each do |movie, row|
         seen << Catalog.key(movie)
         watched(movie, time(row["last_watched_at"]), plays: row["plays"].to_i)
       end
       Array(api.get("/sync/watched/shows")).each do |row|
-        catalog.each_watched_episode(row) do |episode, detail|
+        episodes = T.let([], T::Array[[ Episode, T::Hash[String, T.untyped] ]])
+        catalog.each_watched_episode(row) { |episode, detail| episodes << [ episode, detail ] }
+        batch(episodes.map(&:first))
+        episodes.each do |episode, detail|
           seen << Catalog.key(episode)
           watched(episode, time(detail["last_watched_at"]), plays: detail["plays"].to_i)
         end
@@ -105,10 +111,9 @@ module Trakt
         since = before.dig(type, "watched_at")
         (1..HISTORY_PAGES).each do |page|
           rows = Array(api.get("/sync/history/#{path}?limit=#{HISTORY_PAGE}&page=#{page}#{since ? "&start_at=#{CGI.escape(since)}" : ''}"))
-          rows.each do |row|
-            item = catalog.item(row)
-            watched(item, time(row["watched_at"])) if item.is_a?(Movie) || item.is_a?(Episode)
-          end
+          items = rows.filter_map { |row| (item = catalog.item(row)).is_a?(Movie) || item.is_a?(Episode) ? [ item, row ] : nil }
+          batch(items.map(&:first))
+          items.each { |item, row| watched(item, time(row["watched_at"])) }
           break if rows.size < HISTORY_PAGE
         end
       end
@@ -121,7 +126,7 @@ module Trakt
     def watched(playable, at, plays: nil)
       return if at.nil? || at > 1.minute.from_now
 
-      state = WatchState.find_or_initialize_by(profile: @profile, playable: playable)
+      state = state_for(playable)
       completed = state.completed_at
       last = state.last_watched_at
       if completed && completed >= at - SAME_PLAY
@@ -137,6 +142,8 @@ module Trakt
       state.save!
       count("watched")
     rescue ActiveRecord::RecordNotUnique
+      # Made meanwhile (a play reported as this ran): read it again.
+      @states.delete(key_of(playable))
       retry
     end
 
@@ -144,10 +151,10 @@ module Trakt
     sig { void }
     def pull_playback
       %w[movies episodes].each do |type|
-        Array(api.get("/sync/playback/#{type}")).each do |row|
-          item = catalog.item(row)
-          paused(item, row["progress"].to_f, time(row["paused_at"])) if item.is_a?(Movie) || item.is_a?(Episode)
-        end
+        items = Array(api.get("/sync/playback/#{type}"))
+          .filter_map { |row| (item = catalog.item(row)).is_a?(Movie) || item.is_a?(Episode) ? [ item, row ] : nil }
+        batch(items.map(&:first), durations: true)
+        items.each { |item, row| paused(item, row["progress"].to_f, time(row["paused_at"])) }
       end
     end
 
@@ -155,11 +162,11 @@ module Trakt
     def paused(playable, progress, at)
       return if at.nil? || progress >= WatchState::COMPLETE_AT * 100
 
-      state = WatchState.find_or_initialize_by(profile: @profile, playable: playable)
+      state = state_for(playable)
       last = [ state.last_watched_at, state.completed_at ].compact.max
       return if last && last >= at - SAME_PAUSE
 
-      duration = state.duration_seconds || playable.media_files.maximum(:duration_seconds)
+      duration = state.duration_seconds || @durations.fetch(key_of(playable)) { playable.media_files.maximum(:duration_seconds) }
       return if duration.nil? || !duration.positive?
 
       position = duration * progress / 100
@@ -171,8 +178,30 @@ module Trakt
       state.save!
       count("resumed")
     rescue ActiveRecord::RecordNotUnique
+      @states.delete(key_of(playable))
       retry
     end
+
+    # The batch about to be merged: the profile's states of it in one query
+    # (and, for resume points, the longest file of each in another).
+    sig { params(playables: T::Array[T.any(Movie, Episode)], durations: T::Boolean).void }
+    def batch(playables, durations: false)
+      @states = WatchState.index_for(@profile, playables)
+      @durations = {}
+      return unless durations && playables.any?
+
+      longest = MediaFile.joins(:editions).where(editions: { playable: playables.uniq })
+        .group("editions.playable_type", "editions.playable_id").maximum(:duration_seconds)
+      playables.each { |playable| @durations[key_of(playable)] = longest[key_of(playable)] }
+    end
+
+    sig { params(playable: T.any(Movie, Episode)).returns(WatchState) }
+    def state_for(playable)
+      @states[key_of(playable)] ||= WatchState.find_or_initialize_by(profile: @profile, playable: playable)
+    end
+
+    sig { params(playable: T.any(Movie, Episode)).returns([ String, String ]) }
+    def key_of(playable) = [ playable.class.polymorphic_name, playable.id ]
 
     # Stars both ways. Returns what Trakt holds now, for next time.
     sig { params(before: T::Array[String], first: T::Boolean).returns(T::Array[String]) }

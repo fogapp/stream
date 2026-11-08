@@ -4,11 +4,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Play, RotateCcw } from "lucide-react";
 import { api } from "@/api/client";
 import { keys } from "@/lib/queryKeys";
+import { seasonQuery } from "@/lib/queries";
 import { formatClock } from "@/lib/format";
 import { ArtworkImage } from "@/components/viewing/ArtworkImage";
 import { TvShell } from "@/components/tv/TvShell";
 import { QueryState } from "@/components/ui/PageState";
-import type { MovieDetail, SeasonDetail, ShowDetail } from "@/types";
+import type { MovieDetail, ShowDetail } from "@/types";
 
 const BUTTON = "inline-flex items-center gap-3 rounded-[var(--radius-card)] bg-surface-raised px-8 py-4 text-xl font-semibold focus:bg-primary focus:text-primary-foreground";
 
@@ -72,8 +73,7 @@ function ShowView({ show }: { show: ShowDetail }) {
   const seasons = show.seasons.filter((season) => season.available_count > 0);
   const [season, setSeason] = useState(seasons.find((candidate) => candidate.season_number > 0)?.season_number ?? seasons[0]?.season_number);
   const detail = useQuery({
-    queryKey: keys.shows.season(show.id, season ?? 0),
-    queryFn: ({ signal }) => api.get<SeasonDetail>(`/shows/${show.id}/seasons/${season}`, { signal }),
+    ...seasonQuery(show.id, season ?? 0),
     enabled: season !== undefined,
   });
   const next = show.next_up;

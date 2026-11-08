@@ -247,7 +247,85 @@ RSpec.describe "Query shape", type: :request do
     large = report.call
 
     expect(large.size).to eq(small.size), grown(small, large).join("\n")
+    # Every file is read for this, so never its probe or keyframe index.
+    expect(large.grep(/FROM "media_files"/).grep(/"probe"|"keyframes"|"media_files"\.\*/)).to be_empty
     expect(Playback::Report.needing_conversion(household).map { |row| row[:title] }).to include("Remux 0 S01E01", "Remux later 5 S01E01")
+  end
+
+  # Pressing Play reads what plays have taught (Playback::Learned) once for
+  # every version of the title, not once to choose and again to place.
+  it "keeps a press of Play flat however many versions the title has" do
+    require_ffprobe!
+    film = Movie.create!(household: household, library: films, title: "Heat", content_rating: "PG")
+    root = films.roots.first
+    version = lambda do
+      name = "Heat #{SecureRandom.hex(3)}.mp4"
+      FileUtils.cp(media_fixture("h264_aac.mp4"), File.join(root, name))
+      settle_library_roots!(root)
+      file = MediaFile.create!(household: household, library: films, path: File.join(root, name), size: File.size(File.join(root, name)),
+        mtime: Time.current, state: "discovered")
+      Media::FileProber.new(file).call
+      film.editions.create!(media_file: file)
+    end
+    chrome = { "hls" => "mse", "video" => %w[h264], "audio" => %w[aac], "containers" => %w[mp4], "max_audio_channels" => 2, "max_height" => 2160 }
+    ua = { "User-Agent" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/141.0.7390.54 Safari/537.36" }
+    play = lambda do
+      count_queries do
+        post "/api/v1/playback_sessions", params: { playable_type: "movie", playable_id: film.id, capabilities: chrome },
+          headers: headers.merge(ua)
+        expect(response).to have_http_status(:created), response.body
+      end
+    end
+    version.call
+    play.call
+    small = play.call
+    3.times { version.call }
+    play.call
+    large = play.call
+
+    learned = ->(queries) { queries.grep(/playabilities/) }
+    expect(learned.call(large).size).to eq(2), learned.call(large).join("\n")
+    expect(large.size).to eq(small.size), grown(small, large).join("\n")
+  end
+
+  it "keeps the history flat however many sessions played an optimized version" do
+    optimized = lambda do |title|
+      episode = show(title, episodes: 1).episodes.first
+      OptimizedVersion.create!(household: household, media_file: episode.media_files.first, state: "ready", height: 1080, size: 10)
+      played(episode).update!(method: "optimized")
+    end
+    2.times { |i| optimized.call("Small #{i}") }
+    expect_flat("/api/v1/stats/history", grow: -> { 5.times { |i| optimized.call("Small later #{i}") } })
+  end
+
+  it "keeps the transcoders list flat however many transcoders and runs there are" do
+    node = lambda do |name|
+      TranscodeNode.generate(name: name).node.tap do |made|
+        2.times do |i|
+          session = played(show("#{name} #{i}", episodes: 1).episodes.first)
+          TranscodeRun.create!(transcode_node: made, playback_session: session, argv: %w[ffmpeg -version])
+        end
+        file = movie("#{name} film").media_files.first
+        version = OptimizedVersion.create!(household: household, media_file: file, state: "queued")
+        TranscodeRun.create!(transcode_node: made, optimized_version: version, argv: %w[ffmpeg -version])
+      end
+    end
+    node.call("Mac mini")
+    expect_flat("/api/v1/transcode_nodes", grow: -> { %w[Studio Laptop Den].each { |name| node.call(name) } })
+    titles = response.parsed_body["nodes"].flat_map { |row| row["runs"].pluck("title") }
+    expect(titles).to include("Den 0 S01E01", "Mac mini 1 S01E01")
+  end
+
+  it "keeps the screens list flat however many screens are playing" do
+    screen = lambda do |name|
+      device = Device.create!(household: household, client_key: SecureRandom.hex(4), name: name, last_seen_at: Time.current,
+        remote_control: true, remote_seen_at: Time.current)
+      played(show("#{name} show", episodes: 1).episodes.first).update!(device: device, state: "active", last_seen_at: Time.current)
+      played(video("#{name} video")).update!(device: device, state: "active", last_seen_at: 1.minute.ago)
+    end
+    screen.call("Den")
+    expect_flat("/api/v1/remote/devices", grow: -> { %w[Kitchen Bedroom Office].each { |name| screen.call(name) } })
+    expect(response.parsed_body.map { |row| row.dig("now_playing", "title") }).to all(end_with("show"))
   end
 
   it "keeps Activity flat however long the timeline is" do

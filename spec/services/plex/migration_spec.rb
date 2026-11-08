@@ -118,6 +118,26 @@ RSpec.describe Plex::Migration do
     expect(WatchState.find_by(playable: heat).position_seconds).to eq(300)
   end
 
+  # Each page of a section reads the profile's views and stars of what's
+  # on it once, not once per item.
+  it "reads a user's views and stars a page at a time, however many items the page has" do
+    more = (1..8).map do |n|
+      film = Movie.create!(household: household, library: library, title: "More #{n}", year: 2000 + n, tmdb_id: 5000 + n)
+      { "ratingKey" => "6#{n}", "title" => film.title, "year" => film.year, "Guid" => [ { "id" => "tmdb://#{film.tmdb_id}" } ],
+        "viewCount" => 1, "lastViewedAt" => t1.to_i, "userRating" => 8.0, "lastRatedAt" => t1.to_i }
+    end
+    reads = ->(movies) do
+      stub_server(movies: movies)
+      count_queries(matching: /\ASELECT .*FROM "(watch_states|ratings)"/) { run(dry_run: false) }
+    end
+    small = reads.call(movies_for(heat_views: 2, alien_offset_ms: 1_800_000) + more.first(1))
+    large = reads.call(movies_for(heat_views: 2, alien_offset_ms: 1_800_000) + more)
+
+    expect(large.size).to eq(small.size), large.join("\n")
+    expect(WatchState.where(playable_type: "Movie").count).to eq(11)
+    expect(Rating.where(rateable_type: "Movie").count).to eq(8)
+  end
+
   it "picks up what was watched in Plex since the last run" do
     run(dry_run: false)
     WebMock.reset!
@@ -264,5 +284,19 @@ RSpec.describe Plex::Migration do
 
     import = run(dry_run: true)
     expect(import).to have_attributes(status: "failed", error: include("rejected our credentials"))
+  end
+
+  # A bug rather than Plex saying no: still failed and said, never left
+  # running forever (CLAUDE.md invariant 5), and raised on for the job.
+  it "records any other failure too, and raises it on" do
+    allow_any_instance_of(Plex::Catalog).to receive(:movie).and_raise(NoMethodError, "undefined method 'guid' for nil") # rubocop:disable RSpec/AnyInstance
+    import = PlexImport.create!(household: household, dry_run: false)
+
+    expect { described_class.new(import).call }.to raise_error(NoMethodError, /guid/)
+
+    expect(import.reload).to have_attributes(status: "failed", error: "NoMethodError: undefined method 'guid' for nil")
+    expect(import.finished_at).to be_present
+    activity = ActivityEntry.find_by(event: "plex.import_failed")
+    expect(activity).to have_attributes(severity: "error", summary: "Plex import failed: NoMethodError: undefined method 'guid' for nil")
   end
 end

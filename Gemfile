@@ -17,11 +17,11 @@ gem "sorbet-runtime"
 # FLARE_DSN env Fog injects, so dev/test are unaffected.
 gem "flare", path: "vendor/gems/flare"
 
-# Metrics, traces, profiles, logs and browser analytics to Lucid, the fleet's
-# observability service. Vendored (synced from lucid:clients/ruby with
-# lucid's bin/sync-client) for the same reason; inert without LUCID_URL and
-# LUCID_API_KEY, so dev/test are unaffected. Must stay after gem "rails".
-gem "lucid", path: "vendor/gems/lucid"
+# Metrics, traces, profiles, logs and browser analytics to Glass, the fleet's
+# observability service. Vendored (synced from glass:clients/ruby with
+# glass's bin/sync-client) for the same reason; inert without GLASS_URL and
+# GLASS_API_KEY, so dev/test are unaffected. Must stay after gem "rails".
+gem "glass", path: "vendor/gems/glass"
 
 # Household sign-in through fog's OpenID provider (fog-signin/1): the shared
 # relying party and its Rails controller. Vendored (synced from

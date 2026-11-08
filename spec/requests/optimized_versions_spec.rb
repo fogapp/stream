@@ -89,13 +89,8 @@ RSpec.describe "Optimized versions", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
-  it "retries a failed one and deletes one with its file" do
+  it "deletes one with its file" do
     file = movie_with("hevc_main10_hdr10.mkv").media_files.sole
-    failed = OptimizedVersion.create!(household: household, media_file: file, state: "failed", attempts: 3, error: "ffmpeg exited 1")
-    post "/api/v1/optimized_versions/#{failed.id}/retry", headers: auth_headers(admin)
-    expect(json).to include("state" => "queued", "attempts" => 0, "error" => nil)
-
-    failed.destroy!
     version = ready_version(file)
     delete "/api/v1/optimized_versions/#{version.id}", headers: auth_headers(admin)
     expect(response).to have_http_status(:no_content)

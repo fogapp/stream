@@ -4,6 +4,23 @@
 require "rails_helper"
 
 RSpec.describe AppSetting do
+  describe "the webhook's address" do
+    it "is encrypted, and one saved before it was is encrypted by the release's migration" do
+      setting = described_class.current
+      # As the column held it before: plaintext, written past the model.
+      described_class.connection.exec_update("UPDATE app_settings SET webhook_url = 'http://ha.lan/api/webhook/old-secret'")
+      expect(described_class.find(setting.id).webhook_url).to eq("http://ha.lan/api/webhook/old-secret")
+
+      require Rails.root.join("db/migrate/20261108120000_encrypt_webhook_url")
+      ActiveRecord::Migration.suppress_messages { EncryptWebhookUrl.new.migrate(:up) }
+
+      stored = described_class.connection.select_value("SELECT webhook_url FROM app_settings")
+      expect(stored).not_to include("old-secret")
+      expect(described_class.find(setting.id)).to have_attributes(webhook_url: "http://ha.lan/api/webhook/old-secret",
+        webhook_host: "ha.lan")
+    end
+  end
+
   describe "#quiet_hours?" do
     let(:setting) { described_class.new(optimize_quiet_start_hour: 1, optimize_quiet_end_hour: 6) }
 

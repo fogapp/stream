@@ -46,11 +46,7 @@ module Viewing
     sig { params(scope: T.untyped, rules: T::Hash[String, T.untyped], type: String).returns(T.untyped) }
     def self.filter(scope, rules, type)
       table = scope.klass.arel_table
-      scope = scope.where(library_id: rules["library_ids"]) if Array(rules["library_ids"]).any?
-      scope = scope.where("genres && ARRAY[?]::varchar[]", rules["genres"]) if Array(rules["genres"]).any?
-      scope = scope.where(table[:year].gteq(rules["year_from"])) if rules["year_from"]
-      scope = scope.where(table[:year].lteq(rules["year_to"])) if rules["year_to"]
-      scope = scope.where(table[:vote_average].gteq(rules["min_rating"])) if rules["min_rating"]
+      scope = ::Catalog::TitleFilter.years(::Catalog::TitleFilter.call(scope, rules), rules)
       scope = scope.where(table[:created_at].gteq(rules["added_within_days"].to_i.days.ago)) if rules["added_within_days"]
       scope = unwatched(scope, type) if rules["unwatched"]
       if type == "Movie" && (rules["uhd"] || rules["hdr"])

@@ -19,6 +19,12 @@ RSpec.describe "Import from Plex", type: :request do
     expect(response.body).not_to include("secret-token")
   end
 
+  it "answers a test before any server is saved with what to do, not a 404" do
+    post "/api/v1/plex_connection/test", headers: headers
+    expect(response).to have_http_status(:ok)
+    expect(json).to eq("ok" => false, "message" => "Save the Plex server first.")
+  end
+
   it "tests the server and learns who's in the Plex Home, the owner mapped to the default profile" do
     connect
     stub_request(:get, "http://plex.lan:32400/identity")

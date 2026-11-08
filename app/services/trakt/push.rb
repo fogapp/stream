@@ -52,7 +52,9 @@ module Trakt
       begin
         api.post(action.path, Items.body(entries))
       rescue Client::Error => e
-        raise if e.connection? || e.status.nil? || e.status.to_i >= 500
+        # A rate limit is Trakt being busy, not refusing these: the job's
+        # retry sends them again rather than counting an attempt against them.
+        raise if e.connection? || e.status.nil? || e.status.to_i >= 500 || e.is_a?(UpstreamHttpClient::RateLimitError)
 
         refused(named, e)
         return 0

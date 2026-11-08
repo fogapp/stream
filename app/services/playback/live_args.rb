@@ -43,8 +43,11 @@ module Playback
         video["codec"] == "hevc" ? %w[-c:v copy -tag:v hvc1] : %w[-c:v copy]
       else
         hardware_tonemap = video["tonemap"] && profile.hardware_tonemap? ? true : false
-        FfmpegArgs.encoder_args([ video["tonemap"] && !hardware_tonemap ? profile.tonemap_filter : nil ], video["height"].to_i,
-          "expr:gte(t,n_forced*#{SEGMENT_SECONDS})", profile.kind, tonemap: hardware_tonemap)
+        software_tonemap = profile.tonemap_filter
+        encoding = EncoderArgs.for(profile.kind, height: video["height"].to_i, keyframes: "expr:gte(t,n_forced*#{SEGMENT_SECONDS})",
+          quality: EncoderArgs::Quality::Live, tonemap: hardware_tonemap)
+        picture = video["tonemap"] && !hardware_tonemap && software_tonemap ? [ software_tonemap ] : []
+        FfmpegArgs::Coding.new(picture: picture, output: encoding.filters, codec: encoding.codec).args
       end
       args += FfmpegArgs.audio_args(audio) if audio
       # A web stream's MPEG-TS carries AAC as ADTS, which MP4 can't hold;

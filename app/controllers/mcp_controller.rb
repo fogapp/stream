@@ -46,6 +46,10 @@ class McpController < ActionController::API
     )
     transport = MCP::Server::Transports::StreamableHTTPTransport.new(
       server, stateless: true, enable_json_response: true,
+      # The body is rendered as JSON, so an open SSE stream can't be served:
+      # subscriptions/listen answers as unimplemented (and discover stops
+      # advertising listChanged/subscribe) rather than raising.
+      serve_subscriptions_listen: false,
       # Bearer auth already gates every request; fog's proxy owns Host routing.
       dns_rebinding_protection: false
     )

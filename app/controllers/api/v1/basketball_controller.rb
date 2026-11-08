@@ -8,6 +8,7 @@ module Api
     # watches one on NBA.com.
     class BasketballController < BaseController
       before_action :require_league_pass!, except: :show
+      answers_upstream_errors Nba::Schedule::Error
 
       # Whether League Pass is on, so whether the sidebar shows Basketball.
       sig { void }
@@ -25,8 +26,6 @@ module Api
         game_days = schedule.game_days(asked || today)
         date = asked || (game_days.include?(today) ? today : game_days.select { |day| day > today }.min || game_days.max || today)
         render json: BasketballSerializer.day_json(date: date, games: schedule.games(date), game_days: game_days, today: today)
-      rescue Nba::Schedule::Error => e
-        render_errors(e.message, status: :bad_gateway)
       end
 
       private

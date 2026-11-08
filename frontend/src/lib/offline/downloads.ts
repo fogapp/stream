@@ -49,9 +49,10 @@ export class DownloadError extends Error {}
 
 /**
  * Save a title into this browser. The server picks what plays here as-is
- * (the original or its optimized version) or says why it can't; subtitles
- * and the poster come down straight away, the film by Background Fetch
- * where the browser has it, so closing the tab doesn't stop it.
+ * (the original or its optimized version) or says why it can't; the
+ * poster comes down straight away, subtitles as the server has them out,
+ * the film by Background Fetch where the browser has it, so closing the
+ * tab doesn't stop it.
  */
 export async function startDownload(playable: { type: string; id: string }, profileId: string | null): Promise<OfflineItem> {
   const info = await api.post<OfflineDownloadInfo>("/offline_downloads", {
@@ -97,12 +98,14 @@ export async function startDownload(playable: { type: string; id: string }, prof
   };
   await putItem(item);
 
+  // Not waited on: a track the server is still taking out of the file is
+  // asked for again a while (fetchSubtitle), and the film shouldn't wait.
+  void (async () => {
+    for (const track of info.subtitles) await fetchSubtitle(info.id, track.id, track.url).catch(() => undefined);
+  })();
+
   const cache = await caches.open(DOWNLOADS);
   try {
-    for (const track of info.subtitles) {
-      const response = await fetch(track.url);
-      if (response.ok) await cache.put(`/offline/${info.id}/subtitles/${track.id}.vtt`, response);
-    }
     if (info.poster_url) {
       const response = await fetch(info.poster_url);
       if (response.ok) {
@@ -149,6 +152,31 @@ function watchBackground(id: string, registration: BackgroundFetchRegistration) 
     last = now;
     void updateItem(id, { received: registration.downloaded });
   });
+}
+
+const SUBTITLE_ATTEMPTS = 30;
+const SUBTITLE_WAIT_MAX_SECONDS = 60;
+
+/**
+ * One subtitle track into the cache. One not taken out of the file yet is
+ * a 503 with Retry-After while the server's job reads it: ask again then,
+ * for a while, unless the download has been removed meanwhile. Anything
+ * else that isn't the track leaves it out; subtitles are an extra.
+ */
+export async function fetchSubtitle(id: string, trackId: string, url: string, wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))): Promise<boolean> {
+  for (let attempt = 0; attempt < SUBTITLE_ATTEMPTS; attempt++) {
+    const response = await fetch(url);
+    if (!(await getItem(id))) return false;
+    if (response.ok) {
+      const cache = await caches.open(DOWNLOADS);
+      await cache.put(`/offline/${id}/subtitles/${trackId}.vtt`, response);
+      return true;
+    }
+    if (response.status !== 503) return false;
+    const after = Number(response.headers.get("Retry-After"));
+    await wait(Math.min(Number.isFinite(after) && after > 0 ? after : 10, SUBTITLE_WAIT_MAX_SECONDS) * 1000);
+  }
+  return false;
 }
 
 /** Without Background Fetch: stream it into the cache from this tab. */

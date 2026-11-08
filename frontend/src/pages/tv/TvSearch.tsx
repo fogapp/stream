@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import { keys } from "@/lib/queryKeys";
+import { searchQuery } from "@/lib/queries";
 import { TvCard } from "@/components/tv/TvCard";
 import { TvShell } from "@/components/tv/TvShell";
-import type { SearchResults } from "@/types";
 
 /**
  * Search on the TV (PROPOSAL §7.2, §7.4): the TV's own keyboard in one
@@ -14,8 +12,7 @@ export function TvSearch() {
   const [query, setQuery] = useState("");
   const term = query.trim();
   const results = useQuery({
-    queryKey: keys.search.results(term),
-    queryFn: ({ signal }) => api.get<SearchResults>(`/search?q=${encodeURIComponent(term)}`, { signal }),
+    ...searchQuery(term),
     enabled: term.length >= 2,
   });
   const found = results.data;

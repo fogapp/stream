@@ -29,7 +29,10 @@ class TraktPullJob < ApplicationJob
   rescue Trakt::Api::Unlinked
     nil
   rescue Trakt::Client::Error => e
-    raise if e.connection? || e.status.nil? || e.status.to_i >= 500
+    # A rate limit or a refusal is a Trakt::Client::Error too; they go on to
+    # the retry_on rules above, as they always have.
+    raise if e.connection? || e.status.nil? || e.status.to_i >= 500 ||
+      e.is_a?(UpstreamHttpClient::RateLimitError) || e.is_a?(UpstreamHttpClient::AuthError)
 
     failed(e)
   end

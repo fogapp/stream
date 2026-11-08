@@ -190,7 +190,9 @@ export interface NtfyTopic {
 }
 
 export interface GeneralSettings {
-  webhook_url: string | null;
+  /** The webhook's address is write-only (its path is a secret): whether one is set, and its host. */
+  webhook_url_set: boolean;
+  webhook_host: string | null;
   ntfy_url: string | null;
   /** Every profile's topic, for an admin; empty for anyone else. */
   ntfy_topics: NtfyTopic[];
@@ -211,4 +213,14 @@ export interface GeneralSettings {
   time_zone: string | null;
   server_time_zone: string;
   time_zones: { name: string; label: string }[];
+}
+
+/** A page of a console data table (BaseController#paged). */
+export interface Page<T> {
+  rows: T[];
+  total: number;
+  /** The total stopped counting at its ceiling: there are at least this many. */
+  total_capped: boolean;
+  page: number;
+  per: number;
 }

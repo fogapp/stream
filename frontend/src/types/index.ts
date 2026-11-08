@@ -12,3 +12,6 @@ export * from "@/types/playback";
 export * from "@/types/baseball";
 export * from "@/types/grid";
 export * from "@/types/basketball";
+export * from "@/types/integrations";
+export * from "@/types/profiles";
+export * from "@/types/plex";

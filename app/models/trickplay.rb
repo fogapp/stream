@@ -12,7 +12,7 @@ class Trickplay < ApplicationRecord
 
   sig { returns(Pathname) }
   def self.root
-    Pathname.new(ENV.fetch("STREAM_STORAGE_DIR") { Rails.root.join("storage").to_s }).join("trickplay")
+    StreamPaths.storage.join("trickplay")
   end
 
   sig { returns(Pathname) }

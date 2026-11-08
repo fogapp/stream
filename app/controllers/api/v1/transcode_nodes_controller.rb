@@ -14,7 +14,7 @@ module Api
       sig { void }
       def index
         render json: {
-          nodes: TranscodeNode.order(:created_at).map { |node| TranscodeNodeSerializer.json(node) },
+          nodes: TranscodeNodeSerializer.index(TranscodeNode.order(:created_at).to_a),
           local: { encoder: Playback::Encoders.kind, cap: Playback::Encoders.cap },
           capacity: Playback::Placement.capacity
         }

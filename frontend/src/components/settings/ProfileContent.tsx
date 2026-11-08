@@ -4,13 +4,14 @@ import { Clapperboard, Film, Image, Search, Tv } from "lucide-react";
 import { api } from "@/api/client";
 import { PROFILE_CONTENT_KIND_LABELS } from "@/lib/profileContent";
 import { keys } from "@/lib/queryKeys";
+import { searchQuery } from "@/lib/queries";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ArtworkImage } from "@/components/viewing/ArtworkImage";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { EmptyState, QueryState } from "@/components/ui/PageState";
-import type { HideableKind, ImageInfo, ProfileContent, ProfileContentItem, ProfileInfo, SearchResults } from "@/types";
+import type { HideableKind, ImageInfo, ProfileContent, ProfileContentItem, ProfileInfo } from "@/types";
 
 const KIND_ICONS: Record<ProfileContentItem["kind"], typeof Film> = { movie: Film, show: Tv, channel: Clapperboard, album: Image };
 
@@ -164,8 +165,7 @@ function HideSearch({ hidden, pending, onHide }: { hidden: Set<string>; pending:
   const [q, setQ] = useState("");
   const query = useDebouncedValue(q.trim(), 250);
   const results = useQuery({
-    queryKey: keys.search.results(query),
-    queryFn: ({ signal }) => api.get<SearchResults>(`/search?q=${encodeURIComponent(query)}`, { signal }),
+    ...searchQuery(query),
     enabled: query.length >= 2,
   });
   const found: { kind: HideableKind; id: string; title: string; detail: string | null; image: ImageInfo | null | undefined }[] = [

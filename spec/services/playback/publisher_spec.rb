@@ -46,6 +46,38 @@ RSpec.describe Playback::Publisher do
     expect(Playback::Fragment.runs(made.join("gop-1.m4s")).map(&:samples)).to all(be_positive)
   end
 
+  # A fragment's moof alone is read off the disk, and says what reading
+  # its whole head said: after other boxes, behind a 64-bit size, before
+  # media far larger than the head.
+  it "reads a fragment's runs from its first moof alone, as reading its head did" do
+    made = run("bounded", extra: %w[-c:v copy])
+    head = ->(path) { Playback::Fragment.runs_in(File.binread(path.to_s, Playback::Fragment::HEAD).to_s).map(&:serialize) }
+    fragments = (0..3).map { |index| made.join("gop-#{index}.m4s") }
+    fragments.each { |path| expect(Playback::Fragment.runs(path).map(&:serialize)).to eq(head.call(path)) }
+
+    box = ->(type, body) { [ body.bytesize + 8 ].pack("N") + type + body }
+    long = ->(type, body) { [ 1 ].pack("N") + type + [ body.bytesize + 16 ].pack("Q>") + body }
+    moof_of = lambda do |path|
+      data = File.binread(path.to_s)
+      at = data.index("moof") - 4
+      data.byteslice(at, data.byteslice(at, 4).unpack1("N"))
+    end
+    moof = moof_of.call(fragments[1])
+    shaped = {
+      "after other boxes" => box.call("styp", "msdh" * 4) + box.call("sidx", "\0" * 300) + moof + box.call("mdat", "\0" * 3_000_000),
+      "behind a 64-bit size" => long.call("free", "\0" * 40) + long.call("moof", moof.byteslice(8..)) + box.call("mdat", "\0" * 100),
+      "with nothing after" => moof
+    }
+    shaped.each do |what, bytes|
+      path = made.join("shaped.m4s")
+      File.binwrite(path, bytes)
+      expect(Playback::Fragment.runs(path).map(&:serialize)).to eq(head.call(path)), what
+      expect(Playback::Fragment.runs(path).map(&:samples)).to match([ be_positive, be_positive ]), what
+    end
+    File.binwrite(made.join("none.m4s"), box.call("mdat", "\0" * 64))
+    expect(Playback::Fragment.runs(made.join("none.m4s"))).to eq([])
+  end
+
   it "publishes each fragment under the GOP it holds, whatever its run called it, and its init once" do
     made = run("off-by-one", first: 1, extra: %w[-c:v copy])
     publisher.init(made.join("init.mp4"))

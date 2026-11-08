@@ -10,6 +10,8 @@ module Api
       before_action :require_admin!, except: %i[index folders]
       # The queue is for the grown-ups who fix it, as the sidebar says.
       before_action :require_grown_up!, only: %i[index folders]
+      # TMDB not answering a search, a pick or a split.
+      answers_upstream_errors prefix: "TMDB: "
 
       MAX_LISTED = 200
 
@@ -38,8 +40,6 @@ module Api
         client = Tmdb::Client.for(current_household!, language: show.library&.metadata_language || "en")
         split = Catalog::ShowSplit.call(show, folder, by: current_user!.name, client: client)
         render json: MatchSerializer.title_json(split)
-      rescue UpstreamHttpClient::Error => e
-        render_errors("TMDB: #{e.message}", status: :bad_gateway)
       end
 
       sig { void }
@@ -50,8 +50,6 @@ module Api
         year = params[:year].presence&.to_i
         candidates = Catalog::TitleMatcher.new(client).search(library_kind, params.require(:query).to_s, year: year)
         render json: candidates.map(&:to_h)
-      rescue UpstreamHttpClient::Error => e
-        render_errors("TMDB: #{e.message}", status: :bad_gateway)
       end
 
       sig { void }
@@ -70,8 +68,6 @@ module Api
             matcher.choose_show(record, tmdb_id, reason: "chosen by #{current_user!.name}").tap { |show| refile(show) }
           end
         render json: MatchSerializer.title_json(chosen)
-      rescue UpstreamHttpClient::Error => e
-        render_errors("TMDB: #{e.message}", status: :bad_gateway)
       end
 
       private

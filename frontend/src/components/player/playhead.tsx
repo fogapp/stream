@@ -40,3 +40,11 @@ export function usePlayheadValue<T>(playhead: Playhead, select: (seconds: number
 export function AtPlayhead({ playhead, children }: { playhead: Playhead; children: (seconds: number) => ReactNode }) {
   return children(usePlayheadValue(playhead, (seconds) => seconds));
 }
+
+/**
+ * How far through it is, in thousandths (the corner's and the inset's bar):
+ * enough to see, few enough renders — and only the bar re-renders.
+ */
+export function AtProgress({ playhead, duration, children }: { playhead: Playhead; duration: number; children: (progress: number) => ReactNode }) {
+  return children(usePlayheadValue(playhead, (seconds) => (duration > 0 ? Math.round(Math.min(seconds / duration, 1) * 1000) / 1000 : 0)));
+}

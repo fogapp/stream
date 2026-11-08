@@ -96,7 +96,7 @@ module ToolRunner
 
   # ffmpeg reading a whole file, judged by whether it's getting anywhere
   # rather than by a budget per gigabyte: a busy share reads at single-digit
-  # MB/s, and a budget timed out healthy reads of every size on it (Lucid,
+  # MB/s, and a budget timed out healthy reads of every size on it (Glass,
   # 2026-10-10). The argv carries `-progress pipe:1`, whose report comes
   # every half second whether or not the read moves — so the clock is how
   # long out_time has stood still, and a read that never starts counts too.

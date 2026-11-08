@@ -1,4 +1,5 @@
 import { keys } from "@/lib/queryKeys";
+import { seasonQuery, videoQuery } from "@/lib/queries";
 import type {
   ClipDetail,
   EpisodeCard,
@@ -71,7 +72,7 @@ export function relatedSource(playing: { kind: PlayableKind; id: string }, sessi
       const show = session.show_id;
       const number = session.season_number;
       return {
-        queryKey: keys.shows.season(show, number),
+        queryKey: seasonQuery(show, number).queryKey,
         path: `/shows/${show}/seasons/${number}`,
         select: (raw: unknown): Related => {
           const detail = raw as SeasonDetail;
@@ -94,7 +95,7 @@ export function relatedSource(playing: { kind: PlayableKind; id: string }, sessi
       };
     case "video":
       return {
-        queryKey: keys.videos.detail(id),
+        queryKey: videoQuery(id).queryKey,
         path: `/videos/${id}`,
         select: (raw: unknown): Related => {
           const detail = raw as VideoDetail;

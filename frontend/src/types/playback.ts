@@ -1,6 +1,7 @@
+import { OPTIMIZED_STATES } from "@/types/optimized";
 import type { ImageInfo } from "@/types/catalog";
-import type { Ref } from "@/types/core";
-import type { HealthCheck, HealthStatus, TimingSpread } from "@/types/grid";
+import type { Page, Ref } from "@/types/core";
+import type { OptimizedVersion } from "@/types/optimized";
 import type { LiveStreamKind } from "@/types/live";
 import type { EncoderKind } from "@/types/transcoders";
 
@@ -266,4 +267,61 @@ export interface PlaybackLessonRow {
   /** Still skipped: failed since it last worked, within the probation. */
   active: boolean;
   retry_at: string | null;
+}
+
+/** A health check's verdict (Playback::Health::Status). */
+export const HEALTH_STATUSES = ["ok", "watch", "act"] as const;
+
+export type HealthStatus = (typeof HEALTH_STATUSES)[number];
+
+export const HEALTH_KEYS = ["failed_plays", "live_conversions", "startup", "optimizer", "live_streams"] as const;
+
+export type HealthKey = (typeof HEALTH_KEYS)[number];
+
+/** One card of the health strip (PlaybackHealthSerializer). */
+export interface HealthCheck {
+  key: HealthKey;
+  status: HealthStatus;
+  title: string;
+  metric: string;
+  detail: string;
+  /** What to do, when there's something to do. */
+  action: string | null;
+  /** The tab and its filters, as the page's URL takes them — or another page's `path`. */
+  link: ({ tab: PlaybackTab } & Record<string, string | number | string[]>) | { path: string };
+}
+
+/** How long something took this week: typically, and for nineteen in twenty. */
+export interface TimingSpread {
+  count: number;
+  median_ms: number | null;
+  p95_ms: number | null;
+}
+
+/** A file's optimize status in the Needs converting table: its version's state, or none. */
+export const CONVERSION_STATUSES = ["none", ...OPTIMIZED_STATES] as const;
+
+export type ConversionStatus = (typeof CONVERSION_STATUSES)[number];
+
+/** A row of the Needs converting table (Playback::ConversionQuery). */
+export interface TranscodeReportRow {
+  media_file_id: string;
+  filename: string;
+  title: string | null;
+  devices: { device: string; summary: string }[];
+  /** No device seen this month plays it without converting: the hourly pass optimizes these. */
+  all_devices: boolean;
+  optimized: OptimizedVersion | null;
+  library: Ref | null;
+  size: number | null;
+  duration_seconds: number | null;
+  /** Times it was converted live for someone in the last 30 days, and the last. */
+  conversions: number;
+  last_converted_at: string | null;
+  status: ConversionStatus;
+}
+
+/** The Needs converting table's page, with what its filters can offer. */
+export interface TranscodeReportPage extends Page<TranscodeReportRow> {
+  facets: { devices: string[]; libraries: Ref[] };
 }

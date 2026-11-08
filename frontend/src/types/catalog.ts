@@ -1,5 +1,5 @@
-import type { Ref, Testable } from "@/types/core";
-import type { ProfileInfo } from "@/types/grid";
+import type { Ref } from "@/types/core";
+import type { ProfileInfo } from "@/types/profiles";
 import type { MediaFileState } from "@/types/libraries";
 import type { Chapter, PlayableKind, PlaybackMethod } from "@/types/playback";
 import type { MatchState, ShowFolder } from "@/types/transcoders";
@@ -710,42 +710,15 @@ export interface ClipFilters {
   favorites: number;
 }
 
-/** WhisperSetting::ApiKind: which API the Whisper server speaks. */
-export const WHISPER_API_KINDS = ["asr_webservice", "openai"] as const;
+export interface TranscriptInfo {
+  available: boolean;
+  source?: "subtitles" | "whisper";
+  language?: string | null;
+  lines: { start: number; end: number; text: string }[];
+}
 
-export type WhisperApiKind = (typeof WHISPER_API_KINDS)[number];
-
-export type ImmichSettings =
-  | { configured: false }
-  | ({
-      configured: true;
-      url: string;
-      immich_path_prefix: string | null;
-      local_path_prefix: string | null;
-      enabled: boolean;
-      last_synced_at: string | null;
-      last_sync_error: string | null;
-      last_sync_counts: Record<string, number>;
-    } & Testable);
-
-export type WhisperSettings =
-  | { configured: false }
-  | ({
-      configured: true;
-      url: string;
-      api_kind: WhisperApiKind;
-      model: string | null;
-      enabled: boolean;
-      api_key_set: boolean;
-    } & Testable);
-
-/** The household's MLB.tv account (app/serializers/integration_setting_serializer.rb). The password is write-only. */
-export type MlbSettings =
-  | { configured: false }
-  | ({
-      configured: true;
-      username: string;
-    } & Testable);
-
-/** NBA League Pass (app/serializers/integration_setting_serializer.rb): on or off, with no account kept. */
-export type NbaSettings = { configured: false } | ({ configured: true } & Testable);
+export interface PersonDetail extends SearchPerson {
+  tmdb_id: number;
+  movies: MovieCard[];
+  shows: ShowCard[];
+}

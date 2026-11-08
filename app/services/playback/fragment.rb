@@ -43,7 +43,8 @@ module Playback
     end
 
     # More than the boxes ahead of any fragment's media: a ten-second GOP at
-    # 60 frames a second with its sound is under 20 KB of them.
+    # 60 frames a second with its sound is under 20 KB of them. A fragment
+    # reads only its moof of it (first_box); an init segment, all of it.
     HEAD = T.let(1024 * 1024, Integer)
 
     sig { params(init: T.any(String, Pathname)).returns(T::Array[Track]) }
@@ -67,9 +68,13 @@ module Playback
     end
 
     # Each track's samples in a fragment (a joined segment's first GOP).
+    # Only its first moof is read off the disk, not the media after it.
     sig { params(path: T.any(String, Pathname)).returns(T::Array[Run]) }
-    def self.runs(path)
-      data = File.binread(path.to_s, HEAD).to_s
+    def self.runs(path) = runs_in(first_box(path, "moof"))
+
+    # The same, from bytes already read: the file's head (or its first moof).
+    sig { params(data: String).returns(T::Array[Run]) }
+    def self.runs_in(data)
       runs = T.let([], T::Array[Run])
       # The first moof only: a fragment ffmpeg writes has one.
       each_box(data, 0, data.bytesize, %w[moof]) do |_, moof_at, moof_end|
@@ -87,9 +92,13 @@ module Playback
     # (Publisher). The end is nil when its boxes don't say how long its
     # samples last.
     sig { params(path: T.any(String, Pathname), tracks: T::Array[Track]).returns(T.nilable([ Integer, T.nilable(Integer) ])) }
-    def self.video_span_ms(path, tracks)
+    def self.video_span_ms(path, tracks) = span_ms(runs(path), tracks)
+
+    # The same, from a fragment's runs already read.
+    sig { params(runs: T::Array[Run], tracks: T::Array[Track]).returns(T.nilable([ Integer, T.nilable(Integer) ])) }
+    def self.span_ms(runs, tracks)
       video = tracks.find(&:video)
-      run = video && runs(path).find { |candidate| candidate.track_id == video.id && candidate.samples.positive? }
+      run = video && runs.find { |candidate| candidate.track_id == video.id && candidate.samples.positive? }
       return nil if video.nil? || run.nil?
 
       start = run.decode_time + run.first_offset - video.media_time
@@ -248,6 +257,39 @@ module Playback
       int(data, offset, 4)
     end
     private_class_method :first_composition_offset
+
+    # The first top-level box of a type in a file's head (its first HEAD
+    # bytes, as reading them all would see it), read alone: each box
+    # before it is stepped over by its header, so the media isn't read.
+    # Empty when there's none.
+    sig { params(path: T.any(String, Pathname), wanted: String).returns(String) }
+    def self.first_box(path, wanted)
+      File.open(path.to_s, "rb") do |file|
+        to = [ file.size, HEAD ].min
+        offset = 0
+        while offset + 8 <= to
+          file.seek(offset)
+          header = file.read([ 16, to - offset ].min).to_s
+          size = uint(header, 0, 4)
+          type = header.byteslice(4, 4).to_s
+          length = 8
+          if size == 1
+            size = uint(header, 8, 8)
+            length = 16
+          end
+          size = to - offset if size.zero?
+          break if size < length
+
+          if type == wanted
+            file.seek(offset)
+            return file.read([ offset + size, to ].min - offset).to_s
+          end
+          offset += size
+        end
+      end
+      ""
+    end
+    private_class_method :first_box
 
     # Each box of the wanted types between two offsets: its type, and where
     # its payload starts and ends.

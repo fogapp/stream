@@ -100,6 +100,27 @@ RSpec.describe "Transcode nodes", type: :request do
     expect(node.reload.online?).to be(true)
   end
 
+  # How far each run got, written in one statement however many are
+  # running, and only to live runs of this node.
+  it "writes every run's progress in one statement" do
+    node, token = add_node
+    runs = Array.new(3) { session_run(node).tap { |run| run.update!(state: "running", started_at: Time.current) } }
+    done = session_run(node).tap { |run| run.update!(state: "exited", progress_seconds: 1.0) }
+    report = lambda do |count|
+      Playback::NodeLink.parse("running" => runs.map(&:id), "progress" => runs.first(count).to_h { |run| [ run.id, 10.5 * count ] }
+        .merge(done.id => 99.0, "not-a-run" => 5.0))
+    end
+    poll(token, "running" => runs.map(&:id))
+
+    node = TranscodeNode.find(node.id)
+    one = count_queries(matching: /\AUPDATE "transcode_runs"/) { Playback::NodeLink.poll(node, report.call(1)) }
+    three = count_queries(matching: /\AUPDATE "transcode_runs"/) { Playback::NodeLink.poll(node, report.call(3)) }
+
+    expect([ one.size, three.size ]).to eq([ 1, 1 ])
+    expect(runs.map { |run| run.reload.progress_seconds }).to eq([ 31.5, 31.5, 31.5 ])
+    expect(done.reload.progress_seconds).to eq(1.0)
+  end
+
   it "takes a run's fragments into its session's cache, and nothing else" do
     node, token = add_node
     run = session_run(node)

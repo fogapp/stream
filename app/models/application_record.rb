@@ -36,6 +36,14 @@ class ApplicationRecord < ActiveRecord::Base
       rows.update_all(Arel.sql("position = #{position}, updated_at = #{connection.quote(Time.current)}")) # rubocop:disable Rails/SkipsModelValidations
     end
 
+    # The condition for rows whose array column (genres, networks, studios,
+    # keywords) shares a value with these — Postgres's && — for where and
+    # where.not: `scope.where(Show.overlap(:genres, ["Comedy"]))`.
+    sig { params(column: Symbol, values: T::Array[String]).returns(String) }
+    def overlap(column, values)
+      sanitize_sql_array([ "#{quoted_table_name}.#{connection.quote_column_name(column)} && ARRAY[?]::varchar[]", values ])
+    end
+
     # `attribute :kind, SomeEnum` wires a closed vocabulary onto a plain string
     # column: inclusion validation from the enum's own values, plus typed
     # `kind_enum` / `kind_enum=` accessors. Columns stay strings on disk for

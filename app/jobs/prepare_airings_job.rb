@@ -17,7 +17,7 @@ class PrepareAiringsJob < ApplicationJob
   sig { void }
   def perform
     now = Time.current
-    ids = MediaFile.unscoped.where(keyframes: nil, state: MediaFile::State::Probed.serialize)
+    ids = MediaFile.unscoped.playable.where(keyframes: nil)
       .where(id: Airing.unscoped.where(ends_at: now..).where(starts_at: ..(now + AHEAD)).select(:media_file_id))
       .pluck(:id)
     ActiveJob.perform_all_later(ids.map { |id| IndexKeyframesJob.new(id) })

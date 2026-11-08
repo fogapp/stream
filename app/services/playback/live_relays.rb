@@ -154,7 +154,7 @@ module Playback
       relay.live = false
       LiveCache.write_status(relay.key, relay.failures.zero? ? "starting" : "reconnecting", LiveCache.status(relay.key)&.message)
       @log.call("live #{stream.name}: #{relay.failures.zero? ? 'relaying' : 'reconnecting'} (#{stream.source})")
-      Lucid.increment("live.relays", tags: { kind: stream.kind, reconnect: relay.failures.positive?.to_s })
+      Glass.increment("live.relays", tags: { kind: stream.kind, reconnect: relay.failures.positive?.to_s })
     end
 
     # yt-dlp takes seconds (and the first time, tens): on a thread of its
@@ -223,7 +223,7 @@ module Playback
         status: LiveStream::Status::Online.serialize, last_seen_at: Time.current, last_error: nil, last_error_at: nil,
         consecutive_failures: 0, updated_at: Time.current
       )
-      Lucid.timing("live.relay_start", ((monotonic - relay.started_at) * 1000).round)
+      Glass.timing("live.relay_start", ((monotonic - relay.started_at) * 1000).round)
     end
 
     # Reconnects after the next wait in BACKOFF; a stream that keeps failing
@@ -241,7 +241,7 @@ module Playback
       relay.retry_at = monotonic + delay
       LiveCache.write_status(relay.key, "reconnecting", message)
       @log.call("live #{relay.stream_id}: #{message}; again in #{delay}s")
-      Lucid.increment("live.relay_failures")
+      Glass.increment("live.relay_failures")
       stream = LiveStream.unscoped.find_by(id: relay.stream_id)
       return if stream.nil?
 
@@ -260,7 +260,7 @@ module Playback
       return "The stream ended" if exit.success?
 
       log = LiveCache.directory(relay.key).join("ffmpeg.log")
-      tail = log.file? ? File.readlines(log).last(3).join : ""
+      tail = log.file? ? LogTail.read(log, bytes: LogTail::LINES_WINDOW, lines: 3) : ""
       stream = LiveStream.unscoped.find_by(id: relay.stream_id)
       return "The relay stopped (#{exit.status || 'killed'})" if stream.nil? || tail.strip.empty?
 

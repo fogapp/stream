@@ -48,6 +48,8 @@ RSpec.describe "Upstream clients answering badly" do
           headers: { "Content-Type" => "application/json", "Retry-After" => "30" })
 
         expect { call.call(Pathname(audio.path)) }.to raise_error(UpstreamHttpClient::RateLimitError) do |raised|
+          # Its own error too, so a `rescue #{error}` around the call catches it.
+          expect(raised).to be_a(error)
           expect(raised.status).to eq(429)
           expect(raised.message).to include("rate limited")
         end

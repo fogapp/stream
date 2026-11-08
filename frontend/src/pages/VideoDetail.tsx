@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, ExternalLink, Pin, Play, RotateCcw, UserRound } from "lucide-react";
 import { api, apiErrorMessage } from "@/api/client";
 import { keys } from "@/lib/queryKeys";
+import { videoQuery } from "@/lib/queries";
 import { refreshWatched } from "@/lib/watched";
 import { formatClock, formatDay } from "@/lib/format";
 import { AddToPlaylist } from "@/components/viewing/AddToPlaylist";
@@ -21,7 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { toast } from "@/components/ui/Toast";
 import { LoadingState, QueryState } from "@/components/ui/PageState";
-import { usePlayback } from "@/hooks/usePlayback";
+import { usePlayback, usePlaybackActions } from "@/hooks/usePlayback";
 import { useProfile } from "@/hooks/useProfile";
 import { cn } from "@/lib/cn";
 import type { VideoDetail as Video } from "@/types";
@@ -33,7 +34,7 @@ import type { VideoDetail as Video } from "@/types";
  */
 export function VideoDetail() {
   const { id = "" } = useParams();
-  const video = useQuery({ queryKey: keys.videos.detail(id), queryFn: ({ signal }) => api.get<Video>(`/videos/${id}`, { signal }) });
+  const video = useQuery(videoQuery(id));
   return (
     <QueryState query={video} errorMessage="Could not load this video.">
       {(data) => <VideoPage video={data} />}
@@ -245,7 +246,7 @@ function PlayerSlot({
   wide: boolean;
   onPlay: () => void;
 }) {
-  const { setSlot } = usePlayback();
+  const { setSlot } = usePlaybackActions();
   const ref = useCallback((element: HTMLDivElement | null) => setSlot(video.id, element), [setSlot, video.id]);
   return (
     <div

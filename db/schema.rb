@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_08_130200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -33,7 +33,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.uuid "trace_id"
     t.index ["created_at"], name: "index_activity_entries_on_created_at"
     t.index ["household_id", "created_at"], name: "index_activity_entries_on_household_id_and_created_at"
-    t.index ["household_id"], name: "index_activity_entries_on_household_id"
     t.index ["severity", "created_at"], name: "index_activity_entries_on_severity_and_created_at"
     t.index ["subject_type", "subject_id"], name: "index_activity_entries_on_subject"
     t.index ["trace_id"], name: "index_activity_entries_on_trace_id"
@@ -215,7 +214,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.datetime "updated_at", null: false
     t.index ["channel_id"], name: "index_channel_subscriptions_on_channel_id"
     t.index ["profile_id", "channel_id"], name: "index_channel_subscriptions_on_profile_id_and_channel_id", unique: true
-    t.index ["profile_id"], name: "index_channel_subscriptions_on_profile_id"
   end
 
   create_table "channels", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -287,7 +285,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.integer "position", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["collection_id", "item_type", "item_id"], name: "index_collection_items_uniqueness", unique: true
-    t.index ["collection_id"], name: "index_collection_items_on_collection_id"
     t.index ["item_type", "item_id"], name: "index_collection_items_on_item"
   end
 
@@ -303,7 +300,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.integer "tmdb_id", null: false
     t.datetime "updated_at", null: false
     t.index ["collection_id", "tmdb_id"], name: "index_collection_parts_on_collection_id_and_tmdb_id", unique: true
-    t.index ["collection_id"], name: "index_collection_parts_on_collection_id"
     t.index ["household_id"], name: "index_collection_parts_on_household_id"
   end
 
@@ -340,7 +336,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.string "role", null: false
     t.datetime "updated_at", null: false
     t.index ["creditable_type", "creditable_id", "role", "order"], name: "index_credits_listing"
-    t.index ["creditable_type", "creditable_id"], name: "index_credits_on_creditable"
     t.index ["person_id"], name: "index_credits_on_person_id"
   end
 
@@ -400,7 +395,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.string "playable_type", null: false
     t.datetime "updated_at", null: false
     t.index ["media_file_id", "playable_type", "playable_id"], name: "index_editions_uniqueness", unique: true
-    t.index ["media_file_id"], name: "index_editions_on_media_file_id"
     t.index ["playable_type", "playable_id"], name: "index_editions_on_playable"
   end
 
@@ -422,7 +416,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.index ["season_id"], name: "index_episodes_on_season_id"
     t.index ["show_id", "air_date"], name: "index_episodes_on_show_id_and_air_date"
     t.index ["show_id", "season_number", "episode_number"], name: "index_episodes_on_show_id_and_season_number_and_episode_number", unique: true, where: "(episode_number IS NOT NULL)"
-    t.index ["show_id"], name: "index_episodes_on_show_id"
   end
 
   create_table "extras", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -663,6 +656,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.datetime "updated_at", null: false
     t.boolean "visual_impaired", default: false, null: false
     t.integer "width"
+    t.integer "dolby_vision_compatibility"
     t.index ["live_stream_id", "index"], name: "index_media_streams_on_live_stream_id_and_index", unique: true, where: "(live_stream_id IS NOT NULL)"
     t.index ["media_file_id", "index"], name: "index_media_streams_on_media_file_id_and_index", unique: true
     t.check_constraint "num_nonnulls(media_file_id, live_stream_id) = 1", name: "media_streams_one_owner"
@@ -715,11 +709,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.datetime "updated_at", null: false
     t.float "vote_average"
     t.integer "year"
+    t.string "normalized_title"
     t.index ["embedding"], name: "index_movies_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["household_id", "imdb_id"], name: "index_movies_on_household_id_and_imdb_id"
     t.index ["household_id", "tmdb_id"], name: "index_movies_on_household_id_and_tmdb_id"
     t.index ["keywords"], name: "index_movies_on_keywords", using: :gin
     t.index ["library_id", "match_state"], name: "index_movies_on_library_id_and_match_state"
+    t.index ["library_id", "normalized_title"], name: "index_movies_on_library_id_and_normalized_title"
     t.index ["library_id", "tmdb_id"], name: "index_movies_on_library_id_and_tmdb_id", unique: true, where: "(tmdb_id IS NOT NULL)"
     t.index ["sort_title"], name: "index_movies_on_sort_title"
     t.index ["studios"], name: "index_movies_on_studios", using: :gin
@@ -749,7 +745,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.index ["household_id"], name: "index_notifications_on_household_id"
     t.index ["user_id", "dedupe_key"], name: "index_notifications_on_user_id_and_dedupe_key", unique: true
     t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
-    t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
   create_table "offline_downloads", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -818,7 +813,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.index ["household_id"], name: "index_optimized_versions_on_household_id"
     t.index ["media_file_id"], name: "index_optimized_versions_on_media_file_id", unique: true
     t.index ["state", "needed_at"], name: "index_optimized_versions_on_state_and_needed_at"
-    t.index ["state"], name: "index_optimized_versions_on_state"
   end
 
   create_table "path_mappings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1046,7 +1040,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.integer "up_next_seconds"
     t.datetime "updated_at", null: false
     t.index ["household_id", "name"], name: "index_profiles_on_household_id_and_name", unique: true
-    t.index ["household_id"], name: "index_profiles_on_household_id"
   end
 
   create_table "ratings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1073,7 +1066,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.integer "tmdb_id"
     t.datetime "updated_at", null: false
     t.index ["show_id", "season_number"], name: "index_seasons_on_show_id_and_season_number", unique: true
-    t.index ["show_id"], name: "index_seasons_on_show_id"
   end
 
   create_table "show_folders", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1155,7 +1147,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.string "uuid", null: false
     t.uuid "video_id", null: false
     t.index ["video_id", "uuid"], name: "index_sponsor_segments_on_video_id_and_uuid", unique: true
-    t.index ["video_id"], name: "index_sponsor_segments_on_video_id"
   end
 
   create_table "station_blocks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1336,7 +1327,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.index ["optimized_version_id"], name: "index_transcode_runs_on_optimized_version_id"
     t.index ["playback_session_id"], name: "index_transcode_runs_on_playback_session_id"
     t.index ["transcode_node_id", "state"], name: "index_transcode_runs_on_transcode_node_id_and_state"
-    t.index ["transcode_node_id"], name: "index_transcode_runs_on_transcode_node_id"
   end
 
   create_table "transcoder_beats", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1424,7 +1414,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.string "youtube_id"
     t.index ["channel_id", "identity"], name: "index_videos_on_channel_id_and_identity"
     t.index ["channel_id", "upload_date"], name: "index_videos_on_channel_id_and_upload_date"
-    t.index ["channel_id"], name: "index_videos_on_channel_id"
     t.index ["embedding"], name: "index_videos_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["household_id"], name: "index_videos_on_household_id"
     t.index ["library_id", "youtube_id"], name: "index_videos_on_library_id_and_youtube_id", unique: true, where: "(youtube_id IS NOT NULL)"
@@ -1445,6 +1434,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.uuid "profile_id", null: false
     t.datetime "updated_at", null: false
     t.index ["media_file_id"], name: "index_watch_states_on_media_file_id"
+    t.index ["playable_type", "playable_id"], name: "index_watch_states_on_playable_type_and_playable_id"
     t.index ["profile_id", "last_watched_at"], name: "index_watch_states_on_profile_id_and_last_watched_at"
     t.index ["profile_id", "playable_type", "playable_id"], name: "index_watch_states_uniqueness", unique: true
   end
@@ -1495,7 +1485,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120200) do
     t.datetime "updated_at", null: false
     t.string "youtube_id", null: false
     t.index ["channel_id", "youtube_id"], name: "index_youtube_downloads_on_channel_id_and_youtube_id", unique: true
-    t.index ["channel_id"], name: "index_youtube_downloads_on_channel_id"
     t.index ["household_id", "state"], name: "index_youtube_downloads_on_household_id_and_state"
   end
 

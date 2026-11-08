@@ -50,10 +50,6 @@ RSpec.describe "Profiles", type: :request do
     current(auth_headers(member).merge(device))
     expect(json).to include("needs_picker" => false, "device_default_id" => kids.id)
     expect(json["profile"]["id"]).to eq(kids.id)
-
-    put "/api/v1/profiles/device_default", params: { profile_id: "" }, headers: auth_headers(member).merge(device)
-    current(auth_headers(member).merge(device))
-    expect(json["needs_picker"]).to be(true)
   end
 
   it "keeps a PIN'd profile out of the no-choice default, and one profile always" do

@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Clock, ClockCheck, Eye, EyeOff, ListEnd, ListPlus, PictureInPicture2, Play, Tv, UserRound } from "lucide-react";
-import { api, apiErrorMessage } from "@/api/client";
+import { api } from "@/api/client";
+import { useAddToPlaylist, type PlaylistItem } from "@/hooks/useAddToPlaylist";
+import { useMenuAction } from "@/hooks/useMenuAction";
 import { usePlayback } from "@/hooks/usePlayback";
 import { useWatchLater } from "@/hooks/useWatchLater";
-import { keys } from "@/lib/queryKeys";
 import { refreshWatched } from "@/lib/watched";
 import { playlistsQuery } from "@/lib/queries";
 import { ActionMenu, ActionMenuItem, ActionMenuSeparator } from "@/components/ui/ActionMenu";
 import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
-import type { ClipCard, EpisodeCard, MovieCard, NextItem, PlaylistCard, ShowCard, VideoCard } from "@/types";
+import type { ClipCard, EpisodeCard, MovieCard, NextItem, ShowCard, VideoCard } from "@/types";
 
 /** Anything a card can show, reduced to what its menu needs. */
 export type ActionItem =
@@ -47,20 +48,10 @@ export function ItemActions({ item, className }: { item: ActionItem; className?:
 
 function ItemActionList({ item, close }: { item: ActionItem; close: () => void }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { current, enqueue, pip, openPip } = usePlayback();
   const watchLater = useWatchLater();
   const [choosingPlaylist, setChoosingPlaylist] = useState(false);
-
-  const run = (work: Promise<unknown>, done: string, changed?: { kind: string; id: string; watched: boolean }) => {
-    close();
-    work
-      .then(() => {
-        refreshWatched(queryClient, changed);
-        toast.info(done);
-      })
-      .catch((error: unknown) => toast.error(apiErrorMessage(error, "That didn't go through.")));
-  };
+  const run = useMenuAction();
   const name = itemName(item);
 
   if (choosingPlaylist && item.kind !== "show" && item.kind !== "clip") {
@@ -68,11 +59,15 @@ function ItemActionList({ item, close }: { item: ActionItem; close: () => void }
   }
 
   const setWatched = (watched: boolean) => {
-    const work =
-      item.kind === "show"
-        ? api.post(`/shows/${item.id}/watched`, { watched })
-        : api.post("/watch_states", { playable_type: item.kind, playable_id: item.id, watched });
-    run(work, `${name}: marked ${watched ? "watched" : "unwatched"}`, { kind: item.kind, id: item.id, watched });
+    close();
+    run({
+      work: () =>
+        item.kind === "show"
+          ? api.post(`/shows/${item.id}/watched`, { watched })
+          : api.post("/watch_states", { playable_type: item.kind, playable_id: item.id, watched }),
+      done: `${name}: marked ${watched ? "watched" : "unwatched"}`,
+      refresh: (queryClient) => refreshWatched(queryClient, { kind: item.kind, id: item.id, watched }),
+    });
   };
 
   const queueable = item.kind === "movie" || item.kind === "episode" || item.kind === "video";
@@ -170,24 +165,13 @@ function PlaylistChoices({
   onBack,
   close,
 }: {
-  item: { kind: "movie" | "episode" | "video"; id: string };
+  item: PlaylistItem;
   name: string;
   onBack: () => void;
   close: () => void;
 }) {
-  const queryClient = useQueryClient();
   const playlists = useQuery(playlistsQuery());
-  const add = (playlist: PlaylistCard) => {
-    close();
-    api
-      .post(`/playlists/${playlist.id}/items`, { item_type: item.kind, item_id: item.id })
-      .then(() => {
-        void queryClient.invalidateQueries({ queryKey: keys.playlists.all });
-        void queryClient.invalidateQueries({ queryKey: keys.watchLater.all });
-        toast.info(`Added ${name} to ${playlist.title}`);
-      })
-      .catch((error: unknown) => toast.error(apiErrorMessage(error, "That didn't go through.")));
-  };
+  const { add } = useAddToPlaylist(item, { onAdded: (title) => toast.info(`Added ${name} to ${title}`) });
   const choices = playlists.data ?? [];
   return (
     <>
@@ -200,7 +184,13 @@ function PlaylistChoices({
       {playlists.isSuccess && choices.length === 0 ? <p className="px-2.5 py-1.5 text-sm text-muted">No playlists yet — start one from Playlists.</p> : null}
       <div className="max-h-64 overflow-y-auto">
         {choices.map((playlist) => (
-          <ActionMenuItem key={playlist.id} onSelect={() => add(playlist)}>
+          <ActionMenuItem
+            key={playlist.id}
+            onSelect={() => {
+              close();
+              add.mutate(playlist);
+            }}
+          >
             {playlist.title}
           </ActionMenuItem>
         ))}

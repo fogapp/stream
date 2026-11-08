@@ -28,10 +28,10 @@ spec:
     # Thruster cuts responses at 30 s by default; a direct-play stream is
     # hours long (docs/spikes.md › Spike A). The image sets this too.
     HTTP_WRITE_TIMEOUT: "0"
-    # Lucid, the fleet's observability service (the vendored lucid gem).
-    # Inert until LUCID_API_KEY is set too, which connecting Lucid on
+    # Glass, the fleet's observability service (the vendored glass gem).
+    # Inert until GLASS_API_KEY is set too, which connecting Glass on
     # Stream's Integrations tab in fog does (fog:docs/integrations-contract.md).
-    LUCID_URL: http://lucid
+    GLASS_URL: http://glass
   secrets:
     - SECRET_KEY_BASE
     - AR_ENCRYPTION_PRIMARY_KEY
@@ -40,8 +40,8 @@ spec:
     # Signs media URLs (PROPOSAL §3.3). Its own secret so rotating it ends
     # every playback session without signing anyone out.
     - STREAM_TOKEN_KEY
-    # LUCID_API_KEY is not listed: fog refuses to deploy a declared secret
-    # with no value, and the key arrives by connecting Lucid on the
+    # GLASS_API_KEY is not listed: fog refuses to deploy a declared secret
+    # with no value, and the key arrives by connecting Glass on the
     # Integrations tab, which adds it to the vault itself.
   needs:
     postgres:

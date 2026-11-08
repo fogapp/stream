@@ -194,6 +194,8 @@ module Media
         color_transfer: stream["color_transfer"],
         hdr_format: kind == MediaStream::Kind::Video ? hdr_format(stream, dovi)&.serialize : nil,
         dolby_vision_profile: dovi ? integer(dovi["dv_profile"]) : nil,
+        # What its base layer is besides: 1 HDR10, 4 HLG, 2 SDR, 6 Blu-ray HDR10.
+        dolby_vision_compatibility: dovi ? Integer(dovi["dv_bl_signal_compatibility_id"].to_s, exception: false) : nil,
         channels: integer(stream["channels"]),
         channel_layout: stream["channel_layout"],
         language: normalize_language(tags["language"]),

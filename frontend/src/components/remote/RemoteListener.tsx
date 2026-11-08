@@ -1,8 +1,8 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
-import { usePlayback } from "@/hooks/usePlayback";
+import { usePlaybackActions } from "@/hooks/usePlayback";
 import { useProfile } from "@/hooks/useProfile";
 import { keys } from "@/lib/queryKeys";
 import { toast } from "@/components/ui/Toast";
@@ -13,12 +13,19 @@ import type { RemoteCommand, RemoteDevice } from "@/types";
 const isTv = (pathname: string) => pathname.startsWith("/tv") || fromTv();
 
 /** How often a screen that can be played to asks for commands. */
-const POLL_MS = 2_000;
+export const POLL_MS = 2_000;
+
+/**
+ * Commands already carried out, by id: a poll that answers one again (or a
+ * listener mounted again, as a profile switch does) doesn't repeat it.
+ */
+const handled = new Set<string>();
 
 /**
  * Being played to (PROPOSAL §11 Phase 6): a browser that allows it — every
  * TV on /tv does — asks every couple of seconds whether anyone (the app on
- * a phone, or an agent over MCP) wants it to play, pause, seek or stop.
+ * a phone, or an agent over MCP) wants it to play, pause, seek or stop —
+ * a TV even when its tab is hidden; a desktop tab only while it's looked at.
  * Renders nothing.
  */
 export function RemoteListener() {
@@ -26,10 +33,9 @@ export function RemoteListener() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { profile, adopt } = useProfile();
-  const playback = usePlayback();
+  const playback = usePlaybackActions();
   const tv = isTv(pathname);
   const device = useQuery({ queryKey: keys.remote.thisDevice(), queryFn: ({ signal }) => api.get<RemoteDevice>("/remote/this_device", { signal }) });
-  const handled = useRef(new Set<string>());
 
   // A TV is there to be played to.
   const enabled = device.data?.remote_control ?? false;
@@ -45,8 +51,8 @@ export function RemoteListener() {
   // What a command does, with whatever the page is now: the poll below
   // runs from when the screen allows it, not again on every navigation.
   const run = useEffectEvent((command: RemoteCommand) => {
-    if (handled.current.has(command.id)) return;
-    handled.current.add(command.id);
+    if (handled.has(command.id)) return;
+    handled.add(command.id);
     // Grid holds neighbouring channels in hidden videos: the one on screen.
     const video = document.querySelector<HTMLVideoElement>("video.visible") ?? document.querySelector("video");
     switch (command.kind) {
@@ -85,24 +91,22 @@ export function RemoteListener() {
     }
   });
 
+  const commands = useQuery({
+    queryKey: keys.remote.commands(),
+    queryFn: ({ signal }) => api.get<RemoteCommand[]>("/remote/commands", { signal }),
+    enabled,
+    refetchInterval: POLL_MS,
+    // A TV is played to with nobody looking at its tab; a desktop's hidden tab can wait.
+    refetchIntervalInBackground: tv,
+    // Offline or restarting: ask again next time.
+    retry: false,
+    // Each answer is new: never one kept from before.
+    staleTime: 0,
+    gcTime: 0,
+  });
   useEffect(() => {
-    if (!enabled) return;
-    let live = true;
-    const poll = async () => {
-      try {
-        const commands = await api.get<RemoteCommand[]>("/remote/commands");
-        if (live) for (const command of commands) run(command);
-      } catch {
-        // Offline or restarting: ask again next time.
-      }
-    };
-    const timer = window.setInterval(() => void poll(), POLL_MS);
-    void poll();
-    return () => {
-      live = false;
-      window.clearInterval(timer);
-    };
-  }, [enabled]);
+    for (const command of commands.data ?? []) run(command);
+  }, [commands.data]);
 
   return null;
 }

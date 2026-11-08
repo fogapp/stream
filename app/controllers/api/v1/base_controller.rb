@@ -63,12 +63,24 @@ module Api
 
           before_action :"set_#{name}"
         end
+
+        # A service upstream that didn't answer — TMDB, MLB's or NBA's
+        # schedule: 502, with what went wrong after `prefix` ("TMDB: …"),
+        # from any action of the controller (hook_requests_controller does
+        # the same, telling a refusal from a failure).
+        sig { params(error_class: T.class_of(UpstreamHttpClient::Error), prefix: String).void }
+        def answers_upstream_errors(error_class = UpstreamHttpClient::Error, prefix: "")
+          rescue_from(error_class) do |error|
+            T.bind(self, BaseController)
+            render_errors("#{prefix}#{error.message}", status: :bad_gateway)
+          end
+        end
       end
 
       private
 
-      # The only error envelope is { errors: [...] } (cop-enforced). The one
-      # sanctioned exception is test_connection's { ok: false, error: } shape.
+      # The only error envelope is { errors: [...] } (cop-enforced). A
+      # test_connection isn't an error: it answers { ok:, message: }.
       sig { params(source: T.untyped, status: Symbol).void }
       def render_errors(source, status: :unprocessable_content)
         messages =

@@ -45,7 +45,7 @@ module Playback
     # A channel tuned ahead on a share that isn't slow: past the 10 s the web
     # deck keeps buffered on standby, by a long GOP. At 6 s the deck asked
     # for what the run hadn't read yet on every fetch, and each waited
-    # seconds at the frontier, holding a Puma thread (Lucid, 2026-10-20).
+    # seconds at the frontier, holding a Puma thread (Glass, 2026-10-20).
     STANDBY_AHEAD_BURST = 20.0
 
     const :rate, Float

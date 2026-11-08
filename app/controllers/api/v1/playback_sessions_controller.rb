@@ -45,7 +45,7 @@ module Api
       def readable
         playable = T.cast(Viewing::Playables.find!(params.require(:playable_type), params.require(:playable_id),
           only: %w[movie episode extra video clip]), T.any(Movie, Episode, Extra, Video, Clip))
-        render json: { readable: playable.media_files.exists?(state: MediaFile::State::Probed.serialize) }
+        render json: { readable: playable.media_files.playable.exists? }
       end
 
       # A channel tuned ahead is now the one on screen: from here it's a play
@@ -148,7 +148,7 @@ module Api
         client = client_of(device)
         max_height = Playback::Encoders.max_height
         wanted = airing&.media_file_id || params[:media_file_id].presence&.to_s ||
-          WatchState.find_by(profile: current_profile!, playable: playable)&.media_file_id
+          watch_state_of(playable)&.media_file_id
         choice = T.let(ActiveSupport::Notifications.instrument("decide.stream") do
           Playback::Start.choose(playable, client, max_height, wanted: wanted)
         end, T.nilable([ MediaFile, Playback::Decision ]))
@@ -326,8 +326,19 @@ module Api
         explicit = params[:start].presence&.to_f
         return explicit if explicit
 
-        state = WatchState.find_by(profile: current_profile!, playable: playable)
+        state = watch_state_of(playable)
         state.nil? || state.completed? ? 0.0 : state.position_seconds
+      end
+
+      # This profile's state of what's being played, read once a request
+      # (which file it was on, and where it got to).
+      sig { params(playable: T.any(Movie, Episode, Extra, Video, Clip)).returns(T.nilable(WatchState)) }
+      def watch_state_of(playable)
+        @watch_states ||= T.let({}, T.nilable(T::Hash[[ String, String ], T.nilable(WatchState)]))
+        key = [ playable.class.polymorphic_name, playable.id.to_s ]
+        return @watch_states[key] if @watch_states.key?(key)
+
+        @watch_states[key] = WatchState.find_by(profile: current_profile!, playable: playable)
       end
     end
   end

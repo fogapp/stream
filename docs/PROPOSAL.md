@@ -155,7 +155,7 @@ The house stack, cloned from hook (the newest scaffold):
 | Tests | RSpec + webmock, simplecov ratchet, recorded TMDB fixtures, a **media fixture corpus** (tiny generated files covering every codec/container/subtitle case), Playwright playback tests in Chromium + WebKit | §8.4 |
 | Deploy | fog git-source app, `stream.fog.yaml`, blue-green swap, `fog-backup/2` delegated | §9 |
 | Errors | vendored `flare`, `fog-client` | inert without fog |
-| Observability | vendored `lucid` (synced by `lucid:bin/sync-client .`): requests, SQL, jobs, runtime, profiles, logs, browser analytics to Lucid | inert without `LUCID_URL` + `LUCID_API_KEY` |
+| Observability | vendored `glass` (synced by `glass:bin/sync-client .`): requests, SQL, jobs, runtime, profiles, logs, browser analytics to Glass | inert without `GLASS_URL` + `GLASS_API_KEY` |
 
 ### 3.2 Topology
 

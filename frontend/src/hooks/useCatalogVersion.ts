@@ -8,7 +8,7 @@ import type { CatalogVersion } from "@/types";
 export const CATALOG_POLL_MS = 5_000;
 
 /** What a new or vanished file can change: every list of titles, search, and Hook's In Stream marks. */
-const CATALOG_KEYS = [
+export const CATALOG_KEYS = [
   keys.home.all,
   keys.search.all,
   keys.hook.all,

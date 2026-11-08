@@ -10,8 +10,8 @@
 #
 # It needs the database and the cache volume, never web: /up doesn't depend
 # on it, and a restart here only costs a playing session a brief rebuffer.
-# Reports to Lucid as its own process, not as another web.
-ENV["LUCID_PROCESS"] ||= "transcoder"
+# Reports to Glass as its own process, not as another web.
+ENV["GLASS_PROCESS"] ||= "transcoder"
 require_relative "../config/environment"
 
 $stdout.sync = true
@@ -26,7 +26,7 @@ supervisor = Playback::Supervisor.new(encoder: encoder, log: log, debounce: 0.05
 optimizer = Playback::Optimizer.new(encoder: encoder, log: log)
 relays = Playback::LiveRelays.new(encoder: encoder, log: log)
 log.call("started (encoder: #{encoder.serialize}, cache: #{Playback::Cache.root})")
-Lucid.event("Transcoder started", tags: { encoder: encoder.serialize })
+Glass.event("Transcoder started", tags: { encoder: encoder.serialize })
 
 stop = false
 %w[TERM INT].each { |signal| Signal.trap(signal) { stop = true } }

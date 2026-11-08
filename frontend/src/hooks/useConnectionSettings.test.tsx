@@ -38,4 +38,14 @@ describe("useConnectionSettings", () => {
     await waitFor(() => expect(result.current.current?.url).toBe("http://new"));
     expect(get).toHaveBeenCalledOnce();
   });
+
+  it("patches a change without a form and takes the answer", async () => {
+    vi.spyOn(api, "get").mockResolvedValue({ configured: true, url: "http://thing" });
+    const patch = vi.spyOn(api, "patch").mockResolvedValue({ configured: true, url: "http://patched" });
+    const { result } = renderHook(() => useConnectionSettings<Settings>("/thing", resource), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.settings.isSuccess).toBe(true));
+    act(() => result.current.patch({ thing: { enabled: false } }));
+    await waitFor(() => expect(result.current.current?.url).toBe("http://patched"));
+    expect(patch).toHaveBeenCalledWith("/thing", { thing: { enabled: false } });
+  });
 });

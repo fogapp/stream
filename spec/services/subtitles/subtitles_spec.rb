@@ -175,7 +175,7 @@ RSpec.describe "Subtitles" do
 
       # Not taken out yet: a job does it, and the player is told to ask
       # again rather than held while the file is read (APPLETV_STALLS R5).
-      stub_const("MediaController::SUBTITLE_WAIT", 0.1)
+      stub_const("ServesSubtitles::SUBTITLE_WAIT", 0.1)
       url = subtitles.first.dig("urls", "vtt")
       get url
       expect(response).to have_http_status(:service_unavailable)
@@ -200,7 +200,7 @@ RSpec.describe "Subtitles" do
       url = json["subtitles"].first.dig("urls", "vtt")
       allow(Subtitles::Extractor).to receive(:extract).and_raise(Subtitles::Extractor::Error, "ffmpeg wrote nothing for e3")
 
-      stub_const("MediaController::SUBTITLE_WAIT", 0.1)
+      stub_const("ServesSubtitles::SUBTITLE_WAIT", 0.1)
       get url
       expect(response).to have_http_status(:service_unavailable)
       perform_enqueued_jobs

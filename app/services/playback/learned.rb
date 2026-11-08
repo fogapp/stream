@@ -83,14 +83,36 @@ module Playback
     # from, and why, in words; none when nothing was learned.
     sig { params(file: MediaFile, client_class: T.nilable(String)).returns([ Constraints, T.nilable(String) ]) }
     def self.constraints_for(file, client_class)
-      return [ Constraints::NONE, nil ] if client_class.blank?
+      constraints_for_all([ file ], client_class).fetch(file.id)
+    end
 
-      own = Playability.where(media_file_id: file.id, client_class: client_class).index_by(&:rung)
-      # What files like this taught this client class and the server, in
-      # one query rather than two per rung (Lucid flagged the N+1 on every
+    # The same for every version of a title at once, by file id: two
+    # queries however many files (a press of Play weighs every version).
+    sig do
+      params(files: T::Array[MediaFile], client_class: T.nilable(String)).returns(T::Hash[String, [ Constraints, T.nilable(String) ]])
+    end
+    def self.constraints_for_all(files, client_class)
+      return files.to_h { |file| [ file.id, [ Constraints::NONE, nil ] ] } if client_class.blank? || files.empty?
+
+      signatures = files.to_h { |file| [ file.id, signature(file) ] }
+      own = Playability.where(media_file_id: files.map(&:id), client_class: client_class).to_a.group_by(&:media_file_id)
+      # What files like these taught this client class and the server, in
+      # one query rather than two per rung (Glass flagged the N+1 on every
       # press of Play: docs/APPLETV_STALLS.md › R5).
-      like_this = Playability.where(household_id: file.household_id, format_signature: signature(file), client_class: [ client_class, SERVER ])
-        .to_a.group_by { |row| [ row.client_class, row.rung ] }
+      like = Playability.where(household_id: files.map(&:household_id).uniq, format_signature: signatures.values.uniq,
+        client_class: [ client_class, SERVER ]).to_a.group_by { |row| [ row.household_id, row.format_signature ] }
+      files.to_h do |file|
+        mine = own.fetch(file.id, []).index_by(&:rung)
+        like_this = like.fetch([ file.household_id, signatures.fetch(file.id) ], []).group_by { |row| [ row.client_class, row.rung ] }
+        [ file.id, learned_from(file, client_class, mine, like_this) ]
+      end
+    end
+
+    sig do
+      params(file: MediaFile, client_class: String, own: T::Hash[T.nilable(String), Playability],
+        like_this: T::Hash[[ T.nilable(String), T.nilable(String) ], T::Array[Playability]]).returns([ Constraints, T.nilable(String) ])
+    end
+    def self.learned_from(file, client_class, own, like_this)
       lessons = RUNGS.filter_map { |rung| lesson(file, client_class, rung, own[rung], like_this) }
       return [ Constraints::NONE, nil ] if lessons.empty?
 
@@ -101,6 +123,7 @@ module Playback
       first = T.must(lessons.first)
       [ constraints, "#{LABELS.fetch(first[0])} #{first[2]} — skipped" ]
     end
+    private_class_method :learned_from
 
     RUNGS = %w[direct remux audio_transcode optimized video_transcode].freeze
 

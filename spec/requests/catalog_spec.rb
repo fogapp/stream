@@ -247,6 +247,19 @@ RSpec.describe "Catalog", type: :request do
       expect(json["heroes"].first).to include("play" => { "kind" => "episode", "id" => show.episodes.find_by(season_number: 1, episode_number: 1).id })
     end
 
+    it "fills Recently added from the shows with the newest arrivals, past a row's worth of shows" do
+      shows = (1..(Viewing::Home::HUB_SIZE + 4)).map do |n|
+        show_with("Show #{n}", [ [ 1, 1 ] ]).tap do |made|
+          Edition.where(playable: made.episodes).update_all(created_at: n.hours.ago) # rubocop:disable Rails/SkipsModelValidations
+        end
+      end
+
+      get "/api/v1/home", headers: headers
+
+      items = json["hubs"].find { |hub| hub["title"] == "Recently added in TV" }["items"]
+      expect(items.map { |c| c.dig("show", "title") }).to eq(shows.first(Viewing::Home::HUB_SIZE).map(&:title))
+    end
+
     it "stands a batch of a show's episodes in Recently added as the show, the season it came in when there was one" do
       west_wing = show_with("The West Wing", (1..3).flat_map { |season| (1..6).map { |number| [ season, number ] } })
       Edition.where(playable: west_wing.episodes).update_all(created_at: 1.hour.ago) # rubocop:disable Rails/SkipsModelValidations

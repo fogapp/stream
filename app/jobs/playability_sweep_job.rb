@@ -40,7 +40,7 @@ class PlayabilitySweepJob < ApplicationJob
   # library isn't read again until a file is.
   sig { params(household: Household, version: String).returns(Integer) }
   def sweep(household, version)
-    probed = MediaFile.unscoped.where(household_id: household.id, state: MediaFile::State::Probed.serialize)
+    probed = MediaFile.unscoped.playable.where(household_id: household.id)
     latest = probed.maximum(:probed_at).to_i
     done = [ "playability_sweep:done", household.id, version ]
     return 0 if Rails.cache.read(done) == latest

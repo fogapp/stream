@@ -1,16 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import { keys } from "@/lib/queryKeys";
+import { homeHubsQuery } from "@/lib/queries";
 import { TvCard } from "@/components/tv/TvCard";
 import { TvShell } from "@/components/tv/TvShell";
 import { QueryState } from "@/components/ui/PageState";
 import { clockSkew, onAt } from "@/lib/live";
 import { useNowGuide } from "@/lib/liveGuide";
-import type { HomeHub, HomeHubs } from "@/types";
+import type { HomeHub } from "@/types";
 
 /** The TV's home (PROPOSAL §7.4): the same rows as the desktop, a remote's width apart. */
 export function TvHome() {
-  const hubs = useQuery({ queryKey: keys.home.hubs(), queryFn: ({ signal }) => api.get<HomeHubs>("/home", { signal }) });
+  const hubs = useQuery(homeHubsQuery());
   return (
     <TvShell ready={Boolean(hubs.data)}>
       <QueryState query={hubs} errorMessage="Could not load home.">

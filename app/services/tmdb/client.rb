@@ -35,6 +35,14 @@ module Tmdb
     sig { returns(T::Hash[String, T.untyped]) }
     def configuration = get("/configuration")
 
+    sig { returns([ T::Boolean, String ]) }
+    def test_connection
+      answer_test do
+        configuration
+        "Connected to TMDB."
+      end
+    end
+
     sig { params(query: String, year: T.nilable(Integer)).returns(T::Array[T::Hash[String, T.untyped]]) }
     def search_movies(query, year: nil)
       Array(get("/search/movie", query: query, year: year, include_adult: "false")["results"])

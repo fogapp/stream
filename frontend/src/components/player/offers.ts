@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import { keys } from "@/lib/queryKeys";
+import { videoQuery } from "@/lib/queries";
 import type { NextItem, PlayableKind, VideoCard, VideoDetail } from "@/types";
 
 export type Offers = NonNullable<VideoDetail["end_screen"]>;
@@ -14,8 +13,7 @@ export function useEndScreen(item: { kind: PlayableKind; id: string }): Offers |
   const video = item.kind === "video";
   const detail = useQuery({
     enabled: video,
-    queryKey: keys.videos.detail(item.id),
-    queryFn: ({ signal }) => api.get<VideoDetail>(`/videos/${item.id}`, { signal }),
+    ...videoQuery(item.id),
   });
   const offers = video ? detail.data?.end_screen : null;
   return offers && (offers.next || offers.others.length > 0) ? offers : null;

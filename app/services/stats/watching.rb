@@ -20,7 +20,7 @@ module Stats
 
     sig { params(page: T.untyped).returns(T::Array[T::Hash[Symbol, T.untyped]]) }
     def self.history(page)
-      page.includes(:profile, :media_file, playable: TITLED).map { |session| session_json(session) }
+      page.includes(:profile, media_file: :optimized_version, playable: TITLED).map { |session| session_json(session) }
     end
 
     sig { params(session: PlaybackSession).returns(T::Hash[Symbol, T.untyped]) }

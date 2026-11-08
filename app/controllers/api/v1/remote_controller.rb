@@ -35,7 +35,7 @@ module Api
         mine = current_device&.id
         screens = Device.listening.order(:label, :name)
         screens = screens.where.not(id: mine) if mine
-        render json: screens.map { |device| DeviceSerializer.remote_json(device) }
+        render json: DeviceSerializer.remote_index(screens.to_a)
       end
 
       sig { void }

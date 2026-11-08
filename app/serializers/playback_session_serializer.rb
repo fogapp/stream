@@ -215,11 +215,12 @@ module PlaybackSessionSerializer
     show = episode.show
     return nil if show.nil?
 
-    Viewing::NextUp.available(show).to_a.find do |candidate|
-      same_kind = episode.season_number.zero? == candidate.season_number.zero?
-      later = [ candidate.season_number, candidate.episode_number.to_i ] <=> [ episode.season_number, episode.episode_number.to_i ]
-      same_kind && later.to_i.positive?
-    end
+    available = Viewing::NextUp.available(show)
+    same_kind = episode.season_number.zero? ? available.where(season_number: 0) : available.where.not(season_number: 0)
+    # The first after it in the show's order, asked of the database: an
+    # episode without a number counts as 0, as it sorts.
+    same_kind.where("(episodes.season_number, COALESCE(episodes.episode_number, 0)) > (?, ?)", episode.season_number,
+      episode.episode_number.to_i).first
   end
 
   # In a playlist, what's next is the playlist's next item, movie or episode.

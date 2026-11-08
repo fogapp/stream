@@ -120,13 +120,7 @@ module Playback
       held = Publisher::Held.read(staging)
       return false if held.nil? || held.kind != Publisher::Held::OPEN
 
-      tail = File.open(staging.join("run.m3u8"), "rb") do |playlist|
-        playlist.seek([ playlist.size - ENDLIST_TAIL, 0 ].max)
-        playlist.read
-      end
-      tail.to_s.include?("#EXT-X-ENDLIST")
-    rescue SystemCallError
-      false
+      LogTail.read(staging.join("run.m3u8"), bytes: ENDLIST_TAIL).include?("#EXT-X-ENDLIST")
     end
   end
 end

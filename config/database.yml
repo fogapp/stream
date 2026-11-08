@@ -47,7 +47,7 @@ production:
     # poll is about, so the 5-minute default closed all but one, and every
     # page load opened (and re-prepared) a connection per request it sent
     # at once: thirteen requests at 200-350 ms instead of single digits
-    # (Lucid, 2026-10-22 08:28:58). Each process still opens only as many
+    # (Glass, 2026-10-22 08:28:58). Each process still opens only as many
     # as it has ever needed at once, at most its pool.
     idle_timeout: 0
   cache:

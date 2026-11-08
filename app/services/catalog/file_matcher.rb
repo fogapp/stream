@@ -89,9 +89,7 @@ module Catalog
       end
       named = Media::NameParser.normalize(parsed.title)
       # Loose in a library's root, only the name can say whose it is.
-      if @library.roots.include?(folder)
-        return Movie.where(library_id: @library.id).find { |movie| Media::NameParser.normalize(movie.title) == named }
-      end
+      return named_movie(Movie.where(library_id: @library.id), named) if @library.roots.include?(folder)
 
       beside = MediaFile.where(library_id: @library.id).where("path LIKE ?", "#{MediaFile.sanitize_sql_like(folder)}/%")
         .where.not(id: @file.id).where.missing(:extra)
@@ -155,8 +153,16 @@ module Catalog
       # 4K.mkv" and "Heat (1995)/Heat (1995).mkv" both read as Heat, 1995).
       # Folder siblings are not enough on their own: "Alien Collection/"
       # holds four different films.
-      normalized = Media::NameParser.normalize(parsed.title)
-      scope.where(year: parsed.year).find { |movie| Media::NameParser.normalize(movie.title) == normalized }
+      named_movie(scope.where(year: parsed.year), Media::NameParser.normalize(parsed.title))
+    end
+
+    # The film in `scope` whose title normalizes to `named`: by its
+    # normalized_title, or for a row written without one (by a replica on
+    # older code), by its title compared as before.
+    sig { params(scope: T.untyped, named: String).returns(T.nilable(Movie)) }
+    def named_movie(scope, named)
+      scope.where(normalized_title: named).take ||
+        scope.where(normalized_title: nil).find { |movie| Media::NameParser.normalize(movie.title) == named }
     end
 
     sig { params(parsed: Media::NameParser::Parsed).void }
@@ -240,6 +246,10 @@ module Catalog
 
       Metadata.apply_season(show, client.season(tmdb_id, number))
     rescue Tmdb::Client::Error => e
+      # A rate limit or a refused key isn't about this season: up to the
+      # job's retry_on, as before.
+      raise if e.is_a?(UpstreamHttpClient::RateLimitError) || e.is_a?(UpstreamHttpClient::AuthError)
+
       # A season TMDB doesn't know (a special, a fan numbering) still plays.
       Activity.record(source: "metadata", event: "season.fetch_failed", severity: Activity::Severity::Warn,
         subject: show, household_id: show.household_id, summary: "#{show.title} season #{number}: #{e.message}")

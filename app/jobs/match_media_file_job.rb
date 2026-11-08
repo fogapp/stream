@@ -16,9 +16,11 @@ class MatchMediaFileJob < ApplicationJob
   limits_concurrency to: 1, key: ->(_media_file_id, library_id) { "match_library:#{library_id}" }
   # Bad data in, same bad data out: the AnalysisRun already holds the reason.
   discard_on Catalog::FileMatcher::Unplaceable
-  # TMDB rate limits and outages heal; wait them out.
-  retry_on UpstreamHttpClient::RateLimitError, wait: 1.minute, attempts: 10
+  # TMDB rate limits and outages heal; wait them out. A rate limit is a
+  # Tmdb::Client::Error too, and ActiveJob tries the last-declared handler
+  # first, so the narrower rule comes second.
   retry_on Tmdb::Client::Error, wait: :polynomially_longer, attempts: 5
+  retry_on UpstreamHttpClient::RateLimitError, wait: 1.minute, attempts: 10
 
   # One job per file, each carrying its library: one query for them all.
   sig { params(media_file_ids: T::Array[String]).returns(T::Array[MatchMediaFileJob]) }

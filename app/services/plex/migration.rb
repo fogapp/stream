@@ -44,13 +44,25 @@ module Plex
       @connection.update!(last_synced_at: Time.current) unless @import.dry_run
       record
     rescue UpstreamHttpClient::Error => e
-      @import.update!(status: PlexImport::Status::Failed.serialize, finished_at: Time.current, error: e.message.truncate(500),
-        counts: @counts, users: @users)
-      Activity.record(source: "plex", event: "plex.import_failed", severity: Activity::Severity::Error, subject: @import,
-        household_id: @import.household_id, summary: "Plex #{@import.dry_run ? 'dry run' : 'import'} failed: #{e.message.truncate(200)}")
+      # Plex unreachable or refusing: said on the import, and that's all.
+      failed!(e.message)
+    rescue StandardError => e
+      # Anything else is a bug, and goes on to the job's error reporting —
+      # but never leaves the import running forever with nothing said
+      # (CLAUDE.md invariant 5).
+      failed!("#{e.class}: #{e.message}")
+      raise
     end
 
     private
+
+    sig { params(message: String).void }
+    def failed!(message)
+      @import.update!(status: PlexImport::Status::Failed.serialize, finished_at: Time.current, error: message.truncate(500),
+        counts: @counts, users: @users)
+      Activity.record(source: "plex", event: "plex.import_failed", severity: Activity::Severity::Error, subject: @import,
+        household_id: @import.household_id, summary: "Plex #{@import.dry_run ? 'dry run' : 'import'} failed: #{message.truncate(200)}")
+    end
 
     # Every Plex movie and episode, resolved to a Stream playable (or not)
     # by ratingKey.
@@ -106,17 +118,22 @@ module Plex
       server.sections.each do |section|
         types = { "movie" => [ Server::MOVIE ], "show" => [ Server::SHOW, Server::EPISODE ] }.fetch(section["type"].to_s, [])
         types.each do |type|
-          server.each_item(section["key"].to_s, type: type) do |item|
+          # A page's views and stars read together, not an item at a time.
+          server.each_page(section["key"].to_s, type: type) do |items|
             if type == Server::SHOW
-              show = @shows[item["ratingKey"].to_s]
-              apply_rating(profile, show, item, tally) if show
+              shows = items.filter_map { |item| (show = @shows[item["ratingKey"].to_s]) && [ item, show ] }
+              ratings = Rating.index_for(profile, shows.map(&:last))
+              shows.each { |item, show| apply_rating(profile, show, item, tally, ratings) }
               next
             end
-            match = matches[item["ratingKey"].to_s]
-            next if match.nil?
-
-            apply_rating(profile, match.playable, item, tally)
-            apply(profile, match, item, tally)
+            found = items.filter_map { |item| (match = matches[item["ratingKey"].to_s]) && [ item, match ] }
+            playables = found.map { |_, match| match.playable }
+            ratings = Rating.index_for(profile, playables)
+            states = WatchState.index_for(profile, playables)
+            found.each do |item, match|
+              apply_rating(profile, match.playable, item, tally, ratings)
+              apply(profile, match, item, tally, states)
+            end
           end
         end
       end
@@ -138,15 +155,17 @@ module Plex
     end
 
     sig do
-      params(profile: Profile, match: Catalog::Match, item: T::Hash[String, T.untyped], tally: T::Hash[String, Integer]).void
+      params(profile: Profile, match: Catalog::Match, item: T::Hash[String, T.untyped], tally: T::Hash[String, Integer],
+        states: T::Hash[[ String, String ], WatchState]).void
     end
-    def apply(profile, match, item, tally)
+    def apply(profile, match, item, tally, states)
       views = item["viewCount"].to_i
       offset = item["viewOffset"].to_i / 1000.0
       return if views.zero? && offset.zero?
 
       viewed_at = Time.zone.at(item["lastViewedAt"].to_i)
-      state = WatchState.find_or_initialize_by(profile: profile, playable: match.playable)
+      playable = match.playable
+      state = states.fetch([ playable.class.polymorphic_name, playable.id ]) { WatchState.find_or_initialize_by(profile: profile, playable: playable) }
       known = state.last_watched_at
       if known && known >= viewed_at
         bump(tally, known == viewed_at ? "unchanged" : "newer_in_stream", 1)
@@ -170,14 +189,14 @@ module Plex
     # Stars, out of 10 as Plex keeps them. The newer rating wins, as views do.
     sig do
       params(profile: Profile, rateable: T.any(Movie, Show, Episode), item: T::Hash[String, T.untyped],
-        tally: T::Hash[String, Integer]).void
+        tally: T::Hash[String, Integer], ratings: T::Hash[[ String, String ], Rating]).void
     end
-    def apply_rating(profile, rateable, item, tally)
+    def apply_rating(profile, rateable, item, tally, ratings)
       value = item["userRating"]&.to_f
       return if value.nil? || !value.positive?
 
       rated_at = Time.zone.at((item["lastRatedAt"] || item["lastViewedAt"] || item["updatedAt"]).to_i)
-      rating = Rating.find_or_initialize_by(profile: profile, rateable: rateable)
+      rating = ratings.fetch([ rateable.class.polymorphic_name, rateable.id ]) { Rating.find_or_initialize_by(profile: profile, rateable: rateable) }
       if rating.persisted? && rating.rated_at >= rated_at
         bump(tally, "ratings_unchanged", 1)
         return

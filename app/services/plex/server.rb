@@ -55,12 +55,18 @@ module Plex
     # ids Plex matched it to (includeGuids).
     sig { params(section_key: String, type: Integer, block: T.proc.params(item: T::Hash[String, T.untyped]).void).void }
     def each_item(section_key, type:, &block)
+      each_page(section_key, type: type) { |items| items.each(&block) }
+    end
+
+    # The same, a page of items at a time.
+    sig { params(section_key: String, type: Integer, block: T.proc.params(items: T::Array[T::Hash[String, T.untyped]]).void).void }
+    def each_page(section_key, type:, &block)
       start = 0
       loop do
         page = container("/library/sections/#{CGI.escape(section_key)}/all",
           query: { type: type, includeGuids: 1, "X-Plex-Container-Start" => start, "X-Plex-Container-Size" => PAGE })
         items = Array(page["Metadata"])
-        items.each(&block)
+        block.call(items)
         start += items.size
         total = page["totalSize"].to_i
         break if items.size < PAGE || (total.positive? && start >= total)

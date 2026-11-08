@@ -15,4 +15,8 @@ module LockedFields
     locked = T.unsafe(self).locked_fields.to_set
     T.unsafe(self).assign_attributes(attributes.reject { |key, _| locked.include?(key.to_s) })
   end
+
+  # Whether a person has locked this field.
+  sig { params(field: T.any(String, Symbol)).returns(T::Boolean) }
+  def locked?(field) = T.unsafe(self).locked_fields.include?(field.to_s)
 end

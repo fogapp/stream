@@ -104,10 +104,12 @@ module Playback
       tracks = @tracks
       raise Mismatch, "a fragment arrived before its init segment" if tracks.nil?
 
-      span = Fragment.video_span_ms(staged, tracks)
+      # Its boxes read once, for its picture and, failing that, its sound.
+      runs = Fragment.runs(staged)
+      span = Fragment.span_ms(runs, tracks)
       if span.nil?
         # Sound alone is a fragment; nothing at all isn't one.
-        raise Mismatch, "#{staged.basename} has no picture and no sound" if Fragment.runs(staged).none? { |run| run.samples.positive? }
+        raise Mismatch, "#{staged.basename} has no picture and no sound" if runs.none? { |run| run.samples.positive? }
 
         return soundtrack(staged)
       end

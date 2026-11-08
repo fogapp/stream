@@ -32,6 +32,33 @@ RSpec.describe "TMDB settings and Needs match", type: :request do
       expect(TmdbSetting.sole.last_test_ok).to be(false)
     end
 
+    it "keeps the saved key when a save leaves it blank, and clears it on remove" do
+      patch "/api/v1/tmdb_setting", params: { tmdb_setting: { api_key: "first-key" } }, headers: auth_headers(admin), as: :json
+      clear_enqueued_jobs
+      patch "/api/v1/tmdb_setting", params: { tmdb_setting: { api_key: "" } }, headers: auth_headers(admin), as: :json
+      expect(json).to include("configured" => true)
+      expect(TmdbSetting.sole.api_key).to eq("first-key")
+
+      # Another key isn't a first key: nothing to re-match.
+      patch "/api/v1/tmdb_setting", params: { tmdb_setting: { api_key: "second-key" } }, headers: auth_headers(admin), as: :json
+      expect(enqueued_jobs.map { |job| job["job_class"] }).not_to include("RematchLibrariesJob")
+
+      delete "/api/v1/tmdb_setting", headers: auth_headers(admin)
+      expect(json).to include("configured" => false)
+      expect(TmdbSetting.count).to eq(0)
+    end
+
+    it "says to enter a key before testing without one" do
+      post "/api/v1/tmdb_setting/test", headers: auth_headers(admin)
+      expect(json).to eq("ok" => false, "message" => "Enter a TMDB key first.")
+    end
+
+    it "shows every member whether TMDB is connected, without creating anything" do
+      get "/api/v1/tmdb_setting", headers: auth_headers(member)
+      expect(json).to eq("configured" => false, "last_tested_at" => nil, "last_test_ok" => nil, "last_test_message" => nil)
+      expect(TmdbSetting.count).to eq(0)
+    end
+
     it "is an admin's to change" do
       patch "/api/v1/tmdb_setting", params: { tmdb_setting: { api_key: "x" } }, headers: auth_headers(member), as: :json
       expect(response).to have_http_status(:forbidden)

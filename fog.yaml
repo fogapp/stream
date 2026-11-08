@@ -61,9 +61,9 @@ gettingStarted: |
     transcoder; until then Stream transcodes in software.
   - Migrations run in the release phase only, never at boot — fog overlaps
     two web replicas during a blue-green swap.
-  - Metrics, traces, profiles and logs go to Lucid: on Stream's
-    **Integrations** tab in fog, connect Lucid. Fog has Lucid mint Stream its
-    own ingest key, sets `LUCID_URL` and `LUCID_API_KEY`, and redeploys.
+  - Metrics, traces, profiles and logs go to Glass: on Stream's
+    **Integrations** tab in fog, connect Glass. Fog has Glass mint Stream its
+    own ingest key, sets `GLASS_URL` and `GLASS_API_KEY`, and redeploys.
 
 # fog-integration/1 (fog:docs/integrations-contract.md): what other apps
 # connect to on their Integrations tab in fog, and the offers Stream is built
@@ -93,10 +93,10 @@ integrations:
       secrets: [STREAM_READ_TOKEN]
       capabilities:
         - See what's playing, next and new in Stream
-  # Lucid's `monitoring` sets LUCID_URL and LUCID_API_KEY, which the vendored
-  # lucid gem reads at boot. Hook's `library` sets HOOK_URL and
+  # Glass's `monitoring` sets GLASS_URL and GLASS_API_KEY, which the vendored
+  # glass gem reads at boot. Hook's `library` sets HOOK_URL and
   # HOOK_API_TOKEN, a token that may search and ask Hook for films and
   # television as the person using Stream (Hook::Client, PROPOSAL §7.9).
   wants:
-    - offer: lucid/monitoring
+    - offer: glass/monitoring
     - offer: hook/library

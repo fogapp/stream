@@ -106,7 +106,7 @@ RSpec.describe "Job failure paths" do
       freeze_time
       allow(Catalog::FileMatcher).to receive(:new).and_return(
         instance_double(Catalog::FileMatcher).tap do |matcher|
-          allow(matcher).to receive(:call).and_raise(UpstreamHttpClient::RateLimitError.new("TMDB rate limited this request", status: 429))
+          allow(matcher).to receive(:call).and_raise(Tmdb::Client::Error.rate_limited.new("TMDB rate limited this request", status: 429))
         end
       )
 

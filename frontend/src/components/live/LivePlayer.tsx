@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, SkipBack } from "lucide-react";
 import { ChannelBar } from "@/components/live/ChannelBar";
 import { PipPicker } from "@/components/pip/PipPicker";
@@ -37,7 +37,7 @@ const WATCHDOG_MS = 1_000;
  * Restart goes back to its beginning, Jump to live catches up, and it can
  * never run ahead of live. Channel changes belong to the page around it.
  */
-export function LivePlayer({
+export const LivePlayer = memo(function LivePlayer({
   video,
   session,
   airing,
@@ -392,7 +392,7 @@ export function LivePlayer({
       </div>
     </div>
   );
-}
+});
 
 interface LivePlace {
   playhead: Playhead;

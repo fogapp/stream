@@ -28,7 +28,8 @@ class FetchSponsorSegmentsJob < ApplicationJob
       video.update_columns(sponsorblock_checked_at: now) # rubocop:disable Rails/SkipsModelValidations
     end
   rescue Youtube::SponsorBlock::Error => e
-    raise if e.connection?
+    # A rate limit is for retry_on above to wait out.
+    raise if e.connection? || e.is_a?(UpstreamHttpClient::RateLimitError)
 
     Rails.logger.warn("SponsorBlock for #{video_id}: #{e.message}")
   end

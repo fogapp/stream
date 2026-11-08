@@ -4,6 +4,7 @@ import { api } from "@/api/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useFormMutation } from "@/hooks/useFormMutation";
 import { keys } from "@/lib/queryKeys";
+import { Button } from "@/components/ui/Button";
 import { CopyField } from "@/components/ui/CopyField";
 import { FormError, FormFooter } from "@/components/ui/Form";
 import { Input } from "@/components/ui/Input";
@@ -45,21 +46,30 @@ export function General() {
   );
 }
 
-/** Starts from the server's value and does not re-sync on refetch (frontend/CLAUDE.md). */
+/**
+ * The webhook's address is write-only, like a key: its path is usually the
+ * secret (Home Assistant's webhook id). A saved one shows as where it goes;
+ * an empty field keeps it, and Turn off clears it.
+ */
 function WebhookForm({ initial }: { initial: GeneralSettings }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [url, setUrl] = useState(initial.webhook_url ?? "");
+  const [url, setUrl] = useState("");
   const save = useFormMutation({
-    mutationFn: () => api.patch<GeneralSettings>("/app_setting", { webhook_url: url }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.settings.all }),
+    mutationFn: (webhookUrl: string) => api.patch<GeneralSettings>("/app_setting", { webhook_url: webhookUrl }),
+    onSuccess: () => {
+      setUrl("");
+      return queryClient.invalidateQueries({ queryKey: keys.settings.all });
+    },
     fallback: "Could not save the webhook",
   });
   const admin = user?.role === "admin";
+  const saved = initial.webhook_url_set;
+  const where = saved ? `Sends to ${initial.webhook_host ?? "the address saved"}.` : "Off.";
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    save.mutate();
+    save.mutate(url);
   }
 
   return (
@@ -68,14 +78,24 @@ function WebhookForm({ initial }: { initial: GeneralSettings }) {
         label="Webhook URL"
         name="webhook_url"
         type="url"
-        placeholder="http://homeassistant.lan:8123/api/webhook/stream"
+        autoComplete="off"
+        placeholder={saved ? "Saved — enter a new one to replace it" : "http://homeassistant.lan:8123/api/webhook/stream"}
         value={url}
         onChange={(event) => setUrl(event.target.value)}
         disabled={!admin}
-        hint={admin ? "Leave blank to turn the webhook off." : "Only an admin can change this."}
+        hint={admin ? where : `${where} Only an admin can change this.`}
       />
       <FormError message={save.errorMessage} />
-      {admin ? <FormFooter label="Save" pending={save.isPending} /> : null}
+      {admin ? (
+        <div className="flex gap-2">
+          <FormFooter label="Save" pending={save.isPending} disabled={url.trim() === ""} />
+          {saved ? (
+            <Button type="button" variant="ghost" disabled={save.isPending} onClick={() => save.mutate("")}>
+              Turn off
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </form>
   );
 }

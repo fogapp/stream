@@ -47,6 +47,7 @@ RSpec.describe "Tenancy", type: :request do
     DELETE /api/v1/plex_connection
     DELETE /api/v1/profiles/:id
     DELETE /api/v1/stations/:id
+    DELETE /api/v1/tmdb_setting
     DELETE /api/v1/trakt_setting
     DELETE /api/v1/transcode_nodes/:id
     DELETE /api/v1/whisper_setting
@@ -135,7 +136,6 @@ RSpec.describe "Tenancy", type: :request do
     POST /api/v1/nba_setting/test
     POST /api/v1/open_subtitles_setting/test
     POST /api/v1/optimized_versions
-    POST /api/v1/optimized_versions/:id/retry
     POST /api/v1/optimized_versions/bulk
     POST /api/v1/optimized_versions/scan
     POST /api/v1/plex_connection/test
@@ -317,11 +317,12 @@ RSpec.describe "Tenancy", type: :request do
     callback = controllers[controller]&._process_action_callbacks&.find { |candidate| candidate.filter == :require_admin! }
     return false if callback.nil?
 
-    condition = [ *callback.instance_variable_get(:@if), *callback.instance_variable_get(:@unless) ].first
-    return true if condition.nil?
-
-    listed = condition.instance_variable_get(:@actions).include?(action)
-    condition.instance_variable_get(:@conditional_key) == :only ? listed : !listed
+    # only: lands in its @if, except: in its @unless — and so does a
+    # skip_before_action's only: (a subclass letting one action through).
+    # Each names actions; the callback runs when every @if names this one
+    # and no @unless does.
+    names = ->(condition) { condition.instance_variable_get(:@actions).include?(action) }
+    Array(callback.instance_variable_get(:@if)).all?(&names) && Array(callback.instance_variable_get(:@unless)).none?(&names)
   end
 
   def world_digest

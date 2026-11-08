@@ -37,4 +37,16 @@ class MediaStream < ApplicationRecord
   attribute :hdr_format, HdrFormat, allow_nil: true
 
   validates :index, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+
+  # The sound a file plays with when nobody picked a track: its default,
+  # but never a commentary or a description track (one flagged default by
+  # mistake played over the film, R6) while there's another. One choice,
+  # shared by the decision engine and the optimizer, so an optimized
+  # version carries the track a session would ask it for.
+  sig { params(streams: T::Array[MediaStream]).returns(T.nilable(MediaStream)) }
+  def self.main_audio(streams)
+    tracks = streams.select { |stream| stream.kind_enum == Kind::Audio }
+    main = tracks.reject { |track| track.comment || track.visual_impaired || track.hearing_impaired }
+    main.find(&:default) || main.first || tracks.find(&:default) || tracks.first
+  end
 end

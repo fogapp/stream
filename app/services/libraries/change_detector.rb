@@ -114,7 +114,7 @@ module Libraries
     # `items` mapped a few at a time, in order. A stat over the NAS is a
     # round trip that leaves the CPU idle, and a shows library is thousands
     # of them every five minutes: one after another they were half of all
-    # job time (Lucid, 2026-10-22: p95 26 s, 85% of it in File.stat).
+    # job time (Glass, 2026-10-22: p95 26 s, 85% of it in File.stat).
     sig do
       type_parameters(:In, :Out)
         .params(items: T::Array[T.type_parameter(:In)], blk: T.proc.params(item: T.type_parameter(:In)).returns(T.type_parameter(:Out)))

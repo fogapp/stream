@@ -36,17 +36,7 @@ module Playback
     # The end of what this run's ffmpeg said (its part of the session's log).
     sig { params(run: Supervisor::Run).returns(String) }
     def self.log_tail(run)
-      log = Cache.directory(run.session_id, run.variant).join("ffmpeg.log")
-      return "" unless log.file?
-
-      size = log.size
-      from = [ run.log_from, size - TranscodeRun::LOG_TAIL ].max
-      File.open(log, "rb") do |file|
-        file.seek(from)
-        file.read.to_s.force_encoding(Encoding::UTF_8).scrub
-      end
-    rescue SystemCallError
-      ""
+      LogTail.read(Cache.directory(run.session_id, run.variant).join("ffmpeg.log"), bytes: TranscodeRun::LOG_TAIL, from: run.log_from)
     end
   end
 end

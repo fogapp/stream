@@ -17,7 +17,7 @@ module FogBackup
     STALE_AFTER = T.let(24.hours, ActiveSupport::Duration)
 
     sig { returns(Pathname) }
-    def self.root = Rails.root.join("storage", "fog")
+    def self.root = StreamPaths.storage.join("fog")
 
     # ---- producer side ----
 

@@ -12,8 +12,8 @@ Gem::Specification.new do |s|
                   "outside Fog (federation-proposal.md, principle 5)."
   s.authors     = ["Matthew Werner"]
   s.homepage    = "https://github.com/fogapp/fog"
-  s.license     = "AGPL-3.0-only"
-  s.files       = Dir["lib/**/*.rb", "rbi/*.rbi", "README.md"]
+  s.license     = "MIT"
+  s.files       = Dir["lib/**/*.rb", "rbi/*.rbi", "README.md", "LICENSE"]
   s.required_ruby_version = ">= 3.2"
   # No runtime dependencies, ever — this gem rides inside every app and must
   # not be able to conflict with anything they use. Development-only deps are

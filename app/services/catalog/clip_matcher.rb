@@ -27,7 +27,7 @@ module Catalog
       floating = source == Clip::CapturedSource::Filename
       clip ||= Clip.new(household_id: @file.household_id, library: @library, title: @parsed.title, captured_at: captured,
         captured_source: source.serialize, captured_floating: floating)
-      unless clip.captured_source_enum == Clip::CapturedSource::Immich || clip.locked_fields.include?("captured_at")
+      unless clip.captured_source_enum == Clip::CapturedSource::Immich || clip.locked?("captured_at")
         clip.assign_attributes(captured_at: captured, captured_source: source.serialize, captured_floating: floating)
       end
       clip.save!

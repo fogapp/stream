@@ -8,6 +8,7 @@
 class MediaController < ActionController::API
   extend T::Sig
   include SendsMedia
+  include ServesSubtitles
 
   before_action :set_session
 
@@ -73,22 +74,9 @@ class MediaController < ActionController::API
     unavailable(e)
   end
 
-  SUBTITLE_TYPES = T.let({ "vtt" => "text/vtt", "ass" => "text/x-ssa", "sup" => "application/octet-stream" }.freeze,
-    T::Hash[String, String])
-
-  # How long a pick of a track not taken out yet waits on its job before
-  # being told to ask again: a Puma thread, not half an hour of one. The job
-  # takes minutes when it isn't over at once, and both players ask again for
-  # fifteen, so waiting longer only holds the thread.
-  SUBTITLE_WAIT = 3.0
-  SUBTITLE_RETRY_AFTER = 10
-
   # A subtitle track in the format the player renders it in (PROPOSAL
-  # §5.5). Taken out of the file by the one read over it (Media::OnePass);
-  # a track that read hasn't reached yet is taken out by a job of its own,
-  # waited on a moment, then answered 503 with Retry-After — the players
-  # ask again (docs/APPLETV_STALLS.md › R5). It used to be read here, in
-  # the request: a PGS track off a slow share held a thread 31 minutes.
+  # §5.5): out of the file already, or waited on a moment and then 503
+  # with Retry-After (ServesSubtitles).
   sig { void }
   def subtitle
     file = session!.media_file
@@ -98,26 +86,7 @@ class MediaController < ActionController::API
     track = Subtitles::Tracks.find(file, params[:track].to_s)
     return head(:not_found) if track.nil? || !Subtitles::Extractor.extensions_for(track).include?(extension)
 
-    path = Subtitles::Extractor.path_for(file, track, extension)
-    unless path.file?
-      failure = Subtitles::Extractor.failed(file, track, extension)
-      return subtitle_failed(failure) if failure
-
-      ExtractSubtitleTrackJob.perform_later(file.id, track.id, extension)
-      Playback::Wait.until(SUBTITLE_WAIT, every: 0.25, gone: -> { client_gone? }) do
-        path.file? || !Subtitles::Extractor.failed(file, track, extension).nil?
-      end
-      unless path.file?
-        failure = Subtitles::Extractor.failed(file, track, extension)
-        return subtitle_failed(failure) if failure
-
-        response.headers["Retry-After"] = SUBTITLE_RETRY_AFTER.to_s
-        return render(plain: "The subtitles are still being taken out of the file", status: :service_unavailable)
-      end
-    end
-
-    response.headers["Cache-Control"] = "private, max-age=3600"
-    serve(path, T.must(SUBTITLE_TYPES[extension]))
+    serve_subtitle(file, track, extension, failed: ->(message) { subtitle_failed(message) })
   end
 
   # One seek-bar thumbnail sheet (PROPOSAL §7.3). Versioned in the path, so
@@ -295,11 +264,6 @@ class MediaController < ActionController::API
     count(version.path)
     serve(version.path, "video/mp4")
   end
-
-  # The player dropped this request (a seek moved on): Thruster drops its
-  # connection to Puma with it.
-  sig { returns(T::Boolean) }
-  def client_gone? = Playback::ClientGone.gone?(request.env["puma.socket"])
 
   sig { void }
   def touch

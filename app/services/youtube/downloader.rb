@@ -92,7 +92,7 @@ module Youtube
 
     sig { returns(String) }
     def temp_dir
-      File.join(ENV.fetch("STREAM_CACHE_DIR") { Rails.root.join("tmp", "cache").to_s }, "yt-dlp", @download.id)
+      StreamPaths.cache.join("yt-dlp", @download.id).to_s
     end
 
     sig { params(result: ToolRunner::Result).returns(String) }

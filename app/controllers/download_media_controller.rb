@@ -3,10 +3,12 @@
 
 # What an offline download fetches (/media/d/<token>/…): the file and its
 # text subtitles, authorized by the download token in the path, since a
-# background fetch sends no header. The bytes go out through X-Sendfile.
+# background fetch sends no header. The bytes go out through X-Sendfile, and
+# a subtitle not taken out yet is a 503 to ask again (ServesSubtitles).
 class DownloadMediaController < ActionController::API
   extend T::Sig
   include SendsMedia
+  include ServesSubtitles
 
   before_action :set_download
 
@@ -18,15 +20,15 @@ class DownloadMediaController < ActionController::API
     serve(path, download!.mime_type)
   end
 
+  # A text track as WebVTT: out of the file already, or taken out by a job
+  # and asked for again — never read in the request (ServesSubtitles).
   sig { void }
   def subtitle
     file = T.must(download!.media_file)
     track = Subtitles::Tracks.find(file, params[:track].to_s)
     return head(:not_found) if track.nil? || !Subtitles::Extractor.extensions_for(track).include?("vtt")
 
-    serve(Subtitles::Extractor.fetch(file, track, "vtt"), "text/vtt")
-  rescue Subtitles::Extractor::Error, ToolRunner::Error => e
-    render plain: e.message, status: :unprocessable_content
+    serve_subtitle(file, track, "vtt", failed: ->(message) { render plain: message, status: :unprocessable_content })
   end
 
   private

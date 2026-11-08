@@ -98,23 +98,10 @@ module Api
         render json: Stations::Presets.build(current_household!.id, kind, params[:value].presence&.to_s)
       end
 
-      # What the channel editor offers to choose from: the library's own
-      # genres, networks, studios and keywords (most titles first), its
-      # shows and its collections.
+      # What the channel editor offers to choose from (Stations::EditorOptions).
       sig { void }
       def options
-        render json: {
-          genres: tally("genres", Movie, Show), networks: tally("networks", Show), studios: tally("studios", Movie),
-          keywords: tally("keywords", Movie, Show).first(300),
-          shows: Show.order(:sort_title).pluck(:id, :title, :year).map { |id, title, year| { id: id, title: title, year: year } },
-          collections: Collection.order(:sort_title).pluck(:id, :title).map { |id, title| { id: id, title: title } },
-          youtube_channels: Channel.order(:title).pluck(:id, :title).map { |id, title| { id: id, title: title } },
-          profiles: Profile.order(:name).pluck(:id, :name).map { |id, name| { id: id, name: name } },
-          live_streams: LiveStream.order(:sort_title).pluck(:id, :name, :mlb_team_id).map { |id, name, team| { id: id, name: name, mlb_team: !team.nil? } },
-          mlb_teams: mlb_teams,
-          decades: decades,
-          time_zone: AppSetting.cached.zone.tzinfo.name
-        }
+        render json: Stations::EditorOptions.call
       end
 
       private
@@ -145,59 +132,16 @@ module Api
         target.call_sign = target.call_sign.presence
       end
 
-      # The channel's programming, top to bottom; nil when not sent. One
-      # base block at most.
+      # The channel's programming (Stations::BlockParams); nil when not
+      # sent, or when it can't be taken (the errors rendered).
       sig { returns(T.nilable(T::Array[T::Hash[Symbol, T.untyped]])) }
       def blocks_param
         return nil unless params.key?(:blocks)
 
-        raw = Array(params[:blocks]).map { |block| block.respond_to?(:to_unsafe_h) ? block.to_unsafe_h.to_h : {} }
-        if raw.count { |block| block["layer"].to_s == StationBlock::Layer::Base.serialize } > 1
-          render_errors("A channel has one mix for when nothing else is on")
-          return nil
-        end
-        int = ->(value) { value.to_s.match?(/\A\d+\z/) ? value.to_i : nil }
-        raw.first(50).map do |block|
-          {
-            layer: block["layer"].to_s, name: block["name"].to_s.strip.presence, days: int.call(block["days"]) || StationBlock::EVERY_DAY,
-            start_minute: int.call(block["start_minute"]), end_minute: int.call(block["end_minute"]),
-            starts_on: block["starts_on"].presence, ends_on: block["ends_on"].presence,
-            source: Stations::Rules.normalize(block["source"]), ordering: block["ordering"].presence || "shuffle",
-            marathon_length: int.call(block["marathon_length"]) || 3,
-            loops: block.key?("loops") ? ActiveModel::Type::Boolean.new.cast(block["loops"]) || false : true
-          }
-        end
-      end
-
-      # The clubs whose games a channel can carry, once the household has
-      # an MLB.tv account; none when MLB's list can't be read.
-      sig { returns(T::Array[T::Hash[Symbol, T.untyped]]) }
-      def mlb_teams
-        return [] unless MlbSetting.exists?
-
-        Mlb::Schedule.new.teams.map { |team| { id: team.fetch("id"), name: team.fetch("name") } }
-      rescue Mlb::Schedule::Error
-        []
-      end
-
-      # The decades the library's shows and films come from, most first.
-      sig { returns(T::Array[T::Hash[Symbol, Integer]]) }
-      def decades
-        counts = Hash.new(0)
-        [ Show, Movie ].each do |model|
-          model.where.not(year: nil).group(Arel.sql("(year / 10) * 10")).count.each { |decade, count| counts[decade.to_i] += count }
-        end
-        counts.sort_by { |decade, _| -decade }.map { |decade, count| { value: decade, count: count } }
-      end
-
-      # A string-array column's values across titles, most common first.
-      sig { params(column: String, models: T.class_of(ApplicationRecord)).returns(T::Array[T::Hash[Symbol, T.untyped]]) }
-      def tally(column, *models)
-        counts = Hash.new(0)
-        models.each do |model|
-          model.where.not(column => []).group(Arel.sql("unnest(#{column})")).count.each { |value, count| counts[value] += count }
-        end
-        counts.sort_by { |value, count| [ -count, value.to_s ] }.map { |value, count| { value: value, count: count } }
+        Stations::BlockParams.normalize(params[:blocks])
+      rescue Stations::BlockParams::Invalid => e
+        render_errors(e.message)
+        nil
       end
     end
   end

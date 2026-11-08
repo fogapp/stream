@@ -115,5 +115,18 @@ RSpec.describe "Basketball", type: :request do
       expect(response).to have_http_status(:bad_gateway)
       expect(json["errors"]).to eq([ "NBA's schedule timed out" ])
     end
+
+    # A rate limit is raised as the schedule's own error (tagged
+    # RateLimitError), so it is a 502 saying so rather than a 500.
+    it "says so when ESPN rate limits the schedule" do
+      allow(Nba::Schedule).to receive(:new).and_call_original
+      stub_request(:get, %r{site\.api\.espn\.com/apis/site/v2/sports/basketball/nba/scoreboard})
+        .to_return(status: 429, body: { message: "Slow down" }.to_json, headers: { "Content-Type" => "application/json" })
+
+      get "/api/v1/basketball/games", headers: auth_headers(user)
+
+      expect(response).to have_http_status(:bad_gateway)
+      expect(json["errors"]).to eq([ "NBA's schedule rate limited this request — Slow down" ])
+    end
   end
 end

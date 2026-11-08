@@ -55,7 +55,12 @@ module Playback
     # changed or `online?` needs it, and the runs are looked at once, with
     # only the rows that have to change loaded whole.
     sig { params(node: TranscodeNode, report: Report).returns(T::Hash[Symbol, T.untyped]) }
-    def self.poll(node, report)
+    def self.poll(node, report) = poll_starting(node, report).first
+
+    # The poll's answer, and the runs it hands out (so fog's answer can
+    # sign each without reading it again).
+    sig { params(node: TranscodeNode, report: Report).returns([ T::Hash[Symbol, T.untyped], T::Array[TranscodeRun] ]) }
+    def self.poll_starting(node, report)
       seen = node.last_seen_at
       node.last_seen_at = Time.current if seen.nil? || seen < SEEN_EVERY.ago
       hello = report.hello
@@ -64,9 +69,7 @@ module Playback
 
       runs = node.transcode_runs
       take_exits(runs, report.exited)
-      report.progress.each do |id, seconds|
-        runs.live.where(id: id).update_all(progress_seconds: seconds, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
-      end
+      record_progress(runs, report.progress)
       running = report.running.to_set
       live = runs.live.pluck(:id, :state, :started_at).map { |id, state, started_at| LiveRun.new(id: id, state: state, started_at: started_at) }
 
@@ -85,11 +88,31 @@ module Playback
       pending = live.select { |run| run.state == TranscodeRun::State::Pending.serialize }.map(&:id)
       start = node.enabled && pending.any? ? runs.where(id: pending).order(:created_at).to_a : []
       start.each { |run| run.update!(state: TranscodeRun::State::Running.serialize, started_at: Time.current) }
-      {
+      [ {
         start: start.map { |run| { id: run.id, argv: run.argv, kind: run.optimized_version_id ? "optimize" : "session" } },
         stop: stop + orphans, poll_ms: POLL_MS
-      }
+      }, start ]
     end
+    private_class_method :poll_starting
+
+    UUID = /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/
+
+    # How far each live run of this node got, in one statement. An id that
+    # can't be a run's matches nothing, as it always did.
+    sig { params(runs: T.untyped, progress: T::Hash[String, Float]).void }
+    def self.record_progress(runs, progress)
+      progress = progress.select { |id, _| UUID.match?(id) }
+      return if progress.empty?
+
+      table = TranscodeRun.arel_table
+      # CASE id WHEN … THEN … ELSE progress_seconds END, built as Arel so no
+      # SQL is spliced from strings; ELSE gives the literals the column's type.
+      seconds = progress.reduce(Arel::Nodes::Case.new(table[:id])) do |node, (id, at)|
+        node.when(Arel::Nodes.build_quoted(id)).then(Arel::Nodes.build_quoted(at))
+      end.else(table[:progress_seconds])
+      runs.live.where(id: progress.keys).update_all(progress_seconds: seconds, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+    end
+    private_class_method :record_progress
 
     sig { params(runs: T.untyped, exited: T::Array[Exited]).void }
     def self.take_exits(runs, exited)
@@ -120,13 +143,14 @@ module Playback
       node.max_sessions = capacity["interactive"].to_i.clamp(0, TranscodeNode::FOG_MAX_SESSIONS)
       node.capabilities = node.capabilities.merge("free" => { "interactive" => free["interactive"].to_i, "batch" => free["batch"].to_i },
         "capacity" => { "interactive" => capacity["interactive"].to_i, "batch" => capacity["batch"].to_i })
-      answer = poll(node, report)
-      answer.merge(start: answer.fetch(:start).map { |run| fog_run(run) })
+      answer, started = poll_starting(node, report)
+      by_id = started.index_by(&:id)
+      answer.merge(start: answer.fetch(:start).map { |run| fog_run(run, by_id.fetch(run.fetch(:id))) })
     end
 
-    sig { params(run: T::Hash[Symbol, T.untyped]).returns(T::Hash[Symbol, T.untyped]) }
-    def self.fog_run(run)
-      token = RunToken.issue(TranscodeRun.find(run.fetch(:id)))
+    sig { params(run: T::Hash[Symbol, T.untyped], record: TranscodeRun).returns(T::Hash[Symbol, T.untyped]) }
+    def self.fog_run(run, record)
+      token = RunToken.issue(record)
       optimize = run.fetch(:kind) == "optimize"
       run.merge(
         class: optimize ? "batch" : "interactive",

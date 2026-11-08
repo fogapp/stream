@@ -53,6 +53,19 @@ RSpec.describe "Offline downloads", type: :request do
     get file_url, headers: { "Range" => "bytes=0-99" }
     expect(response).to have_http_status(:partial_content)
     expect_sent_by_thruster(file_url, movie.media_files.sole.path)
+
+    # Not taken out yet: a job does it, and the download is told to ask again
+    # rather than holding a Puma thread while ffmpeg reads the file
+    # (CLAUDE.md invariant 7).
+    stub_const("ServesSubtitles::SUBTITLE_WAIT", 0.1)
+    allow(Subtitles::Extractor).to receive(:fetch).and_call_original
+    get subtitle_url
+    expect(response).to have_http_status(:service_unavailable)
+    expect(response.headers["Retry-After"]).to eq("10")
+    expect(ExtractSubtitleTrackJob).to have_been_enqueued
+    expect(Subtitles::Extractor).not_to have_received(:fetch)
+
+    perform_enqueued_jobs
     get subtitle_url
     expect(response.body).to start_with("WEBVTT")
     expect(response.media_type).to eq("text/vtt")

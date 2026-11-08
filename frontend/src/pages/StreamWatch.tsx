@@ -8,7 +8,7 @@ import { failureMessage, reportPlayFailure } from "@/components/player/failure";
 import { attachSource } from "@/components/player/source";
 import { IconButton } from "@/components/ui/IconButton";
 import { LoadingState } from "@/components/ui/PageState";
-import { usePlayback } from "@/hooks/usePlayback";
+import { usePlaybackActions } from "@/hooks/usePlayback";
 import { prefersNativeHls } from "@/lib/capabilities";
 import { fromTv, tvLibraryPath } from "@/lib/tv";
 import { liveHandoff } from "@/lib/liveHandoff";
@@ -25,7 +25,7 @@ import type { PlaybackSessionInfo } from "@/types";
 export function StreamWatch() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { close, registerLiveMain } = usePlayback();
+  const { close, registerLiveMain } = usePlaybackActions();
   const [session, setSession] = useState<PlaybackSessionInfo | null>(null);
   // Back to the library it came from: the TV's own, when it came from there.
   const back = useCallback(() => {

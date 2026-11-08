@@ -39,6 +39,23 @@ RSpec.describe Catalog::FileMatcher do
       expect(Movie.sole.editions.map(&:name)).to contain_exactly("1080p", "4K")
     end
 
+    it "finds the film a second version names by its normalized title, without reading every film of that year" do
+      12.times { |n| Movie.create!(household: household, library: movies, title: "Other #{n}", year: 1995) }
+      film = Movie.create!(household: household, library: movies, title: "The Heat & Dust", year: 1995)
+      expect(film.normalized_title).to eq("heat and dust")
+      # Written by a replica on older code, before the column: still found.
+      older = Movie.create!(household: household, library: movies, title: "Ronin", year: 1998)
+      older.update_column(:normalized_title, nil) # rubocop:disable Rails/SkipsModelValidations
+
+      reads = count_queries(matching: /FROM "movies"/) { match(probed_file(movies, "Heat & Dust (1995)/Heat and Dust (1995) 4K.mkv", height: 2160)) }
+      match(probed_file(movies, "Ronin (1998)/Ronin (1998).mkv"))
+
+      expect(film.editions.reload.map(&:name)).to eq([ "4K" ])
+      expect(older.editions.reload.size).to eq(1)
+      expect(Movie.count).to eq(14)
+      expect(reads.grep(/"year" = /).grep_v(/normalized_title/)).to be_empty
+    end
+
     it "keeps different films in one folder apart" do
       match(probed_file(movies, "Alien Collection/Alien (1979).mkv"))
       match(probed_file(movies, "Alien Collection/Aliens (1986).mkv"))

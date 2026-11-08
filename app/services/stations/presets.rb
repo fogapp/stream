@@ -72,7 +72,7 @@ module Stations
     # order, week after week), comedies late, cartoons on Saturday morning.
     sig { params(household_id: String, name: String).returns(T::Hash[Symbol, T.untyped]) }
     def self.network(household_id, name)
-      shows = Show.unscoped.where(household_id: household_id).where("networks && ARRAY[?]::varchar[]", [ name ]).order(vote_average: :desc)
+      shows = Show.unscoped.where(household_id: household_id).where(Show.overlap(:networks, [ name ])).order(vote_average: :desc)
       base = { networks: [ name ], kinds: %w[episode] }
       comedies = pick(shows, COMEDY)
       dramas = pick(shows, DRAMA)
@@ -109,7 +109,7 @@ module Stations
         end
         blocks << block("daypart", name: "Late night", days: StationBlock::EVERY_DAY, start: (23 * 60) + 30, finish: 2 * 60,
           source: base.merge(genres: COMEDY), ordering: "shuffle")
-        cartoons = shows.where("genres && ARRAY[?]::varchar[]", CARTOONS).exists?
+        cartoons = shows.where(Show.overlap(:genres, CARTOONS)).exists?
         if cartoons
           blocks << block("daypart", name: "Saturday morning", days: SATURDAY, start: 8 * 60, finish: 11 * 60,
             source: base.merge(genres: CARTOONS), ordering: "marathon")
@@ -241,8 +241,10 @@ module Stations
     sig { params(shows: T.untyped, genres: T::Array[String]).returns(T::Array[Show]) }
     def self.pick(shows, genres)
       readable = Viewing::Catalog.readable_editions.where(playable_type: "Episode").select(:playable_id)
-      counts = Episode.where(id: readable).group(:show_id).count
-      shows.where("genres && ARRAY[?]::varchar[]", genres).to_a.select { |show| counts.fetch(show.id, 0) >= 4 }
+      matching = shows.where(Show.overlap(:genres, genres))
+      # Counted by the database, and only for these shows.
+      enough = Episode.where(id: readable, show_id: matching.reorder(nil).select(:id)).group(:show_id).having("COUNT(*) >= 4").select(:show_id)
+      matching.where(id: enough).to_a
     end
     private_class_method :pick
 

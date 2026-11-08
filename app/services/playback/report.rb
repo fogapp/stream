@@ -155,7 +155,7 @@ module Playback
 
     # Says which input sent needing_conversion back to work, so a key that
     # moves when nothing it stands for did can be found: the hourly pass
-    # worked the whole library out afresh every run (Lucid, 2026-10-22: 15
+    # worked the whole library out afresh every run (Glass, 2026-10-22: 15
     # batches, 10 s, every hour) with no file probed and no device changed.
     sig { params(household: Household, inputs: T::Hash[Symbol, T.untyped]).void }
     def self.note_changed_inputs(household, inputs)
@@ -172,10 +172,10 @@ module Playback
     # transcoder makes, and the code that decides. Not the files' updated_at:
     # loudness, subtitles and every other analysis step touch that, and keyed
     # on it the answer was worked out afresh every hour while a backlog ran
-    # (Lucid, 2026-10-10). Its titles can lag a rename by up to a day.
+    # (Glass, 2026-10-10). Its titles can lag a rename by up to a day.
     sig { params(household: Household, devices: T::Array[Device], max_height: Integer).returns(T::Hash[Symbol, T.untyped]) }
     def self.conversion_inputs(household, devices, max_height)
-      files = MediaFile.unscoped.where(household_id: household.id, state: MediaFile::State::Probed.serialize)
+      files = MediaFile.unscoped.playable.where(household_id: household.id)
         .pick(Arel.sql("COUNT(*)"), Arel.sql("MAX(probed_at)"), Arel.sql("BIT_XOR(hashtext(id::text))"))
       ready = OptimizedVersion.unscoped.where(household_id: household.id, state: OptimizedVersion::State::Ready.serialize)
         .pick(Arel.sql("COUNT(*)"), Arel.sql("MAX(updated_at)"))
@@ -192,10 +192,14 @@ module Playback
     end
     def self.decide_conversions(household, devices, max_height)
       rows = []
-      MediaFile.unscoped.where(household_id: household.id, state: MediaFile::State::Probed.serialize)
+      # Each device's profile parsed once, not once a file.
+      profiles = devices.to_h { |device| [ device.id, device.capability_profile ] }
+      # Only what a decision and a row read: never the probe or the keyframes.
+      MediaFile.unscoped.playable.where(household_id: household.id)
+        .select(:id, :household_id, :library_id, :path, :container, :size, :duration_seconds)
         .includes(:media_streams, :optimized_version).find_each do |file|
         needing = devices.filter_map do |device|
-          decision = Decision.new(file, device.capability_profile, max_height: max_height, device_name: device.name)
+          decision = Decision.new(file, profiles.fetch(device.id), max_height: max_height, device_name: device.name)
           { device: device.name, summary: decision.summary } if decision.method == PlaybackSession::Method::VideoTranscode
         end
         next if needing.empty?

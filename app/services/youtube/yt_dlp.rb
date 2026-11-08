@@ -20,7 +20,7 @@ module Youtube
 
     sig { returns(Pathname) }
     def self.managed_path
-      Pathname.new(ENV.fetch("STREAM_STORAGE_DIR") { Rails.root.join("storage").to_s }).join("tools", "yt-dlp")
+      StreamPaths.storage.join("tools", "yt-dlp")
     end
 
     sig { returns(String) }
