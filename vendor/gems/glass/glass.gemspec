@@ -21,6 +21,6 @@ Gem::Specification.new do |s|
   # dependencies of its own, and is loaded lazily: if it cannot be loaded the
   # agent runs without profiles rather than not at all.
   s.add_dependency "vernier", ">= 1.8"
-  s.add_development_dependency "minitest", "~> 5.16"
+  s.add_development_dependency "minitest", "~> 6.1"
   s.add_development_dependency "rake", "~> 13.0"
 end

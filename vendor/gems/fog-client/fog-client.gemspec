@@ -18,6 +18,6 @@ Gem::Specification.new do |s|
   # No runtime dependencies, ever — this gem rides inside every app and must
   # not be able to conflict with anything they use. Development-only deps are
   # fine: they never install with the vendored gem.
-  s.add_development_dependency "minitest", "~> 5.16"
+  s.add_development_dependency "minitest", "~> 6.1"
   s.add_development_dependency "rake", "~> 13.0"
 end
