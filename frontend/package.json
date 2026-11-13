@@ -40,7 +40,7 @@
     "oxlint": "^1.75.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.3.6",
+    "vite": "^8.3.7",
     "vitest": "^5.1.0"
   }
 }
